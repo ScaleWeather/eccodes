@@ -1,7 +1,8 @@
 # eccodes
 
-[![License](https://img.shields.io/github/license/ScaleWeather/eccodes?style=flat-square)](https://choosealicense.com/licenses/apache-2.0/)
-[![Crates.io](https://img.shields.io/crates/v/eccodes?style=flat-square)](https://crates.io/crates/eccodes)
+[![License](https://img.shields.io/github/license/ScaleWeather/eccodes)](https://choosealicense.com/licenses/apache-2.0/)
+[![Crates.io](https://img.shields.io/crates/v/eccodes)](https://crates.io/crates/eccodes)
+[![dependency status](https://deps.rs/crate/eccodes/0.0.2/status.svg)](https://deps.rs/crate/eccodes)
 
 **This crate is in very early development stage.** It is currently published to reserve the crate name. First usable release will likely be published in September 2021.
 
@@ -21,7 +22,7 @@ If you would like to build ecCodes with other options simply import `eccodes-sys
 
 This crate will provide to ways of accesing GRIB/BUFR files:
 - Using [`fopen()`](https://man7.org/linux/man-pages/man3/fopen.3.html) function to open a file with filesystem, when copying whole file into memory is not desired or not necessary.
-- Using ['fmemopen()](https://man7.org/linux/man-pages/man3/fmemopen.3.html) function to use a file that is already in memory. For example, when file is downloaded from the internet and does not need to be saved on hard drive.
+- Using ['fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html) function to use a file that is already in memory. For example, when file is downloaded from the internet and does not need to be saved on hard drive.
 
 ## License
 
