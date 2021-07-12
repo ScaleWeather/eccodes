@@ -20,6 +20,8 @@ exclude = [".github/*"]
 [dependencies]
 eccodes-sys = "0.1.2"
 libc = "0.2.97"
+thiserror = "1.0.25"
+bytes = "1.0.1"
 
 [features]
 docs = ["eccodes-sys/docs"]
