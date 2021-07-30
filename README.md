@@ -4,11 +4,9 @@
 [![Crates.io](https://img.shields.io/crates/v/eccodes)](https://crates.io/crates/eccodes)
 [![dependency status](https://deps.rs/crate/eccodes/0.0.2/status.svg)](https://deps.rs/crate/eccodes)
 
-**This crate is in very early development stage.** It is currently published to reserve the crate name. First usable release will likely be published in September 2021.
+This crate contains safe high-level bindings for ecCodes library. Bindings can be considered safe mainly because all crate structures will take ownership of the data in memory before passing the raw pointer to ecCodes. Currently only reading of GRIB files is supported.
 
-**If you want to contribute or need make this library be released sooner check Github repository.** All submitted issues and pull requests are welcome. 
-
-This crate will contain safe high-level bindings for ecCodes library. Bindings can be considered safe mainly because all crate structures will take ownership of the data in memory before passing the raw pointer to ecCodes.
+**If you want to contribute check Github repository.** All submitted issues and pull requests are welcome.
 
 [ecCodes](https://confluence.ecmwf.int/display/ECC/ecCodes+Home) is an open-source library for reading and writing GRIB and BUFR files developed by [European Centre for Medium-Range Weather Forecasts](https://www.ecmwf.int/).
 
