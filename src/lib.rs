@@ -1,92 +1,73 @@
-//!# Unofficial high-level safe Rust bindings to ecCodes library.
+//!# Unofficial high-level safe Rust bindings to ecCodes library
 //!
+//!This crate contains safe high-level bindings for ecCodes library. 
+//!Bindings can be considered safe mainly because all crate structures 
+//!will take ownership of the data in memory before passing the raw pointer to ecCodes. 
 //!**Currently only reading of GRIB files is supported.**
 //!
-//!Check README for more details and how to contribute.
+//!Because of the ecCodes library API characteristics theses bindings are 
+//!rather thick wrapper to make this crate safe and convienient to use.
 //!
-//!## Features
+//!Because ecCodes supports mainly Linux platforms, this crate is not tested on other architectures.
+//!
+//!If you want to see more features released quicker do not hesitate 
+//!to contribute and check out Github repository.
+//!
+//![ecCodes](https://confluence.ecmwf.int/display/ECC/ecCodes+Home) is an open-source library 
+//!for reading and writing GRIB and BUFR files developed by [European Centre for Medium-Range Weather Forecasts](https://www.ecmwf.int/).
+//!
+//!## Usage
+//!
+//!### Accesing GRIB files
+//!
+//!This crate provide an access to GRIB file by creating a [`CodesHandle`](codes_handle::CodesHandle) and reading messages from the file.
+//!
+//!The [`CodesHandle`](codes_handle::CodesHandle) can be constructed in two ways.
+//!
+//!The main option is to use [`new_from_file()`](codes_handle::CodesHandle::new_from_file) function
+//!to open a file under provided [`path`](`std::path::Path`) with filesystem, 
+//!when copying whole file into memory is not desired or not necessary.
+//!
+//!```
+//!
+//!```
+//!
+//!Alternatively [`new_from_memory()`](codes_handle::CodesHandle::new_from_memory) function can be used
+//!to access a file that is already in memory. For example, when file is downloaded from the internet 
+//!and does not need to be saved on hard drive. The file must be stored in [`bytes::Bytes`](https://docs.rs/bytes/1.1.0/bytes/struct.Bytes.html).
+//!
+//!```
+//!
+//!```
+//!
+//!### Build options
+//!
+//!This crate uses [eccodes-sys](https://crates.io/crates/eccodes-sys) with default options to link ecCodes. 
+//!Check `eccodes-sys` website for more details on how it links the library.
+//!
+//!If you would like to build ecCodes with other options simply import `eccodes-sys` 
+//!along with `eccodes` in your `Cargo.toml` file and select needed features.
+//!
+//!For example: 
+//!
+//!```no_run
+//![dependencies]
+//!eccodes = "0.1.0"
+//!eccodes-sys = { version="0.1.3", features=["build_source"] }
+//!```
+//!
+//!### Features
 //!
 //!- `docs` - builds the create without linking ecCodes, particularly useful when building the documentation
 //!on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
 //!
 //!To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
 //!
-//!```Rust
+//!```no_run
 //![package.metadata.docs.rs]
 //!features = ["eccodes/docs"]
 //!```
+//!
 
-mod constructors;
-mod destructor;
-mod errors;
-
-use bytes::Bytes;
-use eccodes_sys::{self, codes_context, codes_handle, _IO_FILE};
-use errors::{CodesError, LibcError};
-use libc::FILE;
-
-///Enum indicating what type of product `CodesHandle` is currently holding.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum ProductKind {
-    GRIB,
-}
-
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-enum DataContainer {
-    FileBytes(Bytes),
-    FileBuffer(String),
-}
-
-///Main structure used to operate on the GRIB/BUFR file.
-///It takes a full ownership of the accessed file.
-///It can be constructed either using a file (with `fopen()`) or memory buffer (with `fmemopen()`).
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub struct CodesHandle {
-    ///The container to take the ownership of handled file
-    data: DataContainer,
-    ///Internal ecCodes unsafe handle
-    file_handle: *mut codes_handle,
-    file_pointer: *mut FILE,
-    product_kind: u32,
-}
-
-impl CodesHandle {
-    fn codes_handle_new_from_file(
-        file_pointer: *mut FILE,
-        product_kind: u32,
-    ) -> Result<*mut codes_handle, CodesError> {
-        let context: *mut codes_context = std::ptr::null_mut(); //default context
-
-        let file_handle;
-        let mut error_code: i32 = 0;
-        unsafe {
-            file_handle = eccodes_sys::codes_handle_new_from_file(
-                context,
-                file_pointer as *mut _IO_FILE,
-                product_kind,
-                &mut error_code as *mut i32,
-            );
-        }
-
-        if error_code != 0 {
-            return Err(CodesError::Internal(error_code));
-        }
-
-        Ok(file_handle)
-    }
-}
-
-impl Iterator for CodesHandle {
-    type Item = *mut codes_handle;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.file_handle =
-            CodesHandle::codes_handle_new_from_file(self.file_pointer, self.product_kind).unwrap();
-
-        if self.file_handle.is_null() {
-            None
-        } else {
-            Some(self.file_handle)
-        }
-    }
-}
+pub mod codes_handle;
+pub mod errors;

@@ -1,0 +1,194 @@
+use crate::errors::{CodesError, LibcError};
+use bytes::Bytes;
+use eccodes_sys::{codes_context, codes_handle, ProductKind_PRODUCT_GRIB, _IO_FILE};
+use errno::errno;
+use libc::{c_char, c_void, size_t, FILE};
+use log::error;
+use std::{ffi::OsStr, fs::{File, OpenOptions}, os::unix::prelude::AsRawFd, path::PathBuf};
+
+mod iterator;
+
+///Enum indicating what type of product `CodesHandle` is currently holding.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum ProductKind {
+    GRIB = ProductKind_PRODUCT_GRIB as isize,
+}
+
+#[derive(Debug)]
+enum DataContainer {
+    FileBytes(Bytes),
+    FileBuffer(File),
+}
+
+///Main structure used to operate on the GRIB file.
+///It takes a full ownership of the accessed file.
+///It can be constructed either using a file or a memory buffer.
+#[derive(Debug)]
+pub struct CodesHandle {
+    ///The container to take the ownership of handled file
+    data: DataContainer,
+    ///Internal ecCodes unsafe handle
+    file_handle: *mut codes_handle,
+    file_pointer: *mut FILE,
+    product_kind: ProductKind,
+}
+
+impl CodesHandle {
+    ///This contructor utilises [`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html) function
+    ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`) from provided [`fs::File`](std::fs::File) 
+    ///with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer. \
+    ///The file descriptor does not take the ownership of provided file, therefore the 
+    ///[`fs::File`](std::fs::File) is safely closed when it is dropped.
+    pub fn new_from_file(file_path: PathBuf, product_kind: ProductKind) -> Result<Self, CodesError> {
+        let product_extension = match_product_extension(product_kind);
+        let file_extension = file_path.extension().ok_or(CodesError::NoExtension)?;
+        let file;
+
+        if file_extension == product_extension { 
+            file = OpenOptions::new().read(true).open(file_path)?;
+        }
+        else {
+            return Err(CodesError::WrongExtension);
+        }
+
+        let file_pointer = open_with_fdopen(&file)?;
+        let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
+
+        Ok(CodesHandle {
+            data: (DataContainer::FileBuffer(file)),
+            file_handle,
+            file_pointer,
+            product_kind,
+        })
+    }
+
+    pub fn new_from_memory(
+        file_data: Bytes,
+        product_kind: ProductKind,
+    ) -> Result<Self, CodesError> {
+        let file_pointer = open_with_fmemopen(&file_data)?;
+        let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
+
+        Ok(CodesHandle {
+            data: (DataContainer::FileBytes(file_data)),
+            file_handle,
+            file_pointer,
+            product_kind,
+        })
+    }
+}
+
+fn match_product_extension(product_kind: ProductKind) -> &'static OsStr {
+    let product_extension = match product_kind {
+        ProductKind::GRIB => OsStr::new("grib"),
+    };
+
+    product_extension
+}
+
+fn open_with_fdopen(file: &File) -> Result<*mut FILE, LibcError> {
+    let open_mode = "r".as_ptr().cast::<c_char>();
+    let file_descriptor = file.as_raw_fd();
+
+    let file_obj;
+    unsafe {
+        file_obj = libc::fdopen(file_descriptor, open_mode);
+    }
+
+    if file_obj.is_null() {
+        let error_val = errno();
+        let error_code = error_val.0;
+        return Err(LibcError::NullPtr(error_code, error_val));
+    }
+
+    Ok(file_obj)
+}
+
+fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, LibcError> {
+    let file_size = file_data.len() as size_t;
+    let open_mode = "r".as_ptr().cast::<c_char>();
+
+    let file_ptr = file_data.as_ptr() as *mut c_void;
+
+    let file_obj;
+    unsafe {
+        file_obj = libc::fmemopen(file_ptr, file_size, open_mode);
+    }
+
+    if file_obj.is_null() {
+        let error_val = errno();
+        let error_code = error_val.0;
+        return Err(LibcError::NullPtr(error_code, error_val));
+    }
+
+    Ok(file_obj)
+}
+
+impl CodesHandle {
+    fn codes_handle_new_from_file(
+        file_pointer: *mut FILE,
+        product_kind: ProductKind,
+    ) -> Result<*mut codes_handle, CodesError> {
+        let context: *mut codes_context = std::ptr::null_mut(); //default context
+
+        let file_handle;
+        let mut error_code: i32 = 0;
+        unsafe {
+            file_handle = eccodes_sys::codes_handle_new_from_file(
+                context,
+                file_pointer as *mut _IO_FILE,
+                product_kind as u32,
+                &mut error_code as *mut i32,
+            );
+        }
+
+        if error_code != 0 {
+            return Err(CodesError::Internal(error_code));
+        }
+
+        Ok(file_handle)
+    }
+}
+
+impl Drop for CodesHandle {
+    ///Executes the desctructor for this type ([read more](https://doc.rust-lang.org/1.54.0/core/ops/drop/trait.Drop.html#tymethod.drop)).
+    ///This method calls `codes_handle_delete()` from ecCodes and `fclose()` from libc for graceful cleanup.\
+    ///**WARNING:** Currently it is assumed that under normal circumstances this destructor never fails.
+    ///However in some edge cases ecCodes or fclose can return non-zero code.
+    ///For now user is informed about that through log, because I don't know how to handle it correctly.
+    ///If some bugs occurs during drop please enable log output and post issue on Github.
+    fn drop(&mut self) {
+        let error_code;
+        unsafe {
+            error_code = eccodes_sys::codes_handle_delete(self.file_handle);
+        }
+
+        if error_code != 0 {
+            error!(
+                "CodesHandle destructor failed with ecCodes error code {:?}",
+                error_code
+            );
+        }
+
+        let error_code;
+        unsafe {
+            error_code = libc::fclose(self.file_pointer);
+        }
+
+        if error_code != 0 {
+            let error_val = errno();
+            let code = error_val.0;
+            error!(
+                "CodesHandle destructor failed with libc error {}, code: {}",
+                code, error_val
+            );
+        }
+
+        todo!(
+            "Review required! Destructor is assumed to never fail under normal circumstances. 
+        However in some edge cases ecCodes or fclose can return non-zero code. 
+        For now user is informed about that through log, 
+        because I don't know how to handle it correctly."
+        );
+    }
+}

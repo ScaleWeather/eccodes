@@ -18,10 +18,10 @@ edition = "2018"
 exclude = [".github/*"]
 
 [dependencies]
-eccodes-sys = "0.1.2"
-libc = "0.2.98"
-thiserror = "1.0.26"
-bytes = "1.0.1"
+eccodes-sys = "0.1.3"
+libc = "0.2.101"
+thiserror = "1.0.28"
+bytes = "1.1.0"
 log = "0.4.14"
 errno = "0.2.7"
 
