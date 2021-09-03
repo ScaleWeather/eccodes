@@ -257,7 +257,9 @@ impl Drop for CodesHandle {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, ProductKind};
+    use eccodes_sys::ProductKind_PRODUCT_GRIB;
+
+    use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
     use std::path::PathBuf;
 
     #[test]
@@ -266,8 +268,17 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+
         assert!(!handle.file_pointer.is_null());
         assert!(!handle.file_handle.is_null());
+        assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
+        
+        let metadata = match &handle.data {
+            DataContainer::FileBytes(_) => panic!(),
+            DataContainer::FileBuffer(file) => file.metadata().unwrap(),
+        };
+
+        println!("{:?}", metadata);
     }
 
     #[tokio::test]
@@ -284,5 +295,11 @@ mod tests {
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
         assert!(!handle.file_pointer.is_null());
         assert!(!handle.file_handle.is_null());
+        assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
+        
+        match &handle.data {
+            DataContainer::FileBytes(file) => assert!(!file.is_empty()),
+            DataContainer::FileBuffer(_) => panic!(),
+        };
     }
 }
