@@ -50,7 +50,8 @@ impl CodesHandle {
     ///```
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
     ///# use std::path::PathBuf;
-    ///let file_path = PathBuf::from("./files/iceland.grib");
+    ///#
+    ///let file_path = PathBuf::from("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
     ///
     ///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
@@ -71,7 +72,7 @@ impl CodesHandle {
     ///when the file cannot be opened.
     ///
     ///Returns [`CodesError::LibcNullPtr`] with [`errno`](errno::Errno) information
-    ///when the file descriptor cannot be created.
+    ///when the stream cannot be created from the file descriptor.
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
@@ -91,6 +92,41 @@ impl CodesHandle {
         })
     }
 
+    ///The constructor that takes data of file present in memory in [`Bytes`] format and
+    ///a [`ProductKind`] and returns the [`CodesHandle`] object.
+    ///
+    ///## Example
+    ///
+    ///```
+    ///# async fn run() {
+    ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
+    ///#
+    ///let product_kind = ProductKind::GRIB;
+    ///let file_data =
+    ///    reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib")
+    ///        .await
+    ///        .unwrap()
+    ///        .bytes()
+    ///        .await
+    ///        .unwrap();
+    ///
+    ///let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+    ///# }
+    ///```
+    ///
+    ///The function associates the data in memory with a stream 
+    ///represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
+    ///using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html) function.
+    ///
+    ///The constructor takes a full ownership of the data inside [`Bytes`],
+    ///which is safely dropped during the [`CodesHandle`] drop.
+    ///
+    ///## Errors
+    ///Returns [`CodesError::LibcNullPtr`] with [`errno`](errno::Errno) information
+    ///when the file stream cannot be created.
+    ///
+    ///Returns [`CodesError::Internal`] with error code
+    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
     pub fn new_from_memory(
         file_data: Bytes,
         product_kind: ProductKind,
@@ -108,41 +144,37 @@ impl CodesHandle {
 }
 
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
-    let open_mode = "r".as_ptr().cast::<c_char>();
-    let file_descriptor = file.as_raw_fd();
-
-    let file_obj;
+    let file_ptr;
     unsafe {
-        file_obj = libc::fdopen(file_descriptor, open_mode);
+        file_ptr = libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>());
     }
 
-    if file_obj.is_null() {
+    if file_ptr.is_null() {
         let error_val = errno();
         let error_code = error_val.0;
         return Err(CodesError::LibcNullPtr(error_code, error_val));
     }
 
-    Ok(file_obj)
+    Ok(file_ptr)
 }
 
 fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
-    let file_size = file_data.len() as size_t;
-    let open_mode = "r".as_ptr().cast::<c_char>();
-
-    let file_ptr = file_data.as_ptr() as *mut c_void;
-
-    let file_obj;
+    let file_ptr;
     unsafe {
-        file_obj = libc::fmemopen(file_ptr, file_size, open_mode);
+        file_ptr = libc::fmemopen(
+            file_data.as_ptr() as *mut c_void,
+            file_data.len() as size_t,
+            "r".as_ptr().cast::<c_char>(),
+        );
     }
 
-    if file_obj.is_null() {
+    if file_ptr.is_null() {
         let error_val = errno();
         let error_code = error_val.0;
         return Err(CodesError::LibcNullPtr(error_code, error_val));
     }
 
-    Ok(file_obj)
+    Ok(file_ptr)
 }
 
 impl CodesHandle {
@@ -183,7 +215,7 @@ impl Drop for CodesHandle {
     ///If any function called in the destructor returns an error warning will appear in log.
     ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
-        //codes_handle_delete() can only fail with CodesInternalError when previous 
+        //codes_handle_delete() can only fail with CodesInternalError when previous
         //functions corrupt the codes_handle, in that case memory leak is possible
         //moreover, if that happens the codes_handle is not functional so we clear it
         let error_code;
@@ -215,10 +247,42 @@ impl Drop for CodesHandle {
             warn!(
                 "fclose() returned an error and your file might not have been correctly saved.
                 Error code: {}; Error message: {}",
-                error_val, error_val.0
+                error_val.0, error_val
             );
         }
 
         self.file_pointer = null_mut();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::codes_handle::{CodesHandle, ProductKind};
+    use std::path::PathBuf;
+
+    #[test]
+    fn file_constructor() {
+        let file_path = PathBuf::from("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        assert!(!handle.file_pointer.is_null());
+        assert!(!handle.file_handle.is_null());
+    }
+
+    #[tokio::test]
+    async fn memory_constructor() {
+        let product_kind = ProductKind::GRIB;
+        let file_data =
+            reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib")
+                .await
+                .unwrap()
+                .bytes()
+                .await
+                .unwrap();
+
+        let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+        assert!(!handle.file_pointer.is_null());
+        assert!(!handle.file_handle.is_null());
     }
 }

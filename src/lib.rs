@@ -39,12 +39,13 @@
 //!### Example
 //!
 //!```
-//!// We are reading the mean sea level pressure on Iceland
+//!// We are reading the mean sea level pressure in Reykjavik
+//!// for 1st June 2021 00:00 UTC (data from ERA5)
 //!
 //!// Open the GRIB file and create the CodesHandle
 //!# use eccodes::codes_handle::{ProductKind, CodesHandle};
 //!# use std::path::PathBuf;
-//!let file_path = PathBuf::from("./files/iceland.grib");
+//!let file_path = PathBuf::from("./data/iceland.grib");
 //!let product_kind = ProductKind::GRIB;
 //!
 //!let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
@@ -65,7 +66,7 @@
 //!
 //!For example:
 //!
-//!```text
+//!```no_run
 //![dependencies]
 //!eccodes = "0.1.0"
 //!eccodes-sys = { version="0.1.3", features=["build_source"] }
@@ -78,7 +79,7 @@
 //!
 //!To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
 //!
-//!```text
+//!```no_run
 //![package.metadata.docs.rs]
 //!features = ["eccodes/docs"]
 //!```
