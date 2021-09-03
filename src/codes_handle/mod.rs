@@ -1,4 +1,7 @@
-use crate::errors::{CodesError, CodesInternal, LibcError};
+//!Main crate module containing definition of `CodesHandle`
+//!and all associated functions and data structures
+
+use crate::errors::{CodesError, CodesInternal};
 use bytes::Bytes;
 use eccodes_sys::{codes_context, codes_handle, ProductKind_PRODUCT_GRIB, _IO_FILE};
 use errno::errno;
@@ -14,7 +17,8 @@ use std::{
 
 mod iterator;
 
-///Enum representing the kind of product (aka file type)
+///Enum representing the kind of product (file type) inside handled file.
+///Used to indicate to ecCodes how it should decode/encode messages.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
@@ -31,9 +35,7 @@ enum DataContainer {
 ///It can be constructed either using a file or a memory buffer.
 #[derive(Debug)]
 pub struct CodesHandle {
-    ///The container to take the ownership of handled file
     data: DataContainer,
-    ///Internal ecCodes unsafe handle
     file_handle: *mut codes_handle,
     file_pointer: *mut FILE,
     product_kind: ProductKind,
@@ -65,16 +67,10 @@ impl CodesHandle {
     ///[`File`] is safely closed when it is dropped.
     ///
     ///## Errors
-    ///
-    ///Returns [`CodesError::NoFileExtension`] when provided file does not have an extension.
-    ///
-    ///Returns [`CodesError::WrongFileExtension`] when provided file extension does not match
-    ///the [`ProductKind`].
-    ///
     ///Returns [`CodesError::CantOpenFile`] with [`io::Error`](std::io::Error)
     ///when the file cannot be opened.
     ///
-    ///Returns [`CodesError::Libc`] with [`errno`](errno::Errno) information
+    ///Returns [`CodesError::LibcNullPtr`] with [`errno`](errno::Errno) information
     ///when the file descriptor cannot be created.
     ///
     ///Returns [`CodesError::Internal`] with error code
@@ -111,7 +107,7 @@ impl CodesHandle {
     }
 }
 
-fn open_with_fdopen(file: &File) -> Result<*mut FILE, LibcError> {
+fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
     let open_mode = "r".as_ptr().cast::<c_char>();
     let file_descriptor = file.as_raw_fd();
 
@@ -123,13 +119,13 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, LibcError> {
     if file_obj.is_null() {
         let error_val = errno();
         let error_code = error_val.0;
-        return Err(LibcError::NullPtr(error_code, error_val));
+        return Err(CodesError::LibcNullPtr(error_code, error_val));
     }
 
     Ok(file_obj)
 }
 
-fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, LibcError> {
+fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     let file_size = file_data.len() as size_t;
     let open_mode = "r".as_ptr().cast::<c_char>();
 
@@ -143,7 +139,7 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, LibcError> {
     if file_obj.is_null() {
         let error_val = errno();
         let error_code = error_val.0;
-        return Err(LibcError::NullPtr(error_code, error_val));
+        return Err(CodesError::LibcNullPtr(error_code, error_val));
     }
 
     Ok(file_obj)
@@ -161,7 +157,7 @@ impl CodesHandle {
         unsafe {
             file_handle = eccodes_sys::codes_handle_new_from_file(
                 context,
-                file_pointer as *mut _IO_FILE,
+                file_pointer.cast::<_IO_FILE>(),
                 product_kind as u32,
                 &mut error_code as *mut i32,
             );
@@ -185,7 +181,7 @@ impl Drop for CodesHandle {
     ///However memory leaks can still occur.
     ///
     ///If any function called in the destructor returns an error warning will appear in log.
-    ///If bugs occurs during CodesHandle drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
+    ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
         //codes_handle_delete() can only fail with CodesInternalError when previous 
         //functions corrupt the codes_handle, in that case memory leak is possible
@@ -216,11 +212,10 @@ impl Drop for CodesHandle {
 
         if return_code != 0 {
             let error_val = errno();
-            let error_code = error_val.0;
             warn!(
                 "fclose() returned an error and your file might not have been correctly saved.
                 Error code: {}; Error message: {}",
-                error_val, error_code
+                error_val, error_val.0
             );
         }
 
