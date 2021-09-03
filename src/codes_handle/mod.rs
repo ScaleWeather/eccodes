@@ -42,7 +42,7 @@ pub struct CodesHandle {
 }
 
 impl CodesHandle {
-    ///The constructor that takes a [`path`](PathBuf) to an exisiting file and
+    ///The constructor that takes a [`path`](PathBuf) to an existing file and
     ///a [`ProductKind`] and returns the [`CodesHandle`] object.
     ///
     ///## Example
@@ -103,7 +103,7 @@ impl CodesHandle {
     ///#
     ///let product_kind = ProductKind::GRIB;
     ///let file_data =
-    ///    reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib")
+    ///    reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
     ///        .await
     ///        .unwrap()
     ///        .bytes()
@@ -204,7 +204,7 @@ impl CodesHandle {
 }
 
 impl Drop for CodesHandle {
-    ///Executes the desctructor for this type ([read more](https://doc.rust-lang.org/1.54.0/core/ops/drop/trait.Drop.html#tymethod.drop)).
+    ///Executes the destructor for this type.
     ///This method calls `codes_handle_delete()` from ecCodes and `fclose()` from libc for graceful cleanup.
     ///
     ///Currently it is assumed that under normal circumstances this destructor never fails.
@@ -274,7 +274,7 @@ mod tests {
     async fn memory_constructor() {
         let product_kind = ProductKind::GRIB;
         let file_data =
-            reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib")
+            reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
                 .await
                 .unwrap()
                 .bytes()

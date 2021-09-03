@@ -6,7 +6,7 @@
 //!**Currently only reading of GRIB files is supported.**
 //!
 //!Because of the ecCodes library API characteristics theses bindings are
-//!rather thick wrapper to make this crate safe and convienient to use.
+//!rather thick wrapper to make this crate safe and convenient to use.
 //!
 //!Because ecCodes supports mainly Linux platforms, this crate is not tested on other architectures.
 //!
@@ -18,7 +18,7 @@
 //!
 //!## Usage
 //!
-//!### Accesing GRIB files
+//!### Accessing GRIB files
 //!
 //!This crate provide an access to GRIB file by creating a
 //![`CodesHandle`](codes_handle::CodesHandle) and reading messages from the file with it.
@@ -52,7 +52,7 @@
 //!
 //!// Iterate to the KeyedMessage with shortName "msl" and typeOfLevel "surface"
 //!
-//!// Read the value of KeyedMessage for the grid point nearest of Reykjavík
+//!// Read the value of KeyedMessage for the grid point nearest of Reykjavik
 //!// 64N -22E
 //!```
 //!
@@ -66,7 +66,7 @@
 //!
 //!For example:
 //!
-//!```no_run
+//!```text
 //![dependencies]
 //!eccodes = "0.1.0"
 //!eccodes-sys = { version="0.1.3", features=["build_source"] }
@@ -79,7 +79,7 @@
 //!
 //!To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
 //!
-//!```no_run
+//!```text
 //![package.metadata.docs.rs]
 //!features = ["eccodes/docs"]
 //!```
