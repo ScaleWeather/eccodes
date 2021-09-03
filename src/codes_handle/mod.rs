@@ -6,7 +6,6 @@ use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
 use num_traits::FromPrimitive;
 use std::{
-    ffi::OsStr,
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
     path::PathBuf,
@@ -84,16 +83,7 @@ impl CodesHandle {
         file_path: PathBuf,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
-        let product_extension = match_product_extension(product_kind);
-        let file_extension = file_path.extension().ok_or(CodesError::NoFileExtension)?;
-        let file;
-
-        if file_extension == product_extension {
-            file = OpenOptions::new().read(true).open(file_path)?
-        } else {
-            return Err(CodesError::WrongFileExtension)?;
-        }
-
+        let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
         let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
 
@@ -119,14 +109,6 @@ impl CodesHandle {
             product_kind,
         })
     }
-}
-
-fn match_product_extension(product_kind: ProductKind) -> &'static OsStr {
-    let product_extension = match product_kind {
-        ProductKind::GRIB => OsStr::new("grib"),
-    };
-
-    product_extension
 }
 
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, LibcError> {
