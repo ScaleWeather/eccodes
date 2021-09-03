@@ -1,14 +1,19 @@
-use crate::errors::{CodesError, LibcError};
+use crate::errors::{CodesError, CodesInternal, LibcError};
 use bytes::Bytes;
 use eccodes_sys::{codes_context, codes_handle, ProductKind_PRODUCT_GRIB, _IO_FILE};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::error;
-use std::{ffi::OsStr, fs::{File, OpenOptions}, os::unix::prelude::AsRawFd, path::PathBuf};
+use std::{
+    ffi::OsStr,
+    fs::{File, OpenOptions},
+    os::unix::prelude::AsRawFd,
+    path::PathBuf,
+};
 
 mod iterator;
 
-///Enum indicating what type of product `CodesHandle` is currently holding.
+///Enum representing the kind of product (aka file type)
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
@@ -34,21 +39,57 @@ pub struct CodesHandle {
 }
 
 impl CodesHandle {
-    ///This contructor utilises [`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html) function
-    ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`) from provided [`fs::File`](std::fs::File) 
-    ///with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer. \
-    ///The file descriptor does not take the ownership of provided file, therefore the 
-    ///[`fs::File`](std::fs::File) is safely closed when it is dropped.
-    pub fn new_from_file(file_path: PathBuf, product_kind: ProductKind) -> Result<Self, CodesError> {
+    ///The constructor that takes a [`path`](PathBuf) to an exisiting file and
+    ///a [`ProductKind`] and returns the [`CodesHandle`] object.
+    ///
+    ///## Example
+    ///
+    ///```
+    ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
+    ///# use std::path::PathBuf;
+    ///let file_path = PathBuf::from("./files/iceland.grib");
+    ///let product_kind = ProductKind::GRIB;
+    ///
+    ///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+    ///```
+    ///
+    ///The function opens the file as [`File`] and then utilises
+    ///[`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html) function
+    ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`) from [`File`]
+    ///with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer.
+    ///
+    ///The constructor takes a [`path`](PathBuf) as an argument instead of [`File`]
+    ///to ensure that `fdopen()` uses the same mode as [`File`].
+    ///The file descriptor does not take the ownership of a file, therefore the
+    ///[`File`] is safely closed when it is dropped.
+    ///
+    ///## Errors
+    ///
+    ///Returns [`CodesError::NoFileExtension`] when provided file does not have an extension.
+    ///
+    ///Returns [`CodesError::WrongFileExtension`] when provided file extension does not match
+    ///the [`ProductKind`].
+    ///
+    ///Returns [`CodesError::CantOpenFile`] with [`io::Error`](std::io::Error)
+    ///when the file cannot be opened.
+    ///
+    ///Returns [`CodesError::Libc`] with [`errno`](errno::Errno) information
+    ///when the file descriptor cannot be created.
+    ///
+    ///Returns [`CodesError::Internal`] with error code
+    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    pub fn new_from_file(
+        file_path: PathBuf,
+        product_kind: ProductKind,
+    ) -> Result<Self, CodesError> {
         let product_extension = match_product_extension(product_kind);
-        let file_extension = file_path.extension().ok_or(CodesError::NoExtension)?;
+        let file_extension = file_path.extension().ok_or(CodesError::NoFileExtension)?;
         let file;
 
-        if file_extension == product_extension { 
-            file = OpenOptions::new().read(true).open(file_path)?;
-        }
-        else {
-            return Err(CodesError::WrongExtension);
+        if file_extension == product_extension {
+            file = OpenOptions::new().read(true).open(file_path)?
+        } else {
+            return Err(CodesError::WrongFileExtension)?;
         }
 
         let file_pointer = open_with_fdopen(&file)?;
@@ -128,7 +169,7 @@ impl CodesHandle {
     fn codes_handle_new_from_file(
         file_pointer: *mut FILE,
         product_kind: ProductKind,
-    ) -> Result<*mut codes_handle, CodesError> {
+    ) -> Result<*mut codes_handle, CodesInternal> {
         let context: *mut codes_context = std::ptr::null_mut(); //default context
 
         let file_handle;
@@ -143,7 +184,7 @@ impl CodesHandle {
         }
 
         if error_code != 0 {
-            return Err(CodesError::Internal(error_code));
+            return Err(CodesInternal::Test);
         }
 
         Ok(file_handle)
@@ -183,12 +224,5 @@ impl Drop for CodesHandle {
                 code, error_val
             );
         }
-
-        todo!(
-            "Review required! Destructor is assumed to never fail under normal circumstances. 
-        However in some edge cases ecCodes or fclose can return non-zero code. 
-        For now user is informed about that through log, 
-        because I don't know how to handle it correctly."
-        );
     }
 }

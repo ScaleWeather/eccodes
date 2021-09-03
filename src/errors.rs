@@ -3,16 +3,22 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CodesError {
-    #[error("Internal ecCodes error occured with code {0}")]
-    Internal(i32),
+    #[error("Internal ecCodes error occured with code")]
+    Internal(#[from] CodesInternal),
     #[error("Internal libc error occured")]
     Libc(#[from] LibcError),
     #[error("Provided file has no extension")]
-    NoExtension,
+    NoFileExtension,
     #[error("Provided file has incorrect extension")]
-    WrongExtension,
+    WrongFileExtension,
     #[error("Error occured while opening the file")]
-    CantOpenFile(#[from] std::io::Error)
+    CantOpenFile(#[from] std::io::Error),
+}
+
+#[derive(Clone, Error, Debug)]
+pub enum CodesInternal {
+    #[error("Internal ecCodes error occured with code")]
+    Test,
 }
 
 #[derive(Clone, Error, Debug)]
