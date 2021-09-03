@@ -43,7 +43,7 @@ pub struct CodesHandle {
 
 impl CodesHandle {
     ///The constructor that takes a [`path`](PathBuf) to an existing file and
-    ///a [`ProductKind`] and returns the [`CodesHandle`] object.
+    ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
     ///
     ///## Example
     ///
@@ -76,6 +76,9 @@ impl CodesHandle {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///
+    ///Returns [`CodesError::NoMessages`] when there is no message of requested type
+    ///in the provided file.
     pub fn new_from_file(
         file_path: PathBuf,
         product_kind: ProductKind,
@@ -83,6 +86,12 @@ impl CodesHandle {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
         let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
+
+        //if codes_handle_new_from_file returns a null pointer at this point
+        //then eccodes have not found any message, so returning error
+        if file_handle.is_null() {
+            return Err(CodesError::NoMessages);
+        }
 
         Ok(CodesHandle {
             data: (DataContainer::FileBuffer(file)),
@@ -93,7 +102,7 @@ impl CodesHandle {
     }
 
     ///The constructor that takes data of file present in memory in [`Bytes`] format and
-    ///a [`ProductKind`] and returns the [`CodesHandle`] object.
+    ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
     ///
     ///## Example
     ///
@@ -114,7 +123,7 @@ impl CodesHandle {
     ///# }
     ///```
     ///
-    ///The function associates the data in memory with a stream 
+    ///The function associates the data in memory with a stream
     ///represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
     ///using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html) function.
     ///
@@ -127,12 +136,21 @@ impl CodesHandle {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///
+    ///Returns [`CodesError::NoMessages`] when there is no message of requested type
+    ///in the provided file.
     pub fn new_from_memory(
         file_data: Bytes,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
         let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
+
+        //if codes_handle_new_from_file returns a null pointer at this point
+        //then eccodes have not found any message, so returning error
+        if file_handle.is_null() {
+            return Err(CodesError::NoMessages);
+        }
 
         Ok(CodesHandle {
             data: (DataContainer::FileBytes(file_data)),
@@ -272,7 +290,7 @@ mod tests {
         assert!(!handle.file_pointer.is_null());
         assert!(!handle.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
-        
+
         let metadata = match &handle.data {
             DataContainer::FileBytes(_) => panic!(),
             DataContainer::FileBuffer(file) => file.metadata().unwrap(),
@@ -284,19 +302,20 @@ mod tests {
     #[tokio::test]
     async fn memory_constructor() {
         let product_kind = ProductKind::GRIB;
-        let file_data =
-            reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
-                .await
-                .unwrap()
-                .bytes()
-                .await
-                .unwrap();
+        let file_data = reqwest::get(
+            "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
+        )
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
         assert!(!handle.file_pointer.is_null());
         assert!(!handle.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
-        
+
         match &handle.data {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
             DataContainer::FileBuffer(_) => panic!(),

@@ -29,6 +29,10 @@ pub enum CodesError {
     ///Check the [`std::fs`] documentation why and when this error can occur.
     #[error("Error occured while opening the file")]
     CantOpenFile(#[from] std::io::Error),
+
+    ///Returned when the constructor did not find any message of requested kind
+    #[error("No message have been found in the file")]
+    NoMessages,
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
