@@ -3,12 +3,14 @@ use bytes::Bytes;
 use eccodes_sys::{codes_context, codes_handle, ProductKind_PRODUCT_GRIB, _IO_FILE};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
-use log::error;
+use log::warn;
+use num_traits::FromPrimitive;
 use std::{
     ffi::OsStr,
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
     path::PathBuf,
+    ptr::null_mut,
 };
 
 mod iterator;
@@ -184,7 +186,7 @@ impl CodesHandle {
         }
 
         if error_code != 0 {
-            return Err(CodesInternal::Test);
+            return Err(FromPrimitive::from_i32(error_code).unwrap());
         }
 
         Ok(file_handle)
@@ -193,36 +195,53 @@ impl CodesHandle {
 
 impl Drop for CodesHandle {
     ///Executes the desctructor for this type ([read more](https://doc.rust-lang.org/1.54.0/core/ops/drop/trait.Drop.html#tymethod.drop)).
-    ///This method calls `codes_handle_delete()` from ecCodes and `fclose()` from libc for graceful cleanup.\
-    ///**WARNING:** Currently it is assumed that under normal circumstances this destructor never fails.
+    ///This method calls `codes_handle_delete()` from ecCodes and `fclose()` from libc for graceful cleanup.
+    ///
+    ///Currently it is assumed that under normal circumstances this destructor never fails.
     ///However in some edge cases ecCodes or fclose can return non-zero code.
-    ///For now user is informed about that through log, because I don't know how to handle it correctly.
-    ///If some bugs occurs during drop please enable log output and post issue on Github.
+    ///In such case all pointers and file descriptors are safely deleted.
+    ///However memory leaks can still occur.
+    ///
+    ///If any function called in the destructor returns an error warning will appear in log.
+    ///If bugs occurs during CodesHandle drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
+        //codes_handle_delete() can only fail with CodesInternalError when previous 
+        //functions corrupt the codes_handle, in that case memory leak is possible
+        //moreover, if that happens the codes_handle is not functional so we clear it
         let error_code;
         unsafe {
             error_code = eccodes_sys::codes_handle_delete(self.file_handle);
         }
 
         if error_code != 0 {
-            error!(
-                "CodesHandle destructor failed with ecCodes error code {:?}",
-                error_code
+            let error_content: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            warn!(
+                "codes_handle_delete() returned an error: {:?}",
+                &error_content
             );
         }
 
-        let error_code;
+        self.file_handle = null_mut();
+
+        //fclose() can fail in several different cases, however there is not much
+        //that we can nor we should do about it. the promise of fclose() is that
+        //the stream will be disassociated from the file after the call, therefore
+        //use of stream after the call to fclose() is undefined behaviour, so we clear it
+        let return_code;
         unsafe {
-            error_code = libc::fclose(self.file_pointer);
+            return_code = libc::fclose(self.file_pointer);
         }
 
-        if error_code != 0 {
+        if return_code != 0 {
             let error_val = errno();
-            let code = error_val.0;
-            error!(
-                "CodesHandle destructor failed with libc error {}, code: {}",
-                code, error_val
+            let error_code = error_val.0;
+            warn!(
+                "fclose() returned an error and your file might not have been correctly saved.
+                Error code: {}; Error message: {}",
+                error_val, error_code
             );
         }
+
+        self.file_pointer = null_mut();
     }
 }
