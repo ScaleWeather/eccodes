@@ -18,7 +18,7 @@ edition = "2018"
 exclude = [".github/*"]
 
 [dependencies]
-eccodes-sys = "0.1.4"
+eccodes-sys = "0.1.5"
 libc = "0.2.101"
 thiserror = "1.0.28"
 bytes = "1.1.0"
@@ -28,7 +28,7 @@ num-derive = "0.3.3"
 num-traits = "0.2.14"
 
 [dev-dependencies]
-eccodes-sys = {version = "0.1.4", features = ["build_source"]}
+eccodes-sys = "0.1.5"
 reqwest = { version = "0.11.4", features = ["rustls-tls"] }
 tokio = { version = "1.11.0", features = ["macros", "rt"] }
 
