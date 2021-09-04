@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/github/license/ScaleWeather/eccodes)](https://choosealicense.com/licenses/apache-2.0/)
 [![Crates.io](https://img.shields.io/crates/v/eccodes)](https://crates.io/crates/eccodes)
 [![dependency status](https://deps.rs/crate/eccodes/0.0.2/status.svg)](https://deps.rs/crate/eccodes)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ScaleWeather/eccodes/cargo?label=cargo%20build)](https://github.com/ScaleWeather/eccodes/actions)
 
 This crate contains safe high-level bindings for ecCodes library. Bindings can be considered safe mainly because all crate structures will take ownership of the data in memory before passing the raw pointer to ecCodes. **Currently only reading of GRIB files is supported.**
 
