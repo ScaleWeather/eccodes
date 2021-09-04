@@ -20,7 +20,7 @@
 //!
 //!### Accessing GRIB files
 //!
-//!This crate provide an access to GRIB file by creating a
+//!This crate provides an access to GRIB file by creating a
 //![`CodesHandle`](codes_handle::CodesHandle) and reading messages from the file with it.
 //!
 //!The [`CodesHandle`](codes_handle::CodesHandle) can be constructed in two ways:

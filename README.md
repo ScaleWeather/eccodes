@@ -16,13 +16,67 @@ Because ecCodes supports mainly Linux platforms, this crate is not tested on oth
 
 ## Usage
 
-This crate uses [eccodes-sys](https://crates.io/crates/eccodes-sys) with default options to link ecCodes. Check `eccodes-sys` website for more details on how it links the library.
+This crate uses [eccodes-sys](https://crates.io/crates/eccodes-sys) with default options to link ecCodes.
+Check `eccodes-sys` website for more details on how it links the library.
 
-If you would like to build ecCodes with other options simply import `eccodes-sys` along with `eccodes` in your `Cargo.toml` file and select needed features.
+If you would like to build ecCodes with other options simply import `eccodes-sys`
+along with `eccodes` in your `Cargo.toml` file and select needed features.
 
-This crate will provide to ways of accesing GRIB/BUFR files:
-- Using [`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html) function to open a file with filesystem, when copying whole file into memory is not desired or not necessary.
-- Using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html) function to use a file that is already in memory. For example, when file is downloaded from the internet and does not need to be saved on hard drive.
+For example:
+
+```toml
+[dependencies]
+eccodes = "0.1.0"
+eccodes-sys = { version="0.1.3", features=["build_source"] }
+```
+
+### Accessing GRIB files
+
+This crate provides an access to GRIB file by creating a
+`CodesHandle` codes_handle::CodesHandle and reading messages from the file with it.
+
+The `CodesHandle` codes_handle::CodesHandle can be constructed in two ways:
+
+- The main option is to use `new_from_file()` function
+to open a file under provided `path` with filesystem,
+when copying whole file into memory is not desired or not necessary.
+
+- Alternatively `new_from_memory()` function can be used
+to access a file that is already in memory. For example, when file is downloaded from the internet
+and does not need to be saved on hard drive. 
+The file must be stored in `bytes::Bytes`.
+
+Then we can iterate with `Iterator` over the `CodesHandle` to read `KeyedMessage`.
+
+### Example
+
+```rust
+// We are reading the mean sea level pressure in Reykjavik
+// for 1st June 2021 00:00 UTC (data from ERA5)
+
+// Open the GRIB file and create the CodesHandle
+let file_path = PathBuf::from("./data/iceland.grib");
+let product_kind = ProductKind::GRIB;
+
+let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+
+// Iterate to the KeyedMessage with shortName "msl" and typeOfLevel "surface"
+
+// Read the value of KeyedMessage for the grid point nearest of Reykjavik
+// 64N -22E
+```
+
+## Features
+
+- `docs` - builds the create without linking ecCodes, particularly useful when building the documentation
+on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
+
+To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
+
+```toml
+[package.metadata.docs.rs]
+features = ["eccodes/docs"]
+```
 
 ## License
 

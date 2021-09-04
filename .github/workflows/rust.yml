@@ -1,0 +1,38 @@
+name: cargo
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install clang
+        sudo apt-get install libclang1
+        sudo apt-get install libeccodes-dev
+        rustup update stable
+        cargo clean
+    - name: Build with cargo
+      run: |
+        cargo build --release
+        cargo clean
+    - name: Check with clippy
+      run: |
+        cargo clippy -- -W clippy::pedantic
+        cargo clean
+    - name: Test with cargo
+      run: |
+        cargo test
+        cargo clean
