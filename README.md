@@ -4,12 +4,15 @@
 [![Crates.io](https://img.shields.io/crates/v/eccodes)](https://crates.io/crates/eccodes)
 [![dependency status](https://deps.rs/crate/eccodes/0.0.2/status.svg)](https://deps.rs/crate/eccodes)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ScaleWeather/eccodes/cargo?label=cargo%20build)](https://github.com/ScaleWeather/eccodes/actions)
+[![docs.rs](https://img.shields.io/docsrs/eccodes)](https://docs.rs/eccodes)
 
-This crate contains safe high-level bindings for ecCodes library. Bindings can be considered safe mainly because all crate structures will take ownership of the data in memory before passing the raw pointer to ecCodes. **Currently only reading of GRIB files is supported.**
+This crate contains safe high-level bindings for ecCodes library. Bindings can be considered safe mainly because all crate structures take ownership of the data in memory before passing the raw pointer to ecCodes. 
+
+**Currently only reading of GRIB files is supported.**
+
+As the API of this crate differs significantly from the API of ecCodes library make sure to read its [documentation](https://docs.rs/eccodes). Read [this section](#crate-safety) to learn more about design decisions of this crate.
 
 **If you want to see more features released quicker do not hesitate to contribute and check out Github repository.** All submitted issues and pull requests are welcome.
-
-Because of the ecCodes library API characteristics theses bindings are rather thick wrapper to make this crate safe and convienient to use.
 
 [ecCodes](https://confluence.ecmwf.int/display/ECC/ecCodes+Home) is an open-source library for reading and writing GRIB and BUFR files developed by [European Centre for Medium-Range Weather Forecasts](https://www.ecmwf.int/).
 
@@ -78,6 +81,24 @@ To build your own crate with this crate as dependency on docs.rs without linking
 [package.metadata.docs.rs]
 features = ["eccodes/docs"]
 ```
+
+## Crate safety
+
+Because the ecCodes library API heavily relies on raw pointers simply making ecCodes functions callable without `unsafe` block would still allow for creation of dangling pointers and use-after-free, and the crate would not be truly safe. Therefore these bindings are rather thick wrapper as they need to take full ownership of accessed data to make the code safe. Having the data and pointers contained in dedicated data structures is also an occassion to make this crate API more convienient to use than the original ecCodes API (which is not really user-friendly).
+
+## Roadmap
+
+_(Functions from ecCodes API wrapped at given stage are marked in parentheses)_
+
+- [ ] Reading GRIB files
+    - [x] Creating CodesHandle from file and from memory (`codes_handle_new_from_file`, `codes_handle_delete`)
+    - [ ] Iterating over GRIB messages with `Iterator`
+    - [ ] Reading keys from messages (`codes_get_double`, `codes_get_long`, `codes_get_string`, `codes_get_double_array`, `codes_get_long_array`, `codes_get_size`, `codes_get_length`)
+    - [ ] Iterating over key names with `Iterator` (`codes_grib_iterator_new`, `codes_grib_iterator_next`, `codes_keys_iterator_get_name`, `codes_keys_iterator_rewind `, `codes_grib_iterator_delete`)
+    - [ ] Iterating over latitude/longitude/values with `Iterator` (`codes_grib_iterator_new`, `codes_grib_get_data`, `codes_grib_iterator_next`, `codes_grib_iterator_previous`, `codes_grib_iterator_has_next`, `codes_grib_iterator_reset`, `codes_grib_iterator_delete`)
+    - [ ] Finding nearest data points for given coordinates (`codes_grib_nearest_new`, `codes_grib_nearest_find`, `codes_grib_nearest_delete`, `codes_grib_nearest_find_multiple`)
+- [ ] Writing GRIB files
+- [ ] Reading and writing BUFR files
 
 ## License
 

@@ -19,11 +19,11 @@ pub enum CodesError {
     Internal(#[from] CodesInternal),
 
     ///Returned when one of libc functions returns a non-zero error code.
-    ///Check libc documentation for details when errors can occur.
+    ///Check libc documentation for details of the errors.
     ///For libc reference check these websites: ([1](https://man7.org/linux/man-pages/index.html))
     ///([2](https://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html))
-    #[error("libc function returned a null pointer with errno {0} and code {0}")]
-    LibcNullPtr(i32, Errno),
+    #[error("libc function returned an error with errno {0} and code {0}")]
+    LibcNonZero(i32, Errno),
 
     ///Returned when there is an issue while opening the file.
     ///Check the [`std::fs`] documentation why and when this error can occur.

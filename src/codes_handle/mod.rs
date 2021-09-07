@@ -71,7 +71,7 @@ impl CodesHandle {
     ///Returns [`CodesError::CantOpenFile`] with [`io::Error`](std::io::Error)
     ///when the file cannot be opened.
     ///
-    ///Returns [`CodesError::LibcNullPtr`] with [`errno`](errno::Errno) information
+    ///Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
     ///when the stream cannot be created from the file descriptor.
     ///
     ///Returns [`CodesError::Internal`] with error code
@@ -131,7 +131,7 @@ impl CodesHandle {
     ///which is safely dropped during the [`CodesHandle`] drop.
     ///
     ///## Errors
-    ///Returns [`CodesError::LibcNullPtr`] with [`errno`](errno::Errno) information
+    ///Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
     ///when the file stream cannot be created.
     ///
     ///Returns [`CodesError::Internal`] with error code
@@ -170,7 +170,7 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
     if file_ptr.is_null() {
         let error_val = errno();
         let error_code = error_val.0;
-        return Err(CodesError::LibcNullPtr(error_code, error_val));
+        return Err(CodesError::LibcNonZero(error_code, error_val));
     }
 
     Ok(file_ptr)
@@ -189,7 +189,7 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     if file_ptr.is_null() {
         let error_val = errno();
         let error_code = error_val.0;
-        return Err(CodesError::LibcNullPtr(error_code, error_val));
+        return Err(CodesError::LibcNonZero(error_code, error_val));
     }
 
     Ok(file_ptr)
