@@ -95,7 +95,7 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn key_reader() {
+    fn iterator_fn() {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 

@@ -58,8 +58,7 @@
 //!let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 //!
 //!// Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
-//!
-//!//First, filter and collect the messages to get those that we want
+//!// First, filter and collect the messages to get those that we want
 //!let level: Result<Vec<KeyedMessage>, CodesError> = handle
 //!    .filter(|msg| {
 //!    let msg = msg.as_ref().unwrap();
@@ -69,27 +68,33 @@
 //!    })
 //!    .collect();
 //!
-//!//Now unwrap and access the first and only element of resulting vector
+//!// Now unwrap and access the first and only element of resulting vector
 //!let level = level.unwrap()[0];
 //!
-//!// Read the value of KeyedMessage for the grid point nearest of Reykjavik
-//!// 64N -22E
+//!// Read the value of KeyedMessage for the grid point nearest of Reykjavik (64N -22E)
+//!// Not yet implemented
 //!```
 //!
-//!### Build options
+//!### ecCodes installation
 //!
 //!This crate uses [eccodes-sys](https://crates.io/crates/eccodes-sys) with default options to link ecCodes.
 //!Check `eccodes-sys` website for more details on how it links the library.
 //!
-//!If you would like to build ecCodes with other options simply import `eccodes-sys`
-//!along with `eccodes` in your `Cargo.toml` file and select needed features.
+//!The reccomended way to install ecCodes on your computer is using your package manager.
+//!For example, on Ubuntu you can use `apt-get`:
 //!
-//!For example:
+//!```bash
+//!$ sudo apt-get install libeccodes-dev
+//!```
 //!
-//!```text
-//![dependencies]
-//!eccodes = "0.1.0"
-//!eccodes-sys = { version="0.1.3", features=["build_source"] }
+//!Alternatively, you can install the library manually from source in suitable directory
+//!following [this instructions](https://confluence.ecmwf.int/display/ECC/ecCodes+installation).
+//!
+//!Then add the `lib/pkgconfig` directory from your ecCodes installation directory
+//!to the `PKG_CONFIG_PATH` environmental variable. For example:
+//!
+//!```bash
+//!$ export PKG_CONFIG_PATH=<your_eccodes_path>/lib/pkgconfig
 //!```
 //!
 //!### Features
