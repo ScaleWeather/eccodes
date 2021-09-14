@@ -26,7 +26,7 @@
 //!The [`CodesHandle`](codes_handle::CodesHandle) can be constructed in two ways:
 //!
 //!- The main option is to use [`new_from_file()`](codes_handle::CodesHandle::new_from_file) function
-//!to open a file under provided [`path`](`std::path::PathBuf`) with filesystem,
+//!to open a file under provided [`path`](`std::path::Path`) with filesystem,
 //!when copying whole file into memory is not desired or not necessary.
 //!
 //!- Alternatively [`new_from_memory()`](codes_handle::CodesHandle::new_from_memory) function can be used
@@ -34,7 +34,12 @@
 //!and does not need to be saved on hard drive. 
 //!The file must be stored in [`bytes::Bytes`](https://docs.rs/bytes/1.1.0/bytes/struct.Bytes.html).
 //!
-//!Then we can iterate with [`Iterator`] over the `CodesHandle` to read [`KeyedMessage`].
+//!Data (messages) inside the GRIB file can be accessed using the [`Iterator`](`codes_handle::CodesHandle#impl-Iterator`)
+//!by iterating over the `CodesHandle`.
+//!
+//!The `Iterator` returns a [`KeyedMessage`](codes_handle::KeyedMessage) structure which implements some
+//!methods to access data values. The data inside `KeyedMessage` is provided directly as [`Key`](codes_handle::Key)
+//!or as more specific data type.
 //!
 //!### Example
 //!
@@ -43,14 +48,29 @@
 //!// for 1st June 2021 00:00 UTC (data from ERA5)
 //!
 //!// Open the GRIB file and create the CodesHandle
-//!# use eccodes::codes_handle::{ProductKind, CodesHandle};
-//!# use std::path::PathBuf;
-//!let file_path = PathBuf::from("./data/iceland.grib");
+//!# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
+//!# use eccodes::errors::CodesError;
+//!# use std::path::Path;
+//!# use eccodes::codes_handle::Key::Str;
+//!let file_path = Path::new("./data/iceland.grib");
 //!let product_kind = ProductKind::GRIB;
 //!
 //!let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 //!
-//!// Iterate to the KeyedMessage with shortName "msl" and typeOfLevel "surface"
+//!// Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
+//!
+//!//First, filter and collect the messages to get those that we want
+//!let level: Result<Vec<KeyedMessage>, CodesError> = handle
+//!    .filter(|msg| {
+//!    let msg = msg.as_ref().unwrap();
+//!
+//!    msg.read_key("shortName").unwrap() == Str(String::from("msl"))
+//!        && msg.read_key("typeOfLevel").unwrap() == Str(String::from("surface"))
+//!    })
+//!    .collect();
+//!
+//!//Now unwrap and access the first and only element of resulting vector
+//!let level = level.unwrap()[0];
 //!
 //!// Read the value of KeyedMessage for the grid point nearest of Reykjavik
 //!// 64N -22E
@@ -87,3 +107,4 @@
 
 pub mod codes_handle;
 pub mod errors;
+mod intermediate_bindings;

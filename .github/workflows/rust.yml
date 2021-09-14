@@ -1,10 +1,6 @@
 name: cargo
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
@@ -23,6 +19,7 @@ jobs:
         sudo apt-get install libclang1
         sudo apt-get install libeccodes-dev
         rustup update stable
+        cargo install cargo-criterion
         cargo clean
     - name: Build with cargo
       run: |
@@ -35,4 +32,8 @@ jobs:
     - name: Test with cargo
       run: |
         cargo test
+        cargo clean
+    - name: Benchmark with criterion
+      run: |
+        cargo criterion
         cargo clean

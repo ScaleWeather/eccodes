@@ -20,7 +20,7 @@ exclude = [".github/*"]
 [dependencies]
 eccodes-sys = "0.1.5"
 libc = "0.2.101"
-thiserror = "1.0.28"
+thiserror = "1.0.29"
 bytes = "1.1.0"
 log = "0.4.14"
 errno = "0.2.7"
@@ -31,9 +31,14 @@ num-traits = "0.2.14"
 eccodes-sys = "0.1.5"
 reqwest = { version = "0.11.4", features = ["rustls-tls"] }
 tokio = { version = "1.11.0", features = ["macros", "rt"] }
+criterion = "0.3.5"
 
 [features]
 docs = ["eccodes-sys/docs"]
 
 [package.metadata.docs.rs]
 features = ["docs"]
+
+[[bench]]
+name = "main"
+harness = false

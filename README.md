@@ -92,8 +92,8 @@ _(Functions from ecCodes API wrapped at given stage are marked in parentheses)_
 
 - [ ] Reading GRIB files
     - [x] Creating CodesHandle from file and from memory (`codes_handle_new_from_file`, `codes_handle_delete`)
-    - [ ] Iterating over GRIB messages with `Iterator`
-    - [ ] Reading keys from messages (`codes_get_double`, `codes_get_long`, `codes_get_string`, `codes_get_double_array`, `codes_get_long_array`, `codes_get_size`, `codes_get_length`)
+    - [x] Iterating over GRIB messages with `Iterator`
+    - [x] Reading keys from messages (`codes_get_double`, `codes_get_long`, `codes_get_string`, `codes_get_double_array`, `codes_get_long_array`, `codes_get_size`, `codes_get_length`, `codes_get_native_type`)
     - [ ] Iterating over key names with `Iterator` (`codes_grib_iterator_new`, `codes_grib_iterator_next`, `codes_keys_iterator_get_name`, `codes_keys_iterator_rewind `, `codes_grib_iterator_delete`)
     - [ ] Iterating over latitude/longitude/values with `Iterator` (`codes_grib_iterator_new`, `codes_grib_get_data`, `codes_grib_iterator_next`, `codes_grib_iterator_previous`, `codes_grib_iterator_has_next`, `codes_grib_iterator_reset`, `codes_grib_iterator_delete`)
     - [ ] Finding nearest data points for given coordinates (`codes_grib_nearest_new`, `codes_grib_nearest_find`, `codes_grib_nearest_delete`, `codes_grib_nearest_find_multiple`)

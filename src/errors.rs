@@ -33,6 +33,16 @@ pub enum CodesError {
     ///Returned when the constructor did not find any message of requested kind
     #[error("No message have been found in the file")]
     NoMessages,
+
+    ///Returned when the string cannot be parsed as valid UTF8 string.
+    #[error(transparent)]
+    CstrUTF8(#[from] std::str::Utf8Error),
+
+    ///Returned when the C-string returned by ecCodes library cannot be converted
+    ///into a Rust-string.
+    #[error(transparent)]
+    NulChar(#[from] std::ffi::FromBytesWithNulError),
+
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]

@@ -1,27 +1,57 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
-use crate::errors::{CodesError, CodesInternal};
+use crate::{
+    errors::CodesError,
+    intermediate_bindings::{codes_handle_delete},
+};
 use bytes::Bytes;
-use eccodes_sys::{codes_context, codes_handle, ProductKind_PRODUCT_GRIB, _IO_FILE};
+use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
-use num_traits::FromPrimitive;
 use std::{
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
-    path::PathBuf,
+    path::Path,
     ptr::null_mut,
 };
 
 mod iterator;
+mod keyed_message;
 
-///Enum representing the kind of product (file type) inside handled file.
-///Used to indicate to ecCodes how it should decode/encode messages.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum ProductKind {
-    GRIB = ProductKind_PRODUCT_GRIB as isize,
+///Main structure used to operate on the GRIB file.
+///It takes a full ownership of the accessed file.
+///It can be constructed either using a file or a memory buffer.
+#[derive(Debug)]
+pub struct CodesHandle {
+    current_message: KeyedMessage,
+    data: DataContainer,
+    file_pointer: *mut FILE,
+    product_kind: ProductKind,
+}
+
+///Structure used to access keys inside the GRIB file message.
+///All data (including data values) contained by the file can only be accessed
+///through the message and keys.
+#[derive(Clone, Copy, Hash, Debug)]
+pub struct KeyedMessage {
+    file_handle: *mut codes_handle,
+}
+
+///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
+///
+///Messages inside GRIB files can contain arbitrary keys set by the file author.
+///The type of a given key is only known at runtime (after being checked).
+///There are several possible types of keys, which are represented by this enum
+///and each variant contains the respective data type.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Key {
+    Float(f64),
+    Int(i64),
+    FloatArray(Vec<f64>),
+    IntArray(Vec<i64>),
+    Str(String),
 }
 
 #[derive(Debug)]
@@ -30,28 +60,24 @@ enum DataContainer {
     FileBuffer(File),
 }
 
-///Main structure used to operate on the GRIB file.
-///It takes a full ownership of the accessed file.
-///It can be constructed either using a file or a memory buffer.
-#[derive(Debug)]
-pub struct CodesHandle {
-    data: DataContainer,
-    file_handle: *mut codes_handle,
-    file_pointer: *mut FILE,
-    product_kind: ProductKind,
+///Enum representing the kind of product (file type) inside handled file.
+///Used to indicate to ecCodes how it should decode/encode messages.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum ProductKind {
+    GRIB = ProductKind_PRODUCT_GRIB as isize,
 }
 
 impl CodesHandle {
-    ///The constructor that takes a [`path`](PathBuf) to an existing file and
+    ///The constructor that takes a [`path`](Path) to an existing file and
     ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
     ///
     ///## Example
     ///
     ///```
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
-    ///# use std::path::PathBuf;
+    ///# use std::path::Path;
     ///#
-    ///let file_path = PathBuf::from("./data/iceland.grib");
+    ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
     ///
     ///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
@@ -62,7 +88,7 @@ impl CodesHandle {
     ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`) from [`File`]
     ///with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer.
     ///
-    ///The constructor takes a [`path`](PathBuf) as an argument instead of [`File`]
+    ///The constructor takes a [`path`](Path) as an argument instead of [`File`]
     ///to ensure that `fdopen()` uses the same mode as [`File`].
     ///The file descriptor does not take the ownership of a file, therefore the
     ///[`File`] is safely closed when it is dropped.
@@ -80,22 +106,17 @@ impl CodesHandle {
     ///Returns [`CodesError::NoMessages`] when there is no message of requested type
     ///in the provided file.
     pub fn new_from_file(
-        file_path: PathBuf,
+        file_path: &Path,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
-        let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
 
-        //if codes_handle_new_from_file returns a null pointer at this point
-        //then eccodes have not found any message, so returning error
-        if file_handle.is_null() {
-            return Err(CodesError::NoMessages);
-        }
+        let file_handle = null_mut();
 
         Ok(CodesHandle {
             data: (DataContainer::FileBuffer(file)),
-            file_handle,
+            current_message: KeyedMessage { file_handle },
             file_pointer,
             product_kind,
         })
@@ -144,17 +165,12 @@ impl CodesHandle {
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
-        let file_handle = CodesHandle::codes_handle_new_from_file(file_pointer, product_kind)?;
-
-        //if codes_handle_new_from_file returns a null pointer at this point
-        //then eccodes have not found any message, so returning error
-        if file_handle.is_null() {
-            return Err(CodesError::NoMessages);
-        }
+        
+        let file_handle = null_mut();
 
         Ok(CodesHandle {
             data: (DataContainer::FileBytes(file_data)),
-            file_handle,
+            current_message: KeyedMessage { file_handle },
             file_pointer,
             product_kind,
         })
@@ -195,32 +211,6 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
-impl CodesHandle {
-    fn codes_handle_new_from_file(
-        file_pointer: *mut FILE,
-        product_kind: ProductKind,
-    ) -> Result<*mut codes_handle, CodesInternal> {
-        let context: *mut codes_context = std::ptr::null_mut(); //default context
-
-        let file_handle;
-        let mut error_code: i32 = 0;
-        unsafe {
-            file_handle = eccodes_sys::codes_handle_new_from_file(
-                context,
-                file_pointer.cast::<_IO_FILE>(),
-                product_kind as u32,
-                &mut error_code as *mut i32,
-            );
-        }
-
-        if error_code != 0 {
-            return Err(FromPrimitive::from_i32(error_code).unwrap());
-        }
-
-        Ok(file_handle)
-    }
-}
-
 impl Drop for CodesHandle {
     ///Executes the destructor for this type.
     ///This method calls `codes_handle_delete()` from ecCodes and `fclose()` from libc for graceful cleanup.
@@ -236,20 +226,13 @@ impl Drop for CodesHandle {
         //codes_handle_delete() can only fail with CodesInternalError when previous
         //functions corrupt the codes_handle, in that case memory leak is possible
         //moreover, if that happens the codes_handle is not functional so we clear it
-        let error_code;
         unsafe {
-            error_code = eccodes_sys::codes_handle_delete(self.file_handle);
+            codes_handle_delete(self.current_message.file_handle).unwrap_or_else(|error| {
+                warn!("codes_handle_delete() returned an error: {:?}", &error);
+            });
         }
 
-        if error_code != 0 {
-            let error_content: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            warn!(
-                "codes_handle_delete() returned an error: {:?}",
-                &error_content
-            );
-        }
-
-        self.file_handle = null_mut();
+        self.current_message.file_handle = null_mut();
 
         //fclose() can fail in several different cases, however there is not much
         //that we can nor we should do about it. the promise of fclose() is that
@@ -278,17 +261,17 @@ mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
-    use std::path::PathBuf;
+    use std::path::Path;
 
     #[test]
     fn file_constructor() {
-        let file_path = PathBuf::from("./data/iceland.grib");
+        let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
         assert!(!handle.file_pointer.is_null());
-        assert!(!handle.file_handle.is_null());
+        assert!(handle.current_message.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
 
         let metadata = match &handle.data {
@@ -313,7 +296,7 @@ mod tests {
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
         assert!(!handle.file_pointer.is_null());
-        assert!(!handle.file_handle.is_null());
+        assert!(handle.current_message.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
 
         match &handle.data {
