@@ -37,7 +37,7 @@ use crate::{
 ///```
 ///
 ///The `Iterator` can be collected to convert the handle into a 
-///`Vector` of `KeyedMessage`s without a memory overhead (KeyedMessages
+///`Vector` of `KeyedMessage`s without a memory overhead (`KeyedMessages`
 ///are kept as pointers).
 ///For example:
 ///

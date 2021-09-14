@@ -83,7 +83,7 @@
 //!The reccomended way to install ecCodes on your computer is using your package manager.
 //!For example, on Ubuntu you can use `apt-get`:
 //!
-//!```bash
+//!```text
 //!$ sudo apt-get install libeccodes-dev
 //!```
 //!
@@ -91,10 +91,13 @@
 //!following [this instructions](https://confluence.ecmwf.int/display/ECC/ecCodes+installation).
 //!
 //!Then add the `lib/pkgconfig` directory from your ecCodes installation directory
-//!to the `PKG_CONFIG_PATH` environmental variable. For example:
+//!to the `PKG_CONFIG_PATH` environmental variable. If ecCodes have been compiled 
+//!as shared library you will also need to specify `LD_LIBRARY_PATH`.
+//!For example:
 //!
-//!```bash
+//!```text
 //!$ export PKG_CONFIG_PATH=<your_eccodes_path>/lib/pkgconfig
+//!$ export LD_LIBRARY_PATH=<your_eccodes_path>/lib
 //!```
 //!
 //!### Features
