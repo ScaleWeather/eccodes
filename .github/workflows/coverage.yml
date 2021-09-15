@@ -21,8 +21,7 @@ jobs:
         sudo apt-get install libclang1
         sudo apt-get install libeccodes-dev
     - name: Generate code coverage report
-    - uses: actions/checkout@v1
-    - uses: actions-rs/toolchain@v1
+      uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
         override: true
