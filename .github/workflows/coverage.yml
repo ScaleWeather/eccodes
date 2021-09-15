@@ -1,0 +1,39 @@
+name: codecoverage
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  coverage:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install clang
+        sudo apt-get install libclang1
+        sudo apt-get install libeccodes-dev
+        rustup update nightly
+        rustup default nightly
+        cargo install grcov
+        cargo clean
+    - name: Generate code coverage report
+      run: |
+        rustup component add llvm-tools-preview
+        export RUSTFLAGS="-Zinstrument-coverage"
+        cargo build
+        export LLVM_PROFILE_FILE="eccodes_cov-%p-%m.profraw"
+        cargo test
+        grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o ./coverage/
+    - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      
