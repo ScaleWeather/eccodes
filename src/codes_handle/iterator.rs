@@ -23,16 +23,16 @@ use crate::{
 ///```
 ///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key};
 ///# use std::path::Path;
+///# use fallible_iterator::FallibleIterator;
 ///#
 ///let file_path = Path::new("./data/iceland-surface.grib");
 ///let product_kind = ProductKind::GRIB;
 ///
-///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 ///
 ///// Print names of messages in the file
-///for message in handle {
+///while let Some(message) = handle.next().unwrap() {
 ///// The message must be unwraped as internal Iterator methods can fail
-///    let message = message.unwrap();
 ///    let key = message.read_key("name").unwrap();
 ///
 ///    if let Key::Str(name) = key {
@@ -50,14 +50,14 @@ use crate::{
 ///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key, KeyedMessage};
 ///# use eccodes::errors::CodesError;
 ///# use std::path::Path;
+///# use fallible_iterator::FallibleIterator;
 ///#
 ///let file_path = Path::new("./data/iceland-surface.grib");
 ///let product_kind = ProductKind::GRIB;
 ///
 ///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 ///
-///let handle_collected: Result<Vec<KeyedMessage>, CodesError> = handle.collect();
-///let handle_collected: Vec<KeyedMessage> = handle_collected.unwrap();
+///let handle_collected: Vec<KeyedMessage> = handle.collect().unwrap();
 ///```
 ///
 ///Use of `filter()`, `map()` and other methods provided with `Iterator` allow for
@@ -113,10 +113,7 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
 #[cfg(test)]
 mod tests {
     use fallible_iterator::FallibleIterator;
-
-    use crate::{
-        codes_handle::{CodesHandle, Key, KeyedMessage, ProductKind}
-    };
+    use crate::codes_handle::{CodesHandle, Key, KeyedMessage, ProductKind};
     use std::path::Path;
 
     #[test]

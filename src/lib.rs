@@ -52,6 +52,7 @@
 //!# use eccodes::errors::CodesError;
 //!# use std::path::Path;
 //!# use eccodes::codes_handle::Key::Str;
+//!# use fallible_iterator::FallibleIterator;
 //!let file_path = Path::new("./data/iceland.grib");
 //!let product_kind = ProductKind::GRIB;
 //!
@@ -59,17 +60,16 @@
 //!
 //!// Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
 //!// First, filter and collect the messages to get those that we want
-//!let level: Result<Vec<KeyedMessage>, CodesError> = handle
+//!let level: Vec<KeyedMessage> = handle
 //!    .filter(|msg| {
-//!    let msg = msg.as_ref().unwrap();
 //!
-//!    msg.read_key("shortName").unwrap() == Str(String::from("msl"))
-//!        && msg.read_key("typeOfLevel").unwrap() == Str(String::from("surface"))
+//!    Ok(msg.read_key("shortName")? == Str(String::from("msl"))
+//!        && msg.read_key("typeOfLevel")? == Str(String::from("surface")))
 //!    })
-//!    .collect();
+//!    .collect().unwrap();
 //!
 //!// Now unwrap and access the first and only element of resulting vector
-//!let level = level.unwrap()[0];
+//!let level = &level[0];
 //!
 //!// Read the value of KeyedMessage for the grid point nearest of Reykjavik (64N -22E)
 //!// Not yet implemented

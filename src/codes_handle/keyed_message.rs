@@ -23,6 +23,7 @@ impl KeyedMessage {
     ///```
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key::Str};
     ///# use std::path::Path;
+    ///# use fallible_iterator::FallibleIterator; 
     ///#
     ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
