@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-///Iterator implementation for `CodesHandle` to access GRIB messages inside file.
+///`FallibleIterator` implementation for `CodesHandle` to access GRIB messages inside file.
 ///
 ///To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
 ///It digests the `FILE *` multiple times each time returning the `codes_handle` raw pointer
@@ -17,8 +17,13 @@ use crate::{
 ///Therefore this crate utilizes the `Iterator` to provide the access to GRIB messages in
 ///a safe and convienient way.
 ///
-///Using the `Iterator` is the only way to read `KeyedMessage`s from the file.
-///Its basic usage is simply with for loop:
+///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator` 
+///because internal ecCodes functions can return error codes when the GRIB file
+///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different 
+///than usage of `Iterator`, check its documentation for more details.
+///
+///Using the `FallibleIterator` is the only way to read `KeyedMessage`s from the file.
+///Its basic usage is simply with while let statement (similar to for loop for classic `Iterator`):
 ///
 ///```
 ///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key};
@@ -41,9 +46,8 @@ use crate::{
 ///}
 ///```
 ///
-///The `Iterator` can be collected to convert the handle into a
-///`Vector` of `KeyedMessage`s without a memory overhead (`KeyedMessages`
-///are kept as pointers).
+///The `FallibleIterator` can be collected to convert the handle into a
+///`Vector` of `KeyedMessage`s.
 ///For example:
 ///
 ///```

@@ -31,6 +31,9 @@ pub struct CodesHandle {
 ///Structure used to access keys inside the GRIB file message.
 ///All data (including data values) contained by the file can only be accessed
 ///through the message and keys.
+///
+///The structure implements `Clone` trait which comes with a memory overhead.
+///You should take care that your system has enough memory before cloning `KeyedMessage`.
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,

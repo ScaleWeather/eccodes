@@ -34,10 +34,10 @@
 //!and does not need to be saved on hard drive. 
 //!The file must be stored in [`bytes::Bytes`](https://docs.rs/bytes/1.1.0/bytes/struct.Bytes.html).
 //!
-//!Data (messages) inside the GRIB file can be accessed using the [`Iterator`](`codes_handle::CodesHandle#impl-Iterator`)
+//!Data (messages) inside the GRIB file can be accessed using the [`FallibleIterator`](`codes_handle::CodesHandle#impl-FallibleIterator`)
 //!by iterating over the `CodesHandle`.
 //!
-//!The `Iterator` returns a [`KeyedMessage`](codes_handle::KeyedMessage) structure which implements some
+//!The `FallibleIterator` returns a [`KeyedMessage`](codes_handle::KeyedMessage) structure which implements some
 //!methods to access data values. The data inside `KeyedMessage` is provided directly as [`Key`](codes_handle::Key)
 //!or as more specific data type.
 //!
@@ -49,10 +49,10 @@
 //!
 //!// Open the GRIB file and create the CodesHandle
 //!# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
-//!# use eccodes::errors::CodesError;
 //!# use std::path::Path;
 //!# use eccodes::codes_handle::Key::Str;
 //!# use fallible_iterator::FallibleIterator;
+//!#
 //!let file_path = Path::new("./data/iceland.grib");
 //!let product_kind = ProductKind::GRIB;
 //!
@@ -80,7 +80,7 @@
 //!This crate uses [eccodes-sys](https://crates.io/crates/eccodes-sys) with default options to link ecCodes.
 //!Check `eccodes-sys` website for more details on how it links the library.
 //!
-//!The reccomended way to install ecCodes on your computer is using your package manager.
+//!The recommended way to install ecCodes on your computer is using your package manager.
 //!For example, on Ubuntu you can use `apt-get`:
 //!
 //!```text
