@@ -102,7 +102,7 @@
 //!
 //!### Features
 //!
-//!- `docs` - builds the create without linking ecCodes, particularly useful when building the documentation
+//!- `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
 //!on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
 //!
 //!To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`

@@ -1,4 +1,5 @@
 use std::path::Path;
+use fallible_iterator::FallibleIterator;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use eccodes::codes_handle::{CodesHandle, ProductKind};

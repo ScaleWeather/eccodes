@@ -11,7 +11,7 @@ use std::{
 };
 
 use eccodes_sys::{codes_context, codes_handle, _IO_FILE};
-use libc::FILE;
+use libc::{c_void, FILE};
 use num_traits::FromPrimitive;
 
 use crate::{
@@ -99,7 +99,7 @@ pub unsafe fn codes_get_long(handle: *mut codes_handle, key: &str) -> Result<i64
     let error_code = eccodes_sys::codes_get_long(handle, key.as_ptr(), &mut key_value as *mut i64);
 
     if error_code != 0 {
-        let err:CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
         return Err(err.into());
     }
 
@@ -173,7 +173,8 @@ pub unsafe fn codes_get_length(handle: *mut codes_handle, key: &str) -> Result<u
     let key = CString::new(key).unwrap();
     let mut key_length: u64 = 0;
 
-    let error_code = eccodes_sys::codes_get_length(handle, key.as_ptr(), &mut key_length as *mut u64);
+    let error_code =
+        eccodes_sys::codes_get_length(handle, key.as_ptr(), &mut key_length as *mut u64);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -207,4 +208,61 @@ pub unsafe fn codes_get_string(handle: *mut codes_handle, key: &str) -> Result<S
         .to_string();
 
     Ok(key_message)
+}
+
+pub unsafe fn codes_get_message_size(handle: *mut codes_handle) -> Result<u64, CodesError> {
+    let mut size: u64 = 0;
+
+    let error_code = eccodes_sys::codes_get_message_size(handle, &mut size as *mut u64);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+
+    Ok(size)
+}
+
+pub unsafe fn codes_get_message(handle: *mut codes_handle) -> Result<(*const c_void, u64), CodesError> {
+    let buffer_size = codes_get_message_size(handle)?;
+
+    let buffer: Vec<u8> = vec![0; buffer_size as usize];
+    let mut buffer_ptr = buffer.as_ptr() as *const c_void;
+
+    let mut message_size: u64 = 0;
+
+    let error_code = eccodes_sys::codes_get_message(
+        handle,
+        &mut buffer_ptr as *mut *const c_void,
+        &mut message_size as *mut u64,
+    );
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+
+    if buffer_size != message_size {
+        panic!(
+            "Buffer and message sizes ar not equal in codes_get_message!
+        Please report this panic on Github."
+        );
+    }
+
+    Ok((buffer_ptr, message_size))
+}
+
+pub unsafe fn codes_handle_new_from_message(
+    message_buffer_ptr: *const c_void,
+    message_size: u64,
+) -> *mut codes_handle {
+    let default_context: *mut codes_context = ptr::null_mut();
+
+    let handle = eccodes_sys::codes_handle_new_from_message(
+        default_context,
+        message_buffer_ptr,
+        message_size,
+    );
+
+    handle
 }

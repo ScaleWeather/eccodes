@@ -1,10 +1,7 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
-use crate::{
-    errors::CodesError,
-    intermediate_bindings::{codes_handle_delete},
-};
+use crate::errors::CodesError;
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
@@ -25,7 +22,7 @@ mod keyed_message;
 ///It can be constructed either using a file or a memory buffer.
 #[derive(Debug)]
 pub struct CodesHandle {
-    current_message: KeyedMessage,
+    file_handle: *mut codes_handle,
     data: DataContainer,
     file_pointer: *mut FILE,
     product_kind: ProductKind,
@@ -34,9 +31,10 @@ pub struct CodesHandle {
 ///Structure used to access keys inside the GRIB file message.
 ///All data (including data values) contained by the file can only be accessed
 ///through the message and keys.
-#[derive(Clone, Copy, Hash, Debug)]
+#[derive(Hash, Debug)]
 pub struct KeyedMessage {
-    file_handle: *mut codes_handle,
+    message_handle: *mut codes_handle,
+    message_buffer: Vec<u8>,
 }
 
 ///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
@@ -105,10 +103,7 @@ impl CodesHandle {
     ///
     ///Returns [`CodesError::NoMessages`] when there is no message of requested type
     ///in the provided file.
-    pub fn new_from_file(
-        file_path: &Path,
-        product_kind: ProductKind,
-    ) -> Result<Self, CodesError> {
+    pub fn new_from_file(file_path: &Path, product_kind: ProductKind) -> Result<Self, CodesError> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
 
@@ -116,7 +111,7 @@ impl CodesHandle {
 
         Ok(CodesHandle {
             data: (DataContainer::FileBuffer(file)),
-            current_message: KeyedMessage { file_handle },
+            file_handle,
             file_pointer,
             product_kind,
         })
@@ -165,12 +160,12 @@ impl CodesHandle {
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
-        
+
         let file_handle = null_mut();
 
         Ok(CodesHandle {
             data: (DataContainer::FileBytes(file_data)),
-            current_message: KeyedMessage { file_handle },
+            file_handle,
             file_pointer,
             product_kind,
         })
@@ -213,27 +208,16 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
 
 impl Drop for CodesHandle {
     ///Executes the destructor for this type.
-    ///This method calls `codes_handle_delete()` from ecCodes and `fclose()` from libc for graceful cleanup.
+    ///This method calls `fclose()` from libc for graceful cleanup.
     ///
     ///Currently it is assumed that under normal circumstances this destructor never fails.
-    ///However in some edge cases ecCodes or fclose can return non-zero code.
+    ///However in some edge cases fclose can return non-zero code.
     ///In such case all pointers and file descriptors are safely deleted.
     ///However memory leaks can still occur.
     ///
     ///If any function called in the destructor returns an error warning will appear in log.
     ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
-        //codes_handle_delete() can only fail with CodesInternalError when previous
-        //functions corrupt the codes_handle, in that case memory leak is possible
-        //moreover, if that happens the codes_handle is not functional so we clear it
-        unsafe {
-            codes_handle_delete(self.current_message.file_handle).unwrap_or_else(|error| {
-                warn!("codes_handle_delete() returned an error: {:?}", &error);
-            });
-        }
-
-        self.current_message.file_handle = null_mut();
-
         //fclose() can fail in several different cases, however there is not much
         //that we can nor we should do about it. the promise of fclose() is that
         //the stream will be disassociated from the file after the call, therefore
@@ -271,7 +255,7 @@ mod tests {
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
         assert!(!handle.file_pointer.is_null());
-        assert!(handle.current_message.file_handle.is_null());
+        assert!(handle.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
 
         let metadata = match &handle.data {
@@ -296,7 +280,7 @@ mod tests {
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
         assert!(!handle.file_pointer.is_null());
-        assert!(handle.current_message.file_handle.is_null());
+        assert!(handle.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
 
         match &handle.data {
