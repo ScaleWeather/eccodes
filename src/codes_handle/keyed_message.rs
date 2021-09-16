@@ -7,8 +7,8 @@ use crate::{
     errors::CodesError,
     intermediate_bindings::{
         codes_get_double, codes_get_double_array, codes_get_long, codes_get_long_array,
-        codes_get_native_type, codes_get_size, codes_get_string, codes_handle_delete,
-        NativeKeyType,
+        codes_get_message_copy, codes_get_native_type, codes_get_size, codes_get_string,
+        codes_handle_delete, codes_handle_new_from_message_copy, NativeKeyType,
     },
 };
 
@@ -113,6 +113,23 @@ impl KeyedMessage {
     }
 }
 
+impl Clone for KeyedMessage {
+    fn clone(&self) -> KeyedMessage {
+        let new_handle;
+        let new_buffer;
+
+        unsafe {
+            new_buffer = codes_get_message_copy(self.message_handle).expect("");
+            new_handle = codes_handle_new_from_message_copy(&new_buffer);
+        }
+
+        KeyedMessage {
+            message_handle: new_handle,
+            message_buffer: new_buffer,
+        }
+    }
+}
+
 impl Drop for KeyedMessage {
     ///Executes the destructor for this type.
     ///This method calls `codes_handle_delete()` from ecCodes for graceful cleanup.
@@ -142,8 +159,8 @@ impl Drop for KeyedMessage {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, Key, ProductKind};
-    use std::path::Path;
     use fallible_iterator::FallibleIterator;
+    use std::path::Path;
 
     #[test]
     fn key_reader() {

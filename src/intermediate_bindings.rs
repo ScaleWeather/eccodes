@@ -266,3 +266,43 @@ pub unsafe fn codes_handle_new_from_message(
 
     handle
 }
+
+pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8>, CodesError> {
+    let buffer_size = codes_get_message_size(handle)?;
+
+    let mut buffer: Vec<u8> = vec![0; buffer_size as usize];
+
+    let mut message_size: u64 = 0;
+
+    let error_code = eccodes_sys::codes_get_message_copy(
+        handle,
+        buffer.as_mut_ptr() as *mut c_void,
+        &mut message_size as *mut u64,
+    );
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+
+    if buffer_size != message_size && message_size != buffer.len() as u64 {
+        panic!(
+            "Buffer, vector and message sizes ar not equal in codes_get_message!
+        Please report this panic on Github."
+        );
+    }
+
+    Ok(buffer)
+}
+
+pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &Vec<u8>) -> *mut codes_handle {
+    let default_context: *mut codes_context = ptr::null_mut();
+
+    let handle = eccodes_sys::codes_handle_new_from_message_copy(
+        default_context,
+        message_buffer.as_ptr() as *const c_void,
+        message_buffer.len() as u64,
+    );
+
+    handle
+}
