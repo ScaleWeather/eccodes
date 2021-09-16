@@ -227,7 +227,7 @@ pub unsafe fn codes_get_message(handle: *mut codes_handle) -> Result<(*const c_v
     let buffer_size = codes_get_message_size(handle)?;
 
     let buffer: Vec<u8> = vec![0; buffer_size as usize];
-    let mut buffer_ptr = buffer.as_ptr() as *const c_void;
+    let mut buffer_ptr = buffer.as_ptr().cast::<libc::c_void>();
 
     let mut message_size: u64 = 0;
 
@@ -258,13 +258,11 @@ pub unsafe fn codes_handle_new_from_message(
 ) -> *mut codes_handle {
     let default_context: *mut codes_context = ptr::null_mut();
 
-    let handle = eccodes_sys::codes_handle_new_from_message(
+    eccodes_sys::codes_handle_new_from_message(
         default_context,
         message_buffer_ptr,
         message_size,
-    );
-
-    handle
+    )
 }
 
 pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8>, CodesError> {
@@ -276,7 +274,7 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
 
     let error_code = eccodes_sys::codes_get_message_copy(
         handle,
-        buffer.as_mut_ptr() as *mut c_void,
+        buffer.as_mut_ptr().cast::<libc::c_void>(),
         &mut message_size as *mut u64,
     );
 
@@ -295,14 +293,12 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
     Ok(buffer)
 }
 
-pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &Vec<u8>) -> *mut codes_handle {
+pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &[u8]) -> *mut codes_handle {
     let default_context: *mut codes_context = ptr::null_mut();
 
-    let handle = eccodes_sys::codes_handle_new_from_message_copy(
+    eccodes_sys::codes_handle_new_from_message_copy(
         default_context,
-        message_buffer.as_ptr() as *const c_void,
+        message_buffer.as_ptr().cast::<libc::c_void>(),
         message_buffer.len() as u64,
-    );
-
-    handle
+    )
 }
