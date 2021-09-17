@@ -14,6 +14,13 @@ use std::{
     ptr::null_mut,
 };
 
+use eccodes_sys::{
+    CODES_KEYS_ITERATOR_ALL_KEYS, CODES_KEYS_ITERATOR_DUMP_ONLY, CODES_KEYS_ITERATOR_SKIP_CODED,
+    CODES_KEYS_ITERATOR_SKIP_COMPUTED, CODES_KEYS_ITERATOR_SKIP_DUPLICATES,
+    CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC, CODES_KEYS_ITERATOR_SKIP_FUNCTION,
+    CODES_KEYS_ITERATOR_SKIP_OPTIONAL, CODES_KEYS_ITERATOR_SKIP_READ_ONLY,
+};
+
 mod iterator;
 mod keyed_message;
 
@@ -38,6 +45,14 @@ pub struct CodesHandle {
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,
     message_buffer: Vec<u8>,
+    iterator_flags: u32,
+    iterator_namespace: String,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Key {
+    pub name: String,
+    pub value: KeyType,
 }
 
 ///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
@@ -55,10 +70,17 @@ pub enum KeyType {
     Str(String),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Key {
-    pub name: String,
-    pub value: KeyType,
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum KeysIteratorFlags {
+    AllKeys = CODES_KEYS_ITERATOR_ALL_KEYS as isize,
+    DumpOnly = CODES_KEYS_ITERATOR_DUMP_ONLY as isize,
+    SkipCoded = CODES_KEYS_ITERATOR_SKIP_CODED as isize,
+    SkipComputed = CODES_KEYS_ITERATOR_SKIP_COMPUTED as isize,
+    SkipFunction = CODES_KEYS_ITERATOR_SKIP_FUNCTION as isize,
+    SkipOptional = CODES_KEYS_ITERATOR_SKIP_OPTIONAL as isize,
+    SkipReadOnly = CODES_KEYS_ITERATOR_SKIP_READ_ONLY as isize,
+    SkipDuplicates = CODES_KEYS_ITERATOR_SKIP_DUPLICATES as isize,
+    SkipEditionSpecific = CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
 #[derive(Debug)]

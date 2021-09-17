@@ -19,6 +19,13 @@ use crate::{
     errors::{CodesError, CodesInternal},
 };
 
+#[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Debug, num_derive::FromPrimitive)]
+pub enum NativeKeyType {
+    Long = 1,
+    Double = 2,
+    Str = 3,
+}
+
 pub unsafe fn codes_handle_new_from_file(
     file_pointer: *mut FILE,
     product_kind: ProductKind,
@@ -51,13 +58,6 @@ pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), Codes
     }
 
     Ok(())
-}
-
-#[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Debug, num_derive::FromPrimitive)]
-pub enum NativeKeyType {
-    Long = 1,
-    Double = 2,
-    Str = 3,
 }
 
 pub unsafe fn codes_get_native_type(
@@ -223,7 +223,9 @@ pub unsafe fn codes_get_message_size(handle: *mut codes_handle) -> Result<u64, C
     Ok(size)
 }
 
-pub unsafe fn codes_get_message(handle: *mut codes_handle) -> Result<(*const c_void, u64), CodesError> {
+pub unsafe fn codes_get_message(
+    handle: *mut codes_handle,
+) -> Result<(*const c_void, u64), CodesError> {
     let buffer_size = codes_get_message_size(handle)?;
 
     let buffer: Vec<u8> = vec![0; buffer_size as usize];

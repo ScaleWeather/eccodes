@@ -31,7 +31,7 @@
 //!
 //!- Alternatively [`new_from_memory()`](codes_handle::CodesHandle::new_from_memory) function can be used
 //!to access a file that is already in memory. For example, when file is downloaded from the internet
-//!and does not need to be saved on hard drive. 
+//!and does not need to be saved on hard drive.
 //!The file must be stored in [`bytes::Bytes`](https://docs.rs/bytes/1.1.0/bytes/struct.Bytes.html).
 //!
 //!Data (messages) inside the GRIB file can be accessed using the [`FallibleIterator`](`codes_handle::CodesHandle#impl-FallibleIterator`)
@@ -91,7 +91,7 @@
 //!following [this instructions](https://confluence.ecmwf.int/display/ECC/ecCodes+installation).
 //!
 //!Then add the `lib/pkgconfig` directory from your ecCodes installation directory
-//!to the `PKG_CONFIG_PATH` environmental variable. If ecCodes have been compiled 
+//!to the `PKG_CONFIG_PATH` environmental variable. If ecCodes have been compiled
 //!as shared library you will also need to specify `LD_LIBRARY_PATH`.
 //!For example:
 //!

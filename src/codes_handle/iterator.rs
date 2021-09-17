@@ -17,9 +17,9 @@ use crate::{
 ///Therefore this crate utilizes the `Iterator` to provide the access to GRIB messages in
 ///a safe and convienient way.
 ///
-///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator` 
+///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator`
 ///because internal ecCodes functions can return error codes when the GRIB file
-///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different 
+///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different
 ///than usage of `Iterator`, check its documentation for more details.
 ///
 ///Using the `FallibleIterator` is the only way to read `KeyedMessage`s from the file.
@@ -109,6 +109,8 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
     let new_message = KeyedMessage {
         message_handle: new_handle,
         message_buffer: vec![],
+        iterator_flags: 0,
+        iterator_namespace: "".to_owned(),
     };
 
     Ok(new_message)
@@ -116,8 +118,8 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
 
 #[cfg(test)]
 mod tests {
-    use fallible_iterator::FallibleIterator;
     use crate::codes_handle::{CodesHandle, KeyType, KeyedMessage, ProductKind};
+    use fallible_iterator::FallibleIterator;
     use std::path::Path;
 
     #[test]

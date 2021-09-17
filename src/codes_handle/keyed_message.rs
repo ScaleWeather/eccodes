@@ -1,9 +1,8 @@
 use std::ptr::null_mut;
-
 use log::warn;
 
 use crate::{
-    codes_handle::{Key, KeyedMessage},
+    codes_handle::{Key, KeyedMessage, KeyType},
     errors::CodesError,
     intermediate_bindings::{
         codes_get_double, codes_get_double_array, codes_get_long, codes_get_long_array,
@@ -11,8 +10,6 @@ use crate::{
         codes_handle_delete, codes_handle_new_from_message_copy, NativeKeyType,
     },
 };
-
-use super::KeyType;
 
 impl KeyedMessage {
     ///Method to get a [`Key`] with provided name from the `KeyedMessage`.
@@ -129,6 +126,10 @@ impl KeyedMessage {
             }
         }
     }
+
+    pub fn set_iterator_parameters(&mut self) -> Result<(), CodesError> {
+        Ok(())
+    }
 }
 
 impl Clone for KeyedMessage {
@@ -144,6 +145,8 @@ impl Clone for KeyedMessage {
         KeyedMessage {
             message_handle: new_handle,
             message_buffer: new_buffer,
+            iterator_flags: 0,
+            iterator_namespace: "".to_owned(),
         }
     }
 }
@@ -176,7 +179,7 @@ impl Drop for KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
+    use crate::codes_handle::{KeyType, CodesHandle, ProductKind};
     use fallible_iterator::FallibleIterator;
     use std::path::Path;
 
