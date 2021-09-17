@@ -47,12 +47,18 @@ pub struct KeyedMessage {
 ///There are several possible types of keys, which are represented by this enum
 ///and each variant contains the respective data type.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Key {
+pub enum KeyType {
     Float(f64),
     Int(i64),
     FloatArray(Vec<f64>),
     IntArray(Vec<i64>),
     Str(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Key {
+    pub name: String,
+    pub value: KeyType,
 }
 
 #[derive(Debug)]

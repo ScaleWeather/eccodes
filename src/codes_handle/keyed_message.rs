@@ -12,6 +12,8 @@ use crate::{
     },
 };
 
+use super::KeyType;
+
 impl KeyedMessage {
     ///Method to get a [`Key`] with provided name from the `KeyedMessage`.
     ///
@@ -21,9 +23,9 @@ impl KeyedMessage {
     ///## Example
     ///
     ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key::Str};
+    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType::Str};
     ///# use std::path::Path;
-    ///# use fallible_iterator::FallibleIterator; 
+    ///# use fallible_iterator::FallibleIterator;
     ///#
     ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
@@ -32,7 +34,7 @@ impl KeyedMessage {
     ///let message = handle.next().unwrap().unwrap();
     ///let message_short_name = message.read_key("shortName").unwrap();
     ///
-    ///assert_eq!(message_short_name, Str(String::from("msl")));
+    ///assert_eq!(message_short_name.value, Str(String::from("msl")));
     ///```
     ///
     ///## Errors
@@ -50,54 +52,66 @@ impl KeyedMessage {
     ///Panics when the size of given key is lower than 1. This indicates corrupted data file,
     ///bug in the crate or bug in the ecCodes library. If you encounter this panic please check
     ///if your file is correct and report it on Github.
-    pub fn read_key(&self, key: &str) -> Result<Key, CodesError> {
+    pub fn read_key(&self, key_name: &str) -> Result<Key, CodesError> {
         let key_type;
 
         unsafe {
-            key_type = codes_get_native_type(self.message_handle, key)?;
+            key_type = codes_get_native_type(self.message_handle, key_name)?;
         }
 
         match key_type {
             NativeKeyType::Long => {
                 let key_size;
-                unsafe { key_size = codes_get_size(self.message_handle, key)? }
+                unsafe { key_size = codes_get_size(self.message_handle, key_name)? }
 
                 if key_size == 1 {
                     let key_value;
                     unsafe {
-                        key_value = codes_get_long(self.message_handle, key)?;
+                        key_value = codes_get_long(self.message_handle, key_name)?;
                     }
 
-                    Ok(Key::Int(key_value))
+                    Ok(Key {
+                        name: key_name.to_owned(),
+                        value: KeyType::Int(key_value),
+                    })
                 } else if key_size > 2 {
                     let key_value;
                     unsafe {
-                        key_value = codes_get_long_array(self.message_handle, key)?;
+                        key_value = codes_get_long_array(self.message_handle, key_name)?;
                     }
 
-                    Ok(Key::IntArray(key_value))
+                    Ok(Key {
+                        name: key_name.to_owned(),
+                        value: KeyType::IntArray(key_value),
+                    })
                 } else {
                     panic!("Incorrect key size!");
                 }
             }
             NativeKeyType::Double => {
                 let key_size;
-                unsafe { key_size = codes_get_size(self.message_handle, key)? }
+                unsafe { key_size = codes_get_size(self.message_handle, key_name)? }
 
                 if key_size == 1 {
                     let key_value;
                     unsafe {
-                        key_value = codes_get_double(self.message_handle, key)?;
+                        key_value = codes_get_double(self.message_handle, key_name)?;
                     }
 
-                    Ok(Key::Float(key_value))
+                    Ok(Key {
+                        name: key_name.to_owned(),
+                        value: KeyType::Float(key_value),
+                    })
                 } else if key_size > 2 {
                     let key_value;
                     unsafe {
-                        key_value = codes_get_double_array(self.message_handle, key)?;
+                        key_value = codes_get_double_array(self.message_handle, key_name)?;
                     }
 
-                    Ok(Key::FloatArray(key_value))
+                    Ok(Key {
+                        name: key_name.to_owned(),
+                        value: KeyType::FloatArray(key_value),
+                    })
                 } else {
                     panic!("Incorrect key size!");
                 }
@@ -105,10 +119,13 @@ impl KeyedMessage {
             NativeKeyType::Str => {
                 let key_value;
                 unsafe {
-                    key_value = codes_get_string(self.message_handle, key)?;
+                    key_value = codes_get_string(self.message_handle, key_name)?;
                 }
 
-                Ok(Key::Str(key_value))
+                Ok(Key {
+                    name: key_name.to_owned(),
+                    value: KeyType::Str(key_value),
+                })
             }
         }
     }
@@ -159,7 +176,7 @@ impl Drop for KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, Key, ProductKind};
+    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
     use fallible_iterator::FallibleIterator;
     use std::path::Path;
 
@@ -174,8 +191,8 @@ mod tests {
 
         let str_key = current_message.read_key("name").unwrap();
 
-        match str_key {
-            Key::Str(_) => {}
+        match str_key.value {
+            KeyType::Str(_) => {}
             _ => panic!("Incorrect variant of string key"),
         }
 
@@ -183,8 +200,8 @@ mod tests {
             .read_key("jDirectionIncrementInDegrees")
             .unwrap();
 
-        match double_key {
-            Key::Float(_) => {}
+        match double_key.value {
+            KeyType::Float(_) => {}
             _ => panic!("Incorrect variant of double key"),
         }
 
@@ -192,15 +209,15 @@ mod tests {
             .read_key("numberOfPointsAlongAParallel")
             .unwrap();
 
-        match long_key {
-            Key::Int(_) => {}
+        match long_key.value {
+            KeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
 
         let double_arr_key = current_message.read_key("values").unwrap();
 
-        match double_arr_key {
-            Key::FloatArray(_) => {}
+        match double_arr_key.value {
+            KeyType::FloatArray(_) => {}
             _ => panic!("Incorrect variant of double array key"),
         }
     }

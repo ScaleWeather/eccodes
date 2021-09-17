@@ -50,7 +50,7 @@
 //!// Open the GRIB file and create the CodesHandle
 //!# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
 //!# use std::path::Path;
-//!# use eccodes::codes_handle::Key::Str;
+//!# use eccodes::codes_handle::KeyType::Str;
 //!# use fallible_iterator::FallibleIterator;
 //!#
 //!let file_path = Path::new("./data/iceland.grib");
@@ -63,8 +63,8 @@
 //!let level: Vec<KeyedMessage> = handle
 //!    .filter(|msg| {
 //!
-//!    Ok(msg.read_key("shortName")? == Str(String::from("msl"))
-//!        && msg.read_key("typeOfLevel")? == Str(String::from("surface")))
+//!    Ok(msg.read_key("shortName")?.value == Str(String::from("msl"))
+//!        && msg.read_key("typeOfLevel")?.value == Str(String::from("surface")))
 //!    })
 //!    .collect().unwrap();
 //!

@@ -26,7 +26,7 @@ use crate::{
 ///Its basic usage is simply with while let statement (similar to for loop for classic `Iterator`):
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key};
+///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType};
 ///# use std::path::Path;
 ///# use fallible_iterator::FallibleIterator;
 ///#
@@ -40,7 +40,7 @@ use crate::{
 ///// The message must be unwraped as internal Iterator methods can fail
 ///    let key = message.read_key("name").unwrap();
 ///
-///    if let Key::Str(name) = key {
+///    if let KeyType::Str(name) = key.value {
 ///        println!("{:?}", name);    
 ///    }
 ///}
@@ -51,7 +51,7 @@ use crate::{
 ///For example:
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key, KeyedMessage};
+///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
 ///# use eccodes::errors::CodesError;
 ///# use std::path::Path;
 ///# use fallible_iterator::FallibleIterator;
@@ -117,7 +117,7 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
 #[cfg(test)]
 mod tests {
     use fallible_iterator::FallibleIterator;
-    use crate::codes_handle::{CodesHandle, Key, KeyedMessage, ProductKind};
+    use crate::codes_handle::{CodesHandle, KeyType, KeyedMessage, ProductKind};
     use std::path::Path;
 
     #[test]
@@ -130,8 +130,8 @@ mod tests {
         while let Some(msg) = handle.next().unwrap() {
             let key = msg.read_key("shortName").unwrap();
 
-            match key {
-                Key::Str(_) => {}
+            match key.value {
+                KeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
@@ -142,8 +142,8 @@ mod tests {
 
         for msg in handle_collected {
             let key = msg.read_key("name").unwrap();
-            match key {
-                Key::Str(_) => {}
+            match key.value {
+                KeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
