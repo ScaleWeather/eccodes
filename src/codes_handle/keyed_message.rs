@@ -1,15 +1,21 @@
-use std::ptr::null_mut;
+use eccodes_sys::codes_keys_iterator;
+use fallible_iterator::FallibleIterator;
 use log::warn;
+use std::ptr::null_mut;
 
 use crate::{
-    codes_handle::{Key, KeyedMessage, KeyType},
+    codes_handle::{Key, KeyType, KeyedMessage},
     errors::CodesError,
     intermediate_bindings::{
         codes_get_double, codes_get_double_array, codes_get_long, codes_get_long_array,
         codes_get_message_copy, codes_get_native_type, codes_get_size, codes_get_string,
-        codes_handle_delete, codes_handle_new_from_message_copy, NativeKeyType,
+        codes_handle_delete, codes_handle_new_from_message_copy, codes_keys_iterator_delete,
+        codes_keys_iterator_get_name, codes_keys_iterator_new, codes_keys_iterator_next,
+        NativeKeyType,
     },
 };
+
+use super::KeysIteratorFlags;
 
 impl KeyedMessage {
     ///Method to get a [`Key`] with provided name from the `KeyedMessage`.
@@ -127,8 +133,45 @@ impl KeyedMessage {
         }
     }
 
-    pub fn set_iterator_parameters(&mut self) -> Result<(), CodesError> {
+    pub fn set_iterator_parameters(
+        &mut self,
+        flags: Vec<KeysIteratorFlags>,
+        namespace: String,
+    ) -> Result<(), CodesError> {
+        self.iterator_namespace = Some(namespace);
+
+        let mut flags_sum = 0;
+
+        for flag in flags {
+            flags_sum += flag as u32;
+        }
+
+        self.iterator_flags = Some(flags_sum);
+
         Ok(())
+    }
+
+    fn keys_iterator(&mut self) -> Result<*mut codes_keys_iterator, CodesError> {
+        self.keys_iterator.map_or_else(
+            || {
+                let flags = self.iterator_flags.unwrap_or(0);
+
+                let namespace = match self.iterator_namespace.clone() {
+                    Some(n) => n,
+                    None => "".to_owned(),
+                };
+
+                let itr;
+                unsafe {
+                    itr = codes_keys_iterator_new(self.message_handle, flags, &namespace);
+                }
+
+                self.keys_iterator_next_time_exists = true;
+
+                Ok(itr)
+            },
+            Ok,
+        )
     }
 }
 
@@ -145,8 +188,38 @@ impl Clone for KeyedMessage {
         KeyedMessage {
             message_handle: new_handle,
             message_buffer: new_buffer,
-            iterator_flags: 0,
-            iterator_namespace: "".to_owned(),
+            iterator_flags: None,
+            iterator_namespace: None,
+            keys_iterator: None,
+            keys_iterator_next_time_exists: false,
+        }
+    }
+}
+
+impl FallibleIterator for KeyedMessage {
+    type Item = Key;
+    type Error = CodesError;
+
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        let itr = self.keys_iterator()?;
+
+        if self.keys_iterator_next_time_exists {
+            let key_name;
+            let next_item_exists;
+
+            unsafe {
+                next_item_exists = codes_keys_iterator_next(itr);
+                key_name = codes_keys_iterator_get_name(itr)?;
+            }
+
+            let key = KeyedMessage::read_key(self, &key_name)?;
+
+            self.keys_iterator_next_time_exists = next_item_exists;
+            self.keys_iterator = Some(itr);
+
+            Ok(Some(key))
+        } else {
+            Ok(None)
         }
     }
 }
@@ -174,12 +247,23 @@ impl Drop for KeyedMessage {
         }
 
         self.message_handle = null_mut();
+
+        if let Some(kiter) = self.keys_iterator {
+            unsafe {
+                codes_keys_iterator_delete(kiter).unwrap_or_else(|error| {
+                    warn!(
+                        "codes_keys_iterator_delete() returned an error: {:?}",
+                        &error
+                    );
+                });
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{KeyType, CodesHandle, ProductKind};
+    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
     use fallible_iterator::FallibleIterator;
     use std::path::Path;
 

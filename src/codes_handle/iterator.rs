@@ -109,8 +109,10 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
     let new_message = KeyedMessage {
         message_handle: new_handle,
         message_buffer: vec![],
-        iterator_flags: 0,
-        iterator_namespace: "".to_owned(),
+        iterator_flags: None,
+        iterator_namespace: None,
+        keys_iterator: None,
+        keys_iterator_next_time_exists: false,
     };
 
     Ok(new_message)

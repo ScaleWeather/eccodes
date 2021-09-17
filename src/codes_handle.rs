@@ -3,7 +3,7 @@
 
 use crate::errors::CodesError;
 use bytes::Bytes;
-use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle, codes_keys_iterator};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -45,8 +45,10 @@ pub struct CodesHandle {
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,
     message_buffer: Vec<u8>,
-    iterator_flags: u32,
-    iterator_namespace: String,
+    iterator_flags: Option<u32>,
+    iterator_namespace: Option<String>,
+    keys_iterator: Option<*mut codes_keys_iterator>,
+    keys_iterator_next_time_exists: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]

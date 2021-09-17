@@ -10,7 +10,7 @@ use std::{
     ptr,
 };
 
-use eccodes_sys::{codes_context, codes_handle, _IO_FILE};
+use eccodes_sys::{codes_context, codes_handle, codes_keys_iterator, _IO_FILE};
 use libc::{c_void, FILE};
 use num_traits::FromPrimitive;
 
@@ -229,7 +229,7 @@ pub unsafe fn codes_get_message(
     let buffer_size = codes_get_message_size(handle)?;
 
     let buffer: Vec<u8> = vec![0; buffer_size as usize];
-    let mut buffer_ptr = buffer.as_ptr() as *const c_void;
+    let mut buffer_ptr = buffer.as_ptr().cast::<libc::c_void>();
 
     let mut message_size: u64 = 0;
 
@@ -260,13 +260,11 @@ pub unsafe fn codes_handle_new_from_message(
 ) -> *mut codes_handle {
     let default_context: *mut codes_context = ptr::null_mut();
 
-    let handle = eccodes_sys::codes_handle_new_from_message(
+    eccodes_sys::codes_handle_new_from_message(
         default_context,
         message_buffer_ptr,
         message_size,
-    );
-
-    handle
+    )
 }
 
 pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8>, CodesError> {
@@ -278,7 +276,7 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
 
     let error_code = eccodes_sys::codes_get_message_copy(
         handle,
-        buffer.as_mut_ptr() as *mut c_void,
+        buffer.as_mut_ptr().cast::<libc::c_void>(),
         &mut message_size as *mut u64,
     );
 
@@ -297,14 +295,49 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
     Ok(buffer)
 }
 
-pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &Vec<u8>) -> *mut codes_handle {
+pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &[u8]) -> *mut codes_handle {
     let default_context: *mut codes_context = ptr::null_mut();
 
-    let handle = eccodes_sys::codes_handle_new_from_message_copy(
+    eccodes_sys::codes_handle_new_from_message_copy(
         default_context,
-        message_buffer.as_ptr() as *const c_void,
+        message_buffer.as_ptr().cast::<libc::c_void>(),
         message_buffer.len() as u64,
-    );
+    )
+}
 
-    handle
+pub unsafe fn codes_keys_iterator_new(
+    handle: *mut codes_handle,
+    flags: u32,
+    namespace: &str,
+) -> *mut codes_keys_iterator {
+    let namespace = CString::new(namespace).unwrap();
+
+    eccodes_sys::codes_keys_iterator_new(handle, u64::from(flags), namespace.as_ptr())
+}
+
+pub unsafe fn codes_keys_iterator_delete(keys_iterator: *mut codes_keys_iterator) -> Result<(), CodesError> {
+    let error_code = eccodes_sys::codes_keys_iterator_delete(keys_iterator);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+
+    Ok(())
+}
+
+pub unsafe fn codes_keys_iterator_next(keys_iterator: *mut codes_keys_iterator) -> bool {
+    let next_item_exists = eccodes_sys::codes_keys_iterator_next(keys_iterator);
+
+    next_item_exists == 1 
+}
+
+pub unsafe fn codes_keys_iterator_get_name(keys_iterator: *mut codes_keys_iterator) -> Result<String, CodesError> {
+    let name_pointer = eccodes_sys::codes_keys_iterator_get_name(keys_iterator);
+
+    let name_c_str = CStr::from_ptr(name_pointer);
+    let name_str = name_c_str.to_str()?;
+    let name_string = name_str.to_owned();
+
+    Ok(name_string)
 }
