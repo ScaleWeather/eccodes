@@ -17,16 +17,16 @@ use crate::{
 ///Therefore this crate utilizes the `Iterator` to provide the access to GRIB messages in
 ///a safe and convienient way.
 ///
-///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator` 
+///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator`
 ///because internal ecCodes functions can return error codes when the GRIB file
-///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different 
+///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different
 ///than usage of `Iterator`, check its documentation for more details.
 ///
 ///Using the `FallibleIterator` is the only way to read `KeyedMessage`s from the file.
 ///Its basic usage is simply with while let statement (similar to for loop for classic `Iterator`):
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key};
+///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType};
 ///# use std::path::Path;
 ///# use fallible_iterator::FallibleIterator;
 ///#
@@ -40,7 +40,7 @@ use crate::{
 ///// The message must be unwraped as internal Iterator methods can fail
 ///    let key = message.read_key("name").unwrap();
 ///
-///    if let Key::Str(name) = key {
+///    if let KeyType::Str(name) = key.value {
 ///        println!("{:?}", name);    
 ///    }
 ///}
@@ -51,7 +51,7 @@ use crate::{
 ///For example:
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, Key, KeyedMessage};
+///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
 ///# use eccodes::errors::CodesError;
 ///# use std::path::Path;
 ///# use fallible_iterator::FallibleIterator;
@@ -109,6 +109,10 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
     let new_message = KeyedMessage {
         message_handle: new_handle,
         message_buffer: vec![],
+        iterator_flags: None,
+        iterator_namespace: None,
+        keys_iterator: None,
+        keys_iterator_next_time_exists: false,
     };
 
     Ok(new_message)
@@ -116,8 +120,8 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
 
 #[cfg(test)]
 mod tests {
+    use crate::codes_handle::{CodesHandle, KeyType, KeyedMessage, ProductKind};
     use fallible_iterator::FallibleIterator;
-    use crate::codes_handle::{CodesHandle, Key, KeyedMessage, ProductKind};
     use std::path::Path;
 
     #[test]
@@ -130,8 +134,8 @@ mod tests {
         while let Some(msg) = handle.next().unwrap() {
             let key = msg.read_key("shortName").unwrap();
 
-            match key {
-                Key::Str(_) => {}
+            match key.value {
+                KeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
@@ -142,8 +146,8 @@ mod tests {
 
         for msg in handle_collected {
             let key = msg.read_key("name").unwrap();
-            match key {
-                Key::Str(_) => {}
+            match key.value {
+                KeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }

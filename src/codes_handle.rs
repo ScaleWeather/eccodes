@@ -3,7 +3,7 @@
 
 use crate::errors::CodesError;
 use bytes::Bytes;
-use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle, codes_keys_iterator};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -12,6 +12,13 @@ use std::{
     os::unix::prelude::AsRawFd,
     path::Path,
     ptr::null_mut,
+};
+
+use eccodes_sys::{
+    CODES_KEYS_ITERATOR_ALL_KEYS, CODES_KEYS_ITERATOR_DUMP_ONLY, CODES_KEYS_ITERATOR_SKIP_CODED,
+    CODES_KEYS_ITERATOR_SKIP_COMPUTED, CODES_KEYS_ITERATOR_SKIP_DUPLICATES,
+    CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC, CODES_KEYS_ITERATOR_SKIP_FUNCTION,
+    CODES_KEYS_ITERATOR_SKIP_OPTIONAL, CODES_KEYS_ITERATOR_SKIP_READ_ONLY,
 };
 
 mod iterator;
@@ -38,6 +45,16 @@ pub struct CodesHandle {
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,
     message_buffer: Vec<u8>,
+    iterator_flags: Option<u32>,
+    iterator_namespace: Option<String>,
+    keys_iterator: Option<*mut codes_keys_iterator>,
+    keys_iterator_next_time_exists: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Key {
+    pub name: String,
+    pub value: KeyType,
 }
 
 ///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
@@ -47,12 +64,25 @@ pub struct KeyedMessage {
 ///There are several possible types of keys, which are represented by this enum
 ///and each variant contains the respective data type.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Key {
+pub enum KeyType {
     Float(f64),
     Int(i64),
     FloatArray(Vec<f64>),
     IntArray(Vec<i64>),
     Str(String),
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+pub enum KeysIteratorFlags {
+    AllKeys = CODES_KEYS_ITERATOR_ALL_KEYS as isize,
+    DumpOnly = CODES_KEYS_ITERATOR_DUMP_ONLY as isize,
+    SkipCoded = CODES_KEYS_ITERATOR_SKIP_CODED as isize,
+    SkipComputed = CODES_KEYS_ITERATOR_SKIP_COMPUTED as isize,
+    SkipFunction = CODES_KEYS_ITERATOR_SKIP_FUNCTION as isize,
+    SkipOptional = CODES_KEYS_ITERATOR_SKIP_OPTIONAL as isize,
+    SkipReadOnly = CODES_KEYS_ITERATOR_SKIP_READ_ONLY as isize,
+    SkipDuplicates = CODES_KEYS_ITERATOR_SKIP_DUPLICATES as isize,
+    SkipEditionSpecific = CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
 #[derive(Debug)]

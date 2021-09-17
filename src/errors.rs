@@ -42,7 +42,6 @@ pub enum CodesError {
     ///into a Rust-string.
     #[error(transparent)]
     NulChar(#[from] std::ffi::FromBytesWithNulError),
-
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
