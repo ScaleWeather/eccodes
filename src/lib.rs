@@ -44,35 +44,46 @@
 //!### Example
 //!
 //!```
-//!// We are reading the mean sea level pressure in Reykjavik
-//!// for 1st June 2021 00:00 UTC (data from ERA5)
+//!// We are reading the mean sea level pressure for 4 gridpoints
+//!// nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC 
+//!// from ERA5 Climate Reanalysis
 //!
 //!// Open the GRIB file and create the CodesHandle
 //!# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
+//!# use eccodes::errors::{CodesError};
 //!# use std::path::Path;
 //!# use eccodes::codes_handle::KeyType::Str;
 //!# use fallible_iterator::FallibleIterator;
 //!#
+//!# fn main() -> Result<(), CodesError> {
 //!let file_path = Path::new("./data/iceland.grib");
 //!let product_kind = ProductKind::GRIB;
 //!
-//!let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+//!let handle = CodesHandle::new_from_file(file_path, product_kind)?;
 //!
 //!// Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
 //!// First, filter and collect the messages to get those that we want
-//!let level: Vec<KeyedMessage> = handle
+//!let mut level: Vec<KeyedMessage> = handle
 //!    .filter(|msg| {
 //!
-//!    Ok(msg.read_key("shortName")?.value == Str(String::from("msl"))
-//!        && msg.read_key("typeOfLevel")?.value == Str(String::from("surface")))
+//!    Ok(msg.read_key("shortName")?.value == Str("msl".to_string())
+//!        && msg.read_key("typeOfLevel")?.value == Str("surface".to_string()))
 //!    })
-//!    .collect().unwrap();
+//!    .collect()?;
 //!
 //!// Now unwrap and access the first and only element of resulting vector
-//!let level = &level[0];
+//!// Find nearest modifies internal KeyedMessage fields so we need mutable reference
+//!let level = &mut level[0];
 //!
-//!// Read the value of KeyedMessage for the grid point nearest of Reykjavik (64N -22E)
-//!// Not yet implemented
+//!// Get the four nearest gridpoints of Reykjavik
+//!let nearest_gridpoints = level.find_nearest(64.13, -21.89)?;
+//!
+//!// Print value and distance of the nearest gridpoint
+//!println!("value: {}, distance: {}", 
+//!    nearest_gridpoints[3].value, 
+//!    nearest_gridpoints[3].distance);
+//!# Ok(())
+//!# }
 //!```
 //!
 //!### ecCodes installation

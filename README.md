@@ -64,44 +64,50 @@ when copying whole file into memory is not desired or not necessary.
 
 - Alternatively `new_from_memory()` function can be used
 to access a file that is already in memory. For example, when file is downloaded from the internet
-and does not need to be saved on hard drive. 
+and does not need to be saved on hard drive.
 The file must be stored in `bytes::Bytes`.
 
-Data (messages) inside the GRIB file can be accessed using the `Iterator`
+Data (messages) inside the GRIB file can be accessed using the `FallibleIterator`
 by iterating over the `CodesHandle`.
 
-The `Iterator` returns a `KeyedMessage` structure which implements some
+The `FallibleIterator` returns a `KeyedMessage` structure which implements some
 methods to access data values. The data inside `KeyedMessage` is provided directly as `Key`
 or as more specific data type.
 
 ### Example
 
 ```rust
-// We are reading the mean sea level pressure in Reykjavik
-// for 1st June 2021 00:00 UTC (data from ERA5)
+// We are reading the mean sea level pressure for 4 gridpoints
+// nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC 
+// from ERA5 Climate Reanalysis
 
 // Open the GRIB file and create the CodesHandle
 let file_path = Path::new("./data/iceland.grib");
 let product_kind = ProductKind::GRIB;
 
-let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+let handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
 // Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
 // First, filter and collect the messages to get those that we want
-let level: Result<Vec<KeyedMessage>, CodesError> = handle
+let mut level: Vec<KeyedMessage> = handle
     .filter(|msg| {
-    let msg = msg.as_ref().unwrap();
 
-    msg.read_key("shortName").unwrap() == Str(String::from("msl"))
-        && msg.read_key("typeOfLevel").unwrap() == Str(String::from("surface"))
+    Ok(msg.read_key("shortName")?.value == Str("msl".to_string())
+        && msg.read_key("typeOfLevel")?.value == Str("surface".to_string()))
     })
-    .collect();
+    .collect()?;
 
 // Now unwrap and access the first and only element of resulting vector
-let level = level.unwrap()[0];
+// Find nearest modifies internal KeyedMessage fields so we need mutable reference
+let level = &mut level[0];
 
-// Read the value of KeyedMessage for the grid point nearest of Reykjavik (64N -22E)
-// Not yet implemented
+// Get the four nearest gridpoints of Reykjavik
+let nearest_gridpoints = level.find_nearest(64.13, -21.89)?;
+
+// Print value and distance of the nearest gridpoint
+println!("value: {}, distance: {}", 
+    nearest_gridpoints[3].value, 
+    nearest_gridpoints[3].distance);
 ```
 
 ### Features
@@ -124,13 +130,12 @@ Because the ecCodes library API heavily relies on raw pointers simply making ecC
 
 _(Functions from ecCodes API wrapped at given stage are marked in parentheses)_
 
-- [ ] Reading GRIB files
+- [x] Reading GRIB files
     - [x] Creating CodesHandle from file and from memory (`codes_handle_new_from_file`, `codes_handle_delete`)
-    - [x] Iterating over GRIB messages with `Iterator`
+    - [x] Iterating over GRIB messages with `Iterator` (`codes_get_message`, `codes_get_message_copy`, `codes_handle_new_from_message`, `codes_handle_new_from_message_copy`)
     - [x] Reading keys from messages (`codes_get_double`, `codes_get_long`, `codes_get_string`, `codes_get_double_array`, `codes_get_long_array`, `codes_get_size`, `codes_get_length`, `codes_get_native_type`)
-    - [ ] Iterating over key names with `Iterator` (`codes_grib_iterator_new`, `codes_grib_iterator_next`, `codes_keys_iterator_get_name`, `codes_keys_iterator_rewind `, `codes_grib_iterator_delete`)
-    - [ ] Iterating over latitude/longitude/values with `Iterator` (`codes_grib_iterator_new`, `codes_grib_get_data`, `codes_grib_iterator_next`, `codes_grib_iterator_previous`, `codes_grib_iterator_has_next`, `codes_grib_iterator_reset`, `codes_grib_iterator_delete`)
-    - [ ] Finding nearest data points for given coordinates (`codes_grib_nearest_new`, `codes_grib_nearest_find`, `codes_grib_nearest_delete`, `codes_grib_nearest_find_multiple`)
+    - [x] Iterating over key names with `Iterator` (`codes_grib_iterator_new`, `codes_grib_iterator_next`, `codes_keys_iterator_get_name`, `codes_keys_iterator_rewind `, `codes_grib_iterator_delete`)
+    - [x] Finding nearest data points for given coordinates (`codes_grib_nearest_new`, `codes_grib_nearest_find`, `codes_grib_nearest_delete`)
 - [ ] Writing GRIB files
 - [ ] Reading and writing BUFR files
 

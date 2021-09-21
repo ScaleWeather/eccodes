@@ -42,6 +42,11 @@ pub enum CodesError {
     ///into a Rust-string.
     #[error(transparent)]
     NulChar(#[from] std::ffi::FromBytesWithNulError),
+
+    ///Returned when the requested key is not present in the message.
+    ///Similar to [`CodesInternal::CodesNotFound`] and [`CodesInternal::CodesMissingKey`].
+    #[error("The key is missing in present message")]
+    MissingKey,
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]

@@ -70,7 +70,6 @@ use crate::{
 ///## Errors
 ///The `next()` method will return [`CodesInternal`](crate::errors::CodesInternal)
 ///when internal ecCodes function returns non-zero code.
-///
 impl FallibleIterator for CodesHandle {
     type Item = KeyedMessage;
 
@@ -112,7 +111,8 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
         iterator_flags: None,
         iterator_namespace: None,
         keys_iterator: None,
-        keys_iterator_next_time_exists: false,
+        keys_iterator_next_item_exists: false,
+        nearest_handle: None,
     };
 
     Ok(new_message)
@@ -151,5 +151,21 @@ mod tests {
                 _ => panic!("Incorrect variant of string key"),
             }
         }
+    }
+
+    #[test]
+    fn iterator_return() {
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let current_message = handle.next().unwrap().unwrap();
+
+        assert!(!current_message.message_handle.is_null());
+        assert!(current_message.message_buffer.is_empty());
+        assert!(current_message.iterator_flags.is_none());
+        assert!(current_message.iterator_namespace.is_none());
+        assert!(current_message.keys_iterator.is_none());
+        assert!(!current_message.keys_iterator_next_item_exists);
     }
 }

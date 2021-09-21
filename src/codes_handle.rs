@@ -3,7 +3,7 @@
 
 use crate::errors::CodesError;
 use bytes::Bytes;
-use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle, codes_keys_iterator};
+use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle, codes_keys_iterator, codes_nearest};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -41,6 +41,13 @@ pub struct CodesHandle {
 ///
 ///The structure implements `Clone` trait which comes with a memory overhead.
 ///You should take care that your system has enough memory before cloning `KeyedMessage`.
+///
+///Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
+///function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
+///The function [`find_nearest()`](KeyedMessage::find_nearest()) allows to get the values of four nearest gridpoints
+///to requested coordinates.
+///`FallibleIterator` parameters can be set with [`set_iterator_parameters()`](KeyedMessage::set_iterator_parameters())
+///to specify the subset of keys to iterate over.
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,
@@ -48,9 +55,11 @@ pub struct KeyedMessage {
     iterator_flags: Option<u32>,
     iterator_namespace: Option<String>,
     keys_iterator: Option<*mut codes_keys_iterator>,
-    keys_iterator_next_time_exists: bool,
+    keys_iterator_next_item_exists: bool,
+    nearest_handle: Option<*mut codes_nearest>,
 }
 
+///Structure representing a single key from the `KeyedMessage`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Key {
     pub name: String,
@@ -70,18 +79,30 @@ pub enum KeyType {
     FloatArray(Vec<f64>),
     IntArray(Vec<i64>),
     Str(String),
+    Bytes(Vec<u8>),
 }
 
+///Flags to specify the subset of keys to iterate over
+///by `FallibleIterator` in `KeyedMessage`. The flags can be used together.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum KeysIteratorFlags {
+    ///Iterate over all keys
     AllKeys = CODES_KEYS_ITERATOR_ALL_KEYS as isize,
+    ///Iterate only dump keys
     DumpOnly = CODES_KEYS_ITERATOR_DUMP_ONLY as isize,
+    ///Exclude coded keys from iteration
     SkipCoded = CODES_KEYS_ITERATOR_SKIP_CODED as isize,
+    ///Exclude computed keys from iteration
     SkipComputed = CODES_KEYS_ITERATOR_SKIP_COMPUTED as isize,
+    ///Exclude function keys from iteration
     SkipFunction = CODES_KEYS_ITERATOR_SKIP_FUNCTION as isize,
+    ///Exclude optional keys from iteration
     SkipOptional = CODES_KEYS_ITERATOR_SKIP_OPTIONAL as isize,
+    ///Exclude read-only keys from iteration
     SkipReadOnly = CODES_KEYS_ITERATOR_SKIP_READ_ONLY as isize,
+    ///Exclude duplicate keys from iteration
     SkipDuplicates = CODES_KEYS_ITERATOR_SKIP_DUPLICATES as isize,
+    ///Exclude file edition specific keys from iteration
     SkipEditionSpecific = CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
@@ -96,6 +117,22 @@ enum DataContainer {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
+}
+
+///The structure returned by [`KeyedMessage::find_nearest()`].
+///Should always be analysed in relation to the coordinates request in `find_nearest()`.
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
+pub struct NearestGridpoint {
+    ///Index of gridpoint
+    pub index: i32,
+    ///Latitude in degrees north
+    pub lat: f64,
+    ///Longitude in degrees east
+    pub lon: f64,
+    ///Distance from coordinates requested in `find_nearest()`
+    pub distance: f64,
+    ///Value of the filed at given coordinate
+    pub value: f64, 
 }
 
 impl CodesHandle {
@@ -279,6 +316,7 @@ mod tests {
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
     use std::path::Path;
+    use log::Level;
 
     #[test]
     fn file_constructor() {
@@ -320,5 +358,41 @@ mod tests {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
             DataContainer::FileBuffer(_) => panic!(),
         };
+    }
+
+    #[tokio::test]
+    async fn codes_handle_drop() {
+        testing_logger::setup();
+
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        drop(handle);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 0);
+        });
+
+        let product_kind = ProductKind::GRIB;
+        let file_data = reqwest::get(
+            "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
+        )
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+
+        let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+        drop(handle);
+
+        //logs from Reqwest are expected
+        testing_logger::validate(|captured_logs| {
+            for log in captured_logs {
+                assert_ne!(log.level, Level::Warn);
+                assert_ne!(log.level, Level::Error);
+            }
+        });
     }
 }
