@@ -30,7 +30,7 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        cargo test -- --nocapture
+        cargo test
         cargo clean
     - name: Benchmark with criterion
       run: |

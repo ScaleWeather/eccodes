@@ -41,7 +41,9 @@ pub fn key_reading(c: &mut Criterion) {
     });
 
     c.bench_function("problematic key reading", |b| {
-        b.iter(|| msg.read_key(black_box("zeros")).unwrap())
+        b.iter(|| msg.read_key(black_box("zero")).unwrap_or_else(|_|{
+            msg.read_key(black_box("zeros")).unwrap()
+        }))
     });
 }
 
