@@ -87,7 +87,7 @@ impl KeyedMessage {
                         Ok(val) => Ok(KeyType::Int(val)),
                         Err(err) => Err(err),
                     }
-                } else if key_size > 2 {
+                } else if key_size >= 2 {
                     let value;
                     unsafe {
                         value = codes_get_long_array(self.message_handle, key_name);
@@ -115,7 +115,7 @@ impl KeyedMessage {
                         Ok(val) => Ok(KeyType::Float(val)),
                         Err(err) => Err(err),
                     }
-                } else if key_size > 2 {
+                } else if key_size >= 2 {
                     let value;
                     unsafe {
                         value = codes_get_double_array(self.message_handle, key_name);
@@ -531,13 +531,27 @@ mod tests {
     }
 
     #[test]
-    fn keys_iterator() {
+    fn era5_keys() {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
         let mut current_message = handle.next().unwrap().unwrap();
 
+        for i in 0..=300 {
+            let key = current_message.next();
+            println!("{}: {:?}", i, key);
+        }
+    }
+
+    #[test]
+    fn gfs_keys() {
+        let file_path = Path::new("./data/gfs.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut current_message = handle.next().unwrap().unwrap();
+        
         for i in 0..=300 {
             let key = current_message.next();
             println!("{}: {:?}", i, key);
