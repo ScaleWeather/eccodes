@@ -15,19 +15,19 @@ use thiserror::Error;
 pub enum CodesError {
     ///Returned when ecCodes library function returns an error code.
     ///Check [`CodesInternal`] for more details.
-    #[error("ecCodes function returned a non-zero code")]
+    #[error("ecCodes function returned a non-zero code {0}")]
     Internal(#[from] CodesInternal),
 
     ///Returned when one of libc functions returns a non-zero error code.
     ///Check libc documentation for details of the errors.
     ///For libc reference check these websites: ([1](https://man7.org/linux/man-pages/index.html))
     ///([2](https://pubs.opengroup.org/onlinepubs/9699919799/functions/contents.html))
-    #[error("libc function returned an error with errno {0} and code {0}")]
+    #[error("libc function returned an error with code {0} and errno {1}")]
     LibcNonZero(i32, Errno),
 
     ///Returned when there is an issue while opening the file.
     ///Check the [`std::fs`] documentation why and when this error can occur.
-    #[error("Error occured while opening the file")]
+    #[error("Error occured while opening the file: {0}")]
     CantOpenFile(#[from] std::io::Error),
 
     ///Returned when the constructor did not find any message of requested kind
@@ -35,12 +35,12 @@ pub enum CodesError {
     NoMessages,
 
     ///Returned when the string cannot be parsed as valid UTF8 string.
-    #[error(transparent)]
+    #[error("Cannot parse string as UTF8: {0}")]
     CstrUTF8(#[from] std::str::Utf8Error),
 
     ///Returned when the C-string returned by ecCodes library cannot be converted
     ///into a Rust-string.
-    #[error(transparent)]
+    #[error("String returned by ecCodes is not nul terminated: {0}")]
     NulChar(#[from] std::ffi::FromBytesWithNulError),
 
     ///Returned when the requested key is not present in the message.
