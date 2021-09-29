@@ -127,3 +127,5 @@
 pub mod codes_handle;
 pub mod errors;
 mod intermediate_bindings;
+
+pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator, FromFallibleIterator};
