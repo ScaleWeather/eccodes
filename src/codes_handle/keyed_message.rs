@@ -430,6 +430,8 @@ impl Drop for KeyedMessage {
             }
         }
 
+        self.nearest_handle = Some(null_mut());
+
         if let Some(kiter) = self.keys_iterator {
             unsafe {
                 codes_keys_iterator_delete(kiter).unwrap_or_else(|error| {

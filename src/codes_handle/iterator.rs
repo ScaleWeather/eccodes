@@ -1,13 +1,7 @@
 use eccodes_sys::codes_handle;
 use fallible_iterator::FallibleIterator;
 
-use crate::{
-    codes_handle::{CodesHandle, KeyedMessage},
-    errors::CodesError,
-    intermediate_bindings::{
-        codes_get_message, codes_handle_new_from_file, codes_handle_new_from_message,
-    },
-};
+use crate::{codes_handle::{CodesHandle, KeyedMessage}, errors::CodesError, intermediate_bindings::{codes_get_message, codes_handle_delete, codes_handle_new_from_file, codes_handle_new_from_message}};
 
 ///`FallibleIterator` implementation for `CodesHandle` to access GRIB messages inside file.
 ///
@@ -78,6 +72,7 @@ impl FallibleIterator for CodesHandle {
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         let file_handle;
         unsafe {
+            codes_handle_delete(self.file_handle)?;
             file_handle = codes_handle_new_from_file(self.file_pointer, self.product_kind);
         }
 
