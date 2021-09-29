@@ -30,7 +30,7 @@ impl KeyedMessage {
     ///```
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType::Str};
     ///# use std::path::Path;
-    ///# use fallible_iterator::FallibleIterator;
+    ///# use eccodes::FallibleIterator;
     ///#
     ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
@@ -191,7 +191,7 @@ impl KeyedMessage {
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
     ///# use std::path::Path;
     ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use fallible_iterator::FallibleIterator;
+    ///# use eccodes::FallibleIterator;
     ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
     ///
@@ -285,7 +285,7 @@ impl KeyedMessage {
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
     ///# use std::path::Path;
     ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use fallible_iterator::FallibleIterator;
+    ///# use eccodes::FallibleIterator;
     ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
     ///
@@ -361,7 +361,7 @@ impl Clone for KeyedMessage {
 ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
 ///# use std::path::Path;
 ///# use eccodes::codes_handle::KeyType::Str;
-///# use fallible_iterator::FallibleIterator;
+///# use eccodes::FallibleIterator;
 ///let file_path = Path::new("./data/iceland.grib");
 ///let product_kind = ProductKind::GRIB;
 ///
@@ -456,7 +456,7 @@ impl Drop for KeyedMessage {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, KeyType, KeysIteratorFlags, ProductKind};
-    use fallible_iterator::FallibleIterator;
+    use crate::FallibleIterator;
     use std::path::Path;
     use testing_logger;
 

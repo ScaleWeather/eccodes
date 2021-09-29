@@ -1,4 +1,4 @@
-use fallible_iterator::FallibleIterator;
+use eccodes::FallibleIterator;
 use std::path::Path;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};

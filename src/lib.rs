@@ -53,7 +53,7 @@
 //!# use eccodes::errors::{CodesError};
 //!# use std::path::Path;
 //!# use eccodes::codes_handle::KeyType::Str;
-//!# use fallible_iterator::FallibleIterator;
+//!# use eccodes::FallibleIterator;
 //!#
 //!# fn main() -> Result<(), CodesError> {
 //!let file_path = Path::new("./data/iceland.grib");

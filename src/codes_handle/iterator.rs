@@ -28,7 +28,7 @@ use crate::{
 ///```
 ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType};
 ///# use std::path::Path;
-///# use fallible_iterator::FallibleIterator;
+///# use eccodes::FallibleIterator;
 ///#
 ///let file_path = Path::new("./data/iceland-surface.grib");
 ///let product_kind = ProductKind::GRIB;
@@ -54,7 +54,7 @@ use crate::{
 ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
 ///# use eccodes::errors::CodesError;
 ///# use std::path::Path;
-///# use fallible_iterator::FallibleIterator;
+///# use eccodes::FallibleIterator;
 ///#
 ///let file_path = Path::new("./data/iceland-surface.grib");
 ///let product_kind = ProductKind::GRIB;
@@ -121,7 +121,7 @@ fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, Co
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, KeyType, KeyedMessage, ProductKind};
-    use fallible_iterator::FallibleIterator;
+    use crate::FallibleIterator;
     use std::path::Path;
 
     #[test]
