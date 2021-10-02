@@ -1,7 +1,14 @@
 use eccodes_sys::codes_handle;
 use fallible_iterator::FallibleIterator;
 
-use crate::{codes_handle::{CodesHandle, KeyedMessage}, errors::CodesError, intermediate_bindings::{codes_get_message, codes_handle_delete, codes_handle_new_from_file, codes_handle_new_from_message}};
+use crate::{
+    codes_handle::{CodesHandle, KeyedMessage},
+    errors::CodesError,
+    intermediate_bindings::{
+        codes_get_message_copy, codes_handle_delete, codes_handle_new_from_file,
+        codes_handle_new_from_message_copy,
+    },
+};
 
 ///`FallibleIterator` implementation for `CodesHandle` to access GRIB messages inside file.
 ///
@@ -15,6 +22,12 @@ use crate::{codes_handle::{CodesHandle, KeyedMessage}, errors::CodesError, inter
 ///because internal ecCodes functions can return error codes when the GRIB file
 ///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different
 ///than usage of `Iterator`, check its documentation for more details.
+///
+///For a true memory safety and to provide a ful Rust Iterator functionality, 
+///this iterator clones each message to a new buffer.Although internal ecCodes 
+///message copy implementation makes this operation quite cheap, using this iterator 
+///(and in effect this crate) comes with memory overhead, but is
+///a necessity for memory safety.
 ///
 ///Using the `FallibleIterator` is the only way to read `KeyedMessage`s from the file.
 ///Its basic usage is simply with while let statement (similar to for loop for classic `Iterator`):
@@ -83,7 +96,7 @@ impl FallibleIterator for CodesHandle {
                 if self.file_handle.is_null() {
                     Ok(None)
                 } else {
-                    let message = get_message_from_handle(h)?;
+                    let message = get_message_from_handle(h);
                     Ok(Some(message))
                 }
             }
@@ -92,25 +105,26 @@ impl FallibleIterator for CodesHandle {
     }
 }
 
-fn get_message_from_handle(handle: *mut codes_handle) -> Result<KeyedMessage, CodesError> {
+fn get_message_from_handle(handle: *mut codes_handle) -> KeyedMessage {
     let new_handle;
+    let new_buffer;
 
     unsafe {
-        let message_tuple = codes_get_message(handle)?;
-        new_handle = codes_handle_new_from_message(message_tuple.0, message_tuple.1);
+        new_buffer = codes_get_message_copy(handle).expect(
+            "Getting message clone failed.
+        Please report this panic on Github",
+        );
+        new_handle = codes_handle_new_from_message_copy(&new_buffer);
     }
 
-    let new_message = KeyedMessage {
+    KeyedMessage {
         message_handle: new_handle,
-        message_buffer: vec![],
         iterator_flags: None,
         iterator_namespace: None,
         keys_iterator: None,
         keys_iterator_next_item_exists: false,
         nearest_handle: None,
-    };
-
-    Ok(new_message)
+    }
 }
 
 #[cfg(test)]
@@ -157,10 +171,42 @@ mod tests {
         let current_message = handle.next().unwrap().unwrap();
 
         assert!(!current_message.message_handle.is_null());
-        assert!(current_message.message_buffer.is_empty());
         assert!(current_message.iterator_flags.is_none());
         assert!(current_message.iterator_namespace.is_none());
         assert!(current_message.keys_iterator.is_none());
         assert!(!current_message.keys_iterator_next_item_exists);
+    }
+
+    #[test]
+    fn iterator_collect() {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+
+        // Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
+        // First, filter and collect the messages to get those that we want
+        let mut level: Vec<KeyedMessage> = handle
+            .filter(|msg| {
+                Ok(msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
+                    && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string()))
+            })
+            .collect()
+            .unwrap();
+
+        // Now unwrap and access the first and only element of resulting vector
+        // Find nearest modifies internal KeyedMessage fields so we need mutable reference
+        let level = &mut level[0];
+
+        println!("{:?}", level.read_key("shortName"));
+
+        // Get the four nearest gridpoints of Reykjavik
+        let nearest_gridpoints = level.find_nearest(64.13, -21.89).unwrap();
+
+        // Print value and distance of the nearest gridpoint
+        println!(
+            "value: {}, distance: {}",
+            nearest_gridpoints[3].value, nearest_gridpoints[3].distance
+        );
     }
 }

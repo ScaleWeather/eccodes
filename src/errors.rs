@@ -25,10 +25,10 @@ pub enum CodesError {
     #[error("libc function returned an error with code {0} and errno {1}")]
     LibcNonZero(i32, Errno),
 
-    ///Returned when there is an issue while opening the file.
+    ///Returned when there is an issue while handlng the file.
     ///Check the [`std::fs`] documentation why and when this error can occur.
     #[error("Error occured while opening the file: {0}")]
-    CantOpenFile(#[from] std::io::Error),
+    FileHandlingInterrupted(#[from] std::io::Error),
 
     ///Returned when the constructor did not find any message of requested kind
     #[error("No message have been found in the file")]

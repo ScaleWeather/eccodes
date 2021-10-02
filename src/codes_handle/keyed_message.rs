@@ -1,258 +1,24 @@
-use eccodes_sys::{codes_keys_iterator, codes_nearest};
-use fallible_iterator::FallibleIterator;
+mod iterator;
+mod read;
+mod write;
+
+use eccodes_sys::codes_nearest;
 use log::warn;
 use std::ptr::null_mut;
 
 use crate::{
-    codes_handle::{Key, KeyType, KeyedMessage},
+    codes_handle::KeyedMessage,
     errors::CodesError,
     intermediate_bindings::{
-        codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
-        codes_get_long_array, codes_get_message_copy, codes_get_native_type, codes_get_size,
-        codes_get_string, codes_grib_nearest_delete, codes_grib_nearest_find,
+        codes_get_message_copy, codes_grib_nearest_delete, codes_grib_nearest_find,
         codes_grib_nearest_new, codes_handle_delete, codes_handle_new_from_message_copy,
-        codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
-        codes_keys_iterator_next, NativeKeyType,
+        codes_keys_iterator_delete,
     },
 };
 
 use super::{KeysIteratorFlags, NearestGridpoint};
 
 impl KeyedMessage {
-    ///Method to get a [`Key`] with provided name from the `KeyedMessage`.
-    ///
-    ///This function takes a key name and returns the key value as [`Key`]
-    ///if requested key exists. Check the [`Key`] documentation for details
-    ///of possible key types.
-    ///
-    ///## Example
-    ///
-    ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType::Str};
-    ///# use std::path::Path;
-    ///# use eccodes::FallibleIterator;
-    ///#
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let message = handle.next().unwrap().unwrap();
-    ///let message_short_name = message.read_key("shortName").unwrap();
-    ///
-    ///assert_eq!(message_short_name.value, Str("msl".to_string()));
-    ///```
-    ///
-    ///This function will try to retrieve the key of native string type as string even
-    ///when the nul byte is not positioned at the end of key value.
-    ///
-    ///If retrieving the key value in native type fails this function will try to read
-    ///the requested key as bytes.
-    ///
-    ///## Errors
-    ///
-    ///Returns [`CodesInternal::CodesNotFound`](crate::errors::CodesInternal::CodesNotFound)
-    ///wrapped in [`CodesError::Internal`] when a key of given name has not been found in the message.
-    ///
-    ///Returns [`CodesError::MissingKey`] when a given key has a missing type.
-    ///
-    ///Returns [`CodesError::Internal`] when one of internal ecCodes functions to read the key fails.
-    ///
-    ///Returns [`CodesError::CstrUTF8`] and [`CodesError::NulChar`] when the string returned by ecCodes
-    ///library cannot be parsed as valid UTF8 Rust string.
-    ///
-    ///## Panics
-    ///
-    ///Panics when the size of given key is lower than 1. This indicates corrupted data file,
-    ///bug in the crate or bug in the ecCodes library. If you encounter this panic please check
-    ///if your file is correct and report it on Github.
-    pub fn read_key(&self, key_name: &str) -> Result<Key, CodesError> {
-        let key_type;
-
-        unsafe {
-            key_type = codes_get_native_type(self.message_handle, key_name)?;
-        }
-
-        let key_value = match key_type {
-            NativeKeyType::Long => {
-                let key_size;
-                unsafe { key_size = codes_get_size(self.message_handle, key_name)? }
-
-                if key_size == 1 {
-                    let value;
-                    unsafe {
-                        value = codes_get_long(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(KeyType::Int(val)),
-                        Err(err) => Err(err),
-                    }
-                } else if key_size >= 2 {
-                    let value;
-                    unsafe {
-                        value = codes_get_long_array(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(KeyType::IntArray(val)),
-                        Err(err) => Err(err),
-                    }
-                } else {
-                    panic!("Incorrect key size!");
-                }
-            }
-            NativeKeyType::Double => {
-                let key_size;
-                unsafe { key_size = codes_get_size(self.message_handle, key_name)? }
-
-                if key_size == 1 {
-                    let value;
-                    unsafe {
-                        value = codes_get_double(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(KeyType::Float(val)),
-                        Err(err) => Err(err),
-                    }
-                } else if key_size >= 2 {
-                    let value;
-                    unsafe {
-                        value = codes_get_double_array(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(KeyType::FloatArray(val)),
-                        Err(err) => Err(err),
-                    }
-                } else {
-                    panic!("Incorrect key size!");
-                }
-            }
-            NativeKeyType::Bytes => {
-                let value;
-                unsafe {
-                    value = codes_get_bytes(self.message_handle, key_name);
-                }
-
-                match value {
-                    Ok(val) => Ok(KeyType::Bytes(val)),
-                    Err(err) => Err(err),
-                }
-            }
-            NativeKeyType::Missing => return Err(CodesError::MissingKey),
-            _ => {
-                let value;
-                unsafe {
-                    value = codes_get_string(self.message_handle, key_name);
-                }
-
-                match value {
-                    Ok(val) => Ok(KeyType::Str(val)),
-                    Err(err) => Err(err),
-                }
-            }
-        };
-
-        if let Ok(value) = key_value {
-            Ok(Key {
-                name: key_name.to_owned(),
-                value,
-            })
-        } else {
-            let value;
-            unsafe {
-                value = codes_get_bytes(self.message_handle, key_name)?;
-            }
-
-            Ok(Key {
-                name: key_name.to_owned(),
-                value: KeyType::Bytes(value),
-            })
-        }
-    }
-
-    ///Function that allows to set the flags and namespace for `FallibleIterator`.
-    ///**Must be called before calling the iterator.** Changing the parameters
-    ///after first call of `next()` will have no effect on the iterator.
-    ///
-    ///The flags are set by providing any combination of [`KeysIteratorFlags`]
-    ///inside a vector. Check the documentation for the details of each flag meaning.
-    ///
-    ///Namespace is set simply as string, eg. `"ls"`, `"time"`, `"parameter"`, `"geography"`, `"statistics"`.
-    ///Invalid namespace will result in empty iterator.
-    ///
-    ///Default parameters are [`AllKeys`](KeysIteratorFlags::AllKeys) flag and `""` namespace,
-    ///which implies iteration over all keys available in the message.
-    ///
-    ///### Example
-    ///
-    ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-    ///# use std::path::Path;
-    ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use eccodes::FallibleIterator;
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let mut current_message = handle.next().unwrap().unwrap();
-    ///
-    ///
-    ///let flags = vec![
-    ///    KeysIteratorFlags::AllKeys,
-    ///    KeysIteratorFlags::SkipOptional,
-    ///    KeysIteratorFlags::SkipReadOnly,
-    ///    KeysIteratorFlags::SkipDuplicates,
-    ///];
-    ///
-    ///let namespace = "geography".to_owned();
-    ///
-    ///current_message.set_iterator_parameters(flags, namespace);
-    ///
-    ///
-    ///while let Some(key) = current_message.next().unwrap() {
-    ///    println!("{:?}", key);
-    ///}
-    ///```
-    pub fn set_iterator_parameters(&mut self, flags: Vec<KeysIteratorFlags>, namespace: String) {
-        self.iterator_namespace = Some(namespace);
-
-        let mut flags_sum = 0;
-
-        for flag in flags {
-            flags_sum += flag as u32;
-        }
-
-        self.iterator_flags = Some(flags_sum);
-    }
-
-    fn keys_iterator(&mut self) -> Result<*mut codes_keys_iterator, CodesError> {
-        self.keys_iterator.map_or_else(
-            || {
-                let flags = self.iterator_flags.unwrap_or(0);
-
-                let namespace = match self.iterator_namespace.clone() {
-                    Some(n) => n,
-                    None => "".to_owned(),
-                };
-
-                let itr;
-                let next_item;
-                unsafe {
-                    itr = codes_keys_iterator_new(self.message_handle, flags, &namespace);
-                    next_item = codes_keys_iterator_next(itr);
-                }
-
-                self.keys_iterator_next_item_exists = next_item;
-                self.keys_iterator = Some(itr);
-
-                Ok(itr)
-            },
-            Ok,
-        )
-    }
-
     fn nearest_handle(&mut self) -> Result<*mut codes_nearest, CodesError> {
         if let Some(nrst) = self.nearest_handle {
             Ok(nrst)
@@ -333,72 +99,11 @@ impl Clone for KeyedMessage {
 
         KeyedMessage {
             message_handle: new_handle,
-            message_buffer: new_buffer,
             iterator_flags: None,
             iterator_namespace: None,
             keys_iterator: None,
             keys_iterator_next_item_exists: false,
             nearest_handle: None,
-        }
-    }
-}
-
-///`FallibleIterator` implementation for KeyedMessage to access keyes inside message.
-///Mainly useful to discover what keys are present inside the message.
-///
-///This function internally calls [`read_key()`](KeyedMessage::read_key()) function
-///so it is probably more efficient to call that function directly only for keys you
-///are interested in.
-///
-///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator`
-///because internal ecCodes functions can return internal error in some edge-cases.
-///The usage of `FallibleIterator` is sligthly different than usage of `Iterator`,
-///check its documentation for more details.
-///
-///## Example
-///
-///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-///# use std::path::Path;
-///# use eccodes::codes_handle::KeyType::Str;
-///# use eccodes::FallibleIterator;
-///let file_path = Path::new("./data/iceland.grib");
-///let product_kind = ProductKind::GRIB;
-///
-///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-///let mut current_message = handle.next().unwrap().unwrap();
-///
-///while let Some(key) = current_message.next().unwrap() {
-///    println!("{:?}", key);
-///}
-///```
-///
-///## Errors
-///The `next()` method will return [`CodesInternal`](crate::errors::CodesInternal)
-///when internal ecCodes function returns non-zero code.
-impl FallibleIterator for KeyedMessage {
-    type Item = Key;
-    type Error = CodesError;
-
-    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let itr = self.keys_iterator()?;
-
-        if self.keys_iterator_next_item_exists {
-            let key_name;
-            let next_item_exists;
-
-            unsafe {
-                key_name = codes_keys_iterator_get_name(itr)?;
-                next_item_exists = codes_keys_iterator_next(itr);
-            }
-
-            let key = KeyedMessage::read_key(self, &key_name)?;
-
-            self.keys_iterator_next_item_exists = next_item_exists;
-
-            Ok(Some(key))
-        } else {
-            Ok(None)
         }
     }
 }
@@ -457,60 +162,10 @@ impl Drop for KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, KeyType, KeysIteratorFlags, ProductKind};
+    use crate::codes_handle::{CodesHandle, ProductKind};
     use crate::FallibleIterator;
     use std::path::Path;
     use testing_logger;
-
-    #[test]
-    fn key_reader() {
-        let file_path = Path::new("./data/iceland.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-
-        let current_message = handle.next().unwrap().unwrap();
-
-        let str_key = current_message.read_key("name").unwrap();
-
-        match str_key.value {
-            KeyType::Str(_) => {}
-            _ => panic!("Incorrect variant of string key"),
-        }
-
-        assert_eq!(str_key.name, "name");
-
-        let double_key = current_message
-            .read_key("jDirectionIncrementInDegrees")
-            .unwrap();
-
-        match double_key.value {
-            KeyType::Float(_) => {}
-            _ => panic!("Incorrect variant of double key"),
-        }
-
-        assert_eq!(double_key.name, "jDirectionIncrementInDegrees");
-
-        let long_key = current_message
-            .read_key("numberOfPointsAlongAParallel")
-            .unwrap();
-
-        match long_key.value {
-            KeyType::Int(_) => {}
-            _ => panic!("Incorrect variant of long key"),
-        }
-
-        assert_eq!(long_key.name, "numberOfPointsAlongAParallel");
-
-        let double_arr_key = current_message.read_key("values").unwrap();
-
-        match double_arr_key.value {
-            KeyType::FloatArray(_) => {}
-            _ => panic!("Incorrect variant of double array key"),
-        }
-
-        assert_eq!(double_arr_key.name, "values");
-    }
 
     #[test]
     fn key_clone() {
@@ -525,39 +180,10 @@ mod tests {
             current_message.message_handle,
             cloned_message.message_handle
         );
-        assert!(!cloned_message.message_buffer.is_empty());
         assert!(cloned_message.iterator_flags.is_none());
         assert!(cloned_message.iterator_namespace.is_none());
         assert!(cloned_message.keys_iterator.is_none());
         assert!(!cloned_message.keys_iterator_next_item_exists);
-    }
-
-    #[test]
-    fn era5_keys() {
-        let file_path = Path::new("./data/iceland.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
-
-        for i in 0..=300 {
-            let key = current_message.next();
-            println!("{}: {:?}", i, key);
-        }
-    }
-
-    #[test]
-    fn gfs_keys() {
-        let file_path = Path::new("./data/gfs.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
-        
-        for i in 0..=300 {
-            let key = current_message.next();
-            println!("{}: {:?}", i, key);
-        }
     }
 
     #[test]
@@ -576,42 +202,6 @@ mod tests {
         testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 0);
         });
-    }
-
-    #[test]
-    fn keys_iterator_parameters() {
-        let file_path = Path::new("./data/iceland.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
-
-        assert!(current_message.message_buffer.is_empty());
-        assert!(current_message.iterator_flags.is_none());
-        assert!(current_message.iterator_namespace.is_none());
-        assert!(current_message.keys_iterator.is_none());
-        assert!(!current_message.keys_iterator_next_item_exists);
-
-        let flags = vec![
-            KeysIteratorFlags::AllKeys,        //0
-            KeysIteratorFlags::SkipOptional,   //2
-            KeysIteratorFlags::SkipReadOnly,   //1
-            KeysIteratorFlags::SkipDuplicates, //32
-        ];
-
-        let namespace = "geography".to_owned();
-
-        current_message.set_iterator_parameters(flags, namespace);
-
-        assert_eq!(current_message.iterator_flags, Some(35));
-        assert_eq!(
-            current_message.iterator_namespace,
-            Some("geography".to_owned())
-        );
-
-        while let Some(key) = current_message.next().unwrap() {
-            assert!(!key.name.is_empty());
-        }
     }
 
     #[test]
@@ -634,39 +224,5 @@ mod tests {
         assert!(out1[1].lat == 64.0);
         assert!(out2[2].lon == -21.75);
         assert!(out1[0].distance > 15.0);
-    }
-
-    #[test]
-    fn missing_key() {
-        let file_path = Path::new("./data/iceland.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
-
-        let missing_key = current_message.read_key("doesNotExist");
-
-        assert!(missing_key.is_err());
-    }
-
-    #[test]
-    fn invalid_namespace() {
-        let file_path = Path::new("./data/iceland.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
-
-        let flags = vec![
-            KeysIteratorFlags::AllKeys, //0
-        ];
-
-        let namespace = "blabla".to_owned();
-
-        current_message.set_iterator_parameters(flags, namespace);
-
-        while let Some(key) = current_message.next().unwrap() {
-            assert!(!key.name.is_empty());
-        }
     }
 }

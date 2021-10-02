@@ -41,7 +41,7 @@
 //!methods to access data values. The data inside `KeyedMessage` is provided directly as [`Key`](codes_handle::Key)
 //!or as more specific data type.
 //!
-//!### Example
+//!#### Example
 //!
 //!```
 //!// We are reading the mean sea level pressure for 4 gridpoints
@@ -82,6 +82,88 @@
 //!println!("value: {}, distance: {}", 
 //!    nearest_gridpoints[3].value, 
 //!    nearest_gridpoints[3].distance);
+//!# Ok(())
+//!# }
+//!```
+//!
+//!### Writing GRIB files
+//!
+//!The crate provides a basic support for setting `KeyedMessage` keys 
+//!and writing GRIB files. The easiests (and safest) way to create a 
+//!new custom message is to copy exisitng one from other GRIB file,
+//!modify the keys and write to new file.
+//!
+//!#### Example
+//!
+//!```rust
+//!# use eccodes::{
+//!#     codes_handle::{
+//!#         CodesHandle, Key,
+//!#         KeyType::{self, FloatArray, Int, Str},
+//!#         KeyedMessage,
+//!#         ProductKind::{self, GRIB},
+//!#     },
+//!#     FallibleIterator,
+//!# };
+//!# use std::{fs::remove_file, path::Path};
+//!# use eccodes::errors::CodesError;
+//!#
+//!# fn main() -> Result<(), CodesError> {
+//!// We are computing the temperature at 850hPa as an average
+//!// of 900hPa and 800hPa and writing it to a new file.
+//!let file_path = Path::new("./data/iceland-levels.grib");
+//!let handle = CodesHandle::new_from_file(file_path, GRIB)?;
+//!
+//!// Get messages with temperature levels
+//!let t_levels: Vec<KeyedMessage> = handle
+//!    .filter(|msg| Ok(msg.read_key("shortName")?.value == Str("t".to_string())))
+//!    .collect()?;
+//!
+//!// Get any message to edit it later
+//!let mut new_msg = t_levels[0].clone();
+//!
+//!// Get temperatures at 800hPa and 900hPa
+//!let mut t800 = vec![];
+//!let mut t900 = vec![];
+//!
+//!for msg in t_levels {
+//!    if msg.read_key("level")?.value == Int(800) {
+//!        if let FloatArray(vals) = msg.read_key("values")?.value {
+//!            t800 = vals;
+//!        }
+//!    }
+//!
+//!    if msg.read_key("level")?.value == Int(900) {
+//!        if let FloatArray(vals) = msg.read_key("values")?.value {
+//!            t900 = vals;
+//!        }
+//!    }
+//!}
+//!
+//!// Compute temperature at 850hPa
+//!let t850: Vec<f64> = t800
+//!    .iter()
+//!    .zip(t900.iter())
+//!    .map(|t| (t.0 + t.1) / 2.0)
+//!    .collect();
+//!
+//!// Edit appropriate keys in the editable message
+//!new_msg
+//!    .write_key(Key {
+//!        name: "level".to_string(),
+//!        value: Int(850),
+//!    })?;
+//!new_msg
+//!    .write_key(Key {
+//!        name: "values".to_string(),
+//!        value: FloatArray(t850),
+//!    })?;
+//!
+//!// Save the message to a new file without appending
+//!new_msg
+//!    .write_to_file(Path::new("iceland-850.grib"), false)?;
+//!#
+//!# remove_file(Path::new("iceland-850.grib")).unwrap();
 //!# Ok(())
 //!# }
 //!```

@@ -54,7 +54,7 @@ $ export LD_LIBRARY_PATH=<your_eccodes_path>/lib
 ### Accessing GRIB files
 
 This crate provides an access to GRIB file by creating a
-`CodesHandle` and reading messages from the file with it.
+`CodesHandle` and reading with it messages from the file.
 
 The `CodesHandle` can be constructed in two ways:
 
@@ -74,7 +74,7 @@ The `FallibleIterator` returns a `KeyedMessage` structure which implements some
 methods to access data values. The data inside `KeyedMessage` is provided directly as `Key`
 or as more specific data type.
 
-### Example
+#### Example
 
 ```rust
 // We are reading the mean sea level pressure for 4 gridpoints
@@ -110,6 +110,16 @@ println!("value: {}, distance: {}",
     nearest_gridpoints[3].distance);
 ```
 
+### Writing GRIB files
+
+The crate provides a basic support for setting `KeyedMessage` keys 
+and writing GRIB files. The easiests (and safest) way to create a 
+new custom message is to copy exisitng one from other GRIB file,
+modify the keys and write to new file.
+
+You can find a detailed example of setting keys and writing message to file
+in the documentation.
+
 ### Features
 
 - `docs` - builds the create without linking ecCodes, particularly useful when building the documentation
@@ -136,7 +146,7 @@ _(Functions from ecCodes API wrapped at given stage are marked in parentheses)_
     - [x] Reading keys from messages (`codes_get_double`, `codes_get_long`, `codes_get_string`, `codes_get_double_array`, `codes_get_long_array`, `codes_get_size`, `codes_get_length`, `codes_get_native_type`)
     - [x] Iterating over key names with `Iterator` (`codes_grib_iterator_new`, `codes_grib_iterator_next`, `codes_keys_iterator_get_name`, `codes_keys_iterator_rewind `, `codes_grib_iterator_delete`)
     - [x] Finding nearest data points for given coordinates (`codes_grib_nearest_new`, `codes_grib_nearest_find`, `codes_grib_nearest_delete`)
-- [ ] Writing GRIB files
+- [x] Writing GRIB files (`codes_set_double`, `codes_set_long`, `codes_set_string`, `codes_set_double_array`, `codes_set_long_array`,`codes_set_length`)
 - [ ] Reading and writing BUFR files
 
 ## License

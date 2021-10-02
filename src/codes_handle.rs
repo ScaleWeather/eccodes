@@ -51,7 +51,6 @@ pub struct CodesHandle {
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,
-    message_buffer: Vec<u8>,
     iterator_flags: Option<u32>,
     iterator_namespace: Option<String>,
     keys_iterator: Option<*mut codes_keys_iterator>,
@@ -162,7 +161,7 @@ impl CodesHandle {
     ///[`File`] is safely closed when it is dropped.
     ///
     ///## Errors
-    ///Returns [`CodesError::CantOpenFile`] with [`io::Error`](std::io::Error)
+    ///Returns [`CodesError::FileHandlingInterrupted`] with [`io::Error`](std::io::Error)
     ///when the file cannot be opened.
     ///
     ///Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
