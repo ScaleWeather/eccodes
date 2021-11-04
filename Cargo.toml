@@ -14,24 +14,24 @@ categories = [
     "science",
 ]
 license = "Apache-2.0"
-edition = "2018"
+edition = "2021"
 exclude = [".github/*", ".vscode/*", ".idea/*", "data/*"]
 
 [dependencies]
 eccodes-sys = "0.2.2"
-libc = "0.2.103"
-thiserror = "1.0.29"
+libc = "0.2.106"
+thiserror = "1.0.30"
 bytes = "1.1.0"
 log = "0.4.14"
-errno = "0.2.7"
+errno = "0.2.8"
 num-derive = "0.3.3"
 num-traits = "0.2.14"
 fallible-iterator = "0.2.0"
 
 [dev-dependencies]
 eccodes-sys = "0.2.2"
-reqwest = { version = "0.11.4", features = ["rustls-tls"] }
-tokio = { version = "1.12.0", features = ["macros", "rt"] }
+reqwest = { version = "0.11.6", features = ["rustls-tls"] }
+tokio = { version = "1.13.0", features = ["macros", "rt"] }
 criterion = "0.3.5"
 testing_logger = "0.1.1"
 
