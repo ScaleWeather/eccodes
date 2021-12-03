@@ -30,7 +30,7 @@ mod keyed_message;
 #[derive(Debug)]
 pub struct CodesHandle {
     file_handle: *mut codes_handle,
-    data: DataContainer,
+    _data: DataContainer,
     file_pointer: *mut FILE,
     product_kind: ProductKind,
 }
@@ -179,7 +179,7 @@ impl CodesHandle {
         let file_handle = null_mut();
 
         Ok(CodesHandle {
-            data: (DataContainer::FileBuffer(file)),
+            _data: (DataContainer::FileBuffer(file)),
             file_handle,
             file_pointer,
             product_kind,
@@ -233,7 +233,7 @@ impl CodesHandle {
         let file_handle = null_mut();
 
         Ok(CodesHandle {
-            data: (DataContainer::FileBytes(file_data)),
+            _data: (DataContainer::FileBytes(file_data)),
             file_handle,
             file_pointer,
             product_kind,
@@ -328,7 +328,7 @@ mod tests {
         assert!(handle.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
 
-        let metadata = match &handle.data {
+        let metadata = match &handle._data {
             DataContainer::FileBytes(_) => panic!(),
             DataContainer::FileBuffer(file) => file.metadata().unwrap(),
         };
@@ -353,7 +353,7 @@ mod tests {
         assert!(handle.file_handle.is_null());
         assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
 
-        match &handle.data {
+        match &handle._data {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
             DataContainer::FileBuffer(_) => panic!(),
         };
