@@ -134,7 +134,7 @@ impl KeyedMessage {
 
                 let namespace = match self.iterator_namespace.clone() {
                     Some(n) => n,
-                    None => "".to_owned(),
+                    None => String::new(),
                 };
 
                 let itr;

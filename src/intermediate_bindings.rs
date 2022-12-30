@@ -7,7 +7,7 @@
 
 use std::{
     ffi::{CStr, CString},
-    ptr,
+    ptr::{self, addr_of_mut},
 };
 
 use eccodes_sys::{
@@ -48,7 +48,7 @@ pub unsafe fn codes_handle_new_from_file(
         context,
         file_pointer.cast::<_IO_FILE>(),
         product_kind as u32,
-        &mut error_code as *mut i32,
+        &mut error_code,
     );
 
     if error_code != 0 {
@@ -77,8 +77,7 @@ pub unsafe fn codes_get_native_type(
     let key = CString::new(key).unwrap();
     let mut key_type: i32 = 0;
 
-    let error_code =
-        eccodes_sys::codes_get_native_type(handle, key.as_ptr(), &mut key_type as *mut i32);
+    let error_code = eccodes_sys::codes_get_native_type(handle, key.as_ptr(), &mut key_type);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -106,7 +105,7 @@ pub unsafe fn codes_get_long(handle: *mut codes_handle, key: &str) -> Result<i64
     let key = CString::new(key).unwrap();
     let mut key_value: i64 = 0;
 
-    let error_code = eccodes_sys::codes_get_long(handle, key.as_ptr(), &mut key_value as *mut i64);
+    let error_code = eccodes_sys::codes_get_long(handle, key.as_ptr(), &mut key_value);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -120,8 +119,7 @@ pub unsafe fn codes_get_double(handle: *mut codes_handle, key: &str) -> Result<f
     let key = CString::new(key).unwrap();
     let mut key_value: f64 = 0.0;
 
-    let error_code =
-        eccodes_sys::codes_get_double(handle, key.as_ptr(), &mut key_value as *mut f64);
+    let error_code = eccodes_sys::codes_get_double(handle, key.as_ptr(), &mut key_value);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -270,23 +268,16 @@ pub unsafe fn codes_get_message(
 
     let mut message_size: usize = 0;
 
-    let error_code = eccodes_sys::codes_get_message(
-        handle,
-        &mut buffer_ptr as *mut *const c_void,
-        &mut message_size,
-    );
+    let error_code = eccodes_sys::codes_get_message(handle, &mut buffer_ptr, &mut message_size);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
         return Err(err.into());
     }
 
-    if buffer_size != message_size {
-        panic!(
-            "Buffer and message sizes ar not equal in codes_get_message!
-        Please report this panic on Github."
-        );
-    }
+    assert!(buffer_size == message_size, 
+        "Buffer and message sizes ar not equal in codes_get_message! 
+        Please report this panic on Github.");
 
     Ok((buffer_ptr, message_size))
 }
@@ -309,12 +300,9 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
         return Err(err.into());
     }
 
-    if buffer_size != message_size && message_size != buffer.len() {
-        panic!(
-            "Buffer, vector and message sizes ar not equal in codes_get_message!
-        Please report this panic on Github."
-        );
-    }
+    assert!((buffer_size == message_size && message_size == buffer.len()), 
+        "Buffer, vector and message sizes ar not equal in codes_get_message! 
+        Please report this panic on Github.");
 
     Ok(buffer)
 }
@@ -420,11 +408,11 @@ pub unsafe fn codes_grib_nearest_find(
         lat,
         lon,
         u64::from(flags),
-        &mut output_lats as *mut f64,
-        &mut output_lons as *mut f64,
-        &mut output_values as *mut f64,
-        &mut output_distances as *mut f64,
-        &mut output_indexes as *mut i32,
+        addr_of_mut!(output_lats[0]),
+        addr_of_mut!(output_lons[0]),
+        addr_of_mut!(output_values[0]),
+        addr_of_mut!(output_distances[0]),
+        addr_of_mut!(output_indexes[0]),
         &mut length,
     );
 
