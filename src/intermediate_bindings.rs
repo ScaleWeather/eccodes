@@ -136,7 +136,7 @@ pub unsafe fn codes_get_double_array(
     let mut key_size = codes_get_size(handle, key)?;
     let key = CString::new(key).unwrap();
 
-    let mut key_values: Vec<f64> = vec![0.0; key_size as usize];
+    let mut key_values: Vec<f64> = vec![0.0; key_size];
 
     let error_code = eccodes_sys::codes_get_double_array(
         handle,
@@ -160,7 +160,7 @@ pub unsafe fn codes_get_long_array(
     let mut key_size = codes_get_size(handle, key)?;
     let key = CString::new(key).unwrap();
 
-    let mut key_values: Vec<i64> = vec![0; key_size as usize];
+    let mut key_values: Vec<i64> = vec![0; key_size];
 
     let error_code = eccodes_sys::codes_get_long_array(
         handle,
@@ -195,7 +195,7 @@ pub unsafe fn codes_get_string(handle: *mut codes_handle, key: &str) -> Result<S
     let mut key_length = codes_get_length(handle, key)?;
     let key = CString::new(key).unwrap();
 
-    let mut key_message: Vec<u8> = vec![0; key_length as usize];
+    let mut key_message: Vec<u8> = vec![0; key_length];
 
     let error_code = eccodes_sys::codes_get_string(
         handle,
@@ -209,7 +209,7 @@ pub unsafe fn codes_get_string(handle: *mut codes_handle, key: &str) -> Result<S
         return Err(err.into());
     }
 
-    key_message.truncate(key_length as usize);
+    key_message.truncate(key_length);
     let key_message_result = CStr::from_bytes_with_nul(key_message.as_ref());
 
     let key_message_cstr = if let Ok(msg) = key_message_result {
@@ -228,7 +228,7 @@ pub unsafe fn codes_get_bytes(handle: *mut codes_handle, key: &str) -> Result<Ve
     let mut key_size = codes_get_length(handle, key)?;
     let key = CString::new(key).unwrap();
 
-    let mut buffer: Vec<u8> = vec![0; key_size as usize];
+    let mut buffer: Vec<u8> = vec![0; key_size];
 
     let error_code = eccodes_sys::codes_get_bytes(
         handle,
@@ -263,7 +263,7 @@ pub unsafe fn codes_get_message(
 ) -> Result<(*const c_void, usize), CodesError> {
     let buffer_size = codes_get_message_size(handle)?;
 
-    let buffer: Vec<u8> = vec![0; buffer_size as usize];
+    let buffer: Vec<u8> = vec![0; buffer_size];
     let mut buffer_ptr = buffer.as_ptr().cast::<libc::c_void>();
 
     let mut message_size: usize = 0;
@@ -285,7 +285,7 @@ pub unsafe fn codes_get_message(
 pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8>, CodesError> {
     let buffer_size = codes_get_message_size(handle)?;
 
-    let mut buffer: Vec<u8> = vec![0; buffer_size as usize];
+    let mut buffer: Vec<u8> = vec![0; buffer_size];
 
     let mut message_size = buffer_size;
 

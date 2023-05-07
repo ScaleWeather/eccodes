@@ -52,7 +52,7 @@ impl KeyedMessage {
     ///when internal ecCodes function returns non-zero code.
     pub fn write_to_file(&self, file_path: &Path, append: bool) -> Result<(), CodesError> {
         let msg = unsafe { codes_get_message(self.message_handle)? };
-        let buf = unsafe { slice::from_raw_parts(msg.0.cast::<u8>(), msg.1 as usize) };
+        let buf = unsafe { slice::from_raw_parts(msg.0.cast::<u8>(), msg.1) };
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
@@ -166,7 +166,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap().clone();
+        let current_message = handle.next().unwrap().unwrap();
 
         drop(handle);
 

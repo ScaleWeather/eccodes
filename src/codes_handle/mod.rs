@@ -326,7 +326,7 @@ mod tests {
 
         assert!(!handle.file_pointer.is_null());
         assert!(handle.file_handle.is_null());
-        assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
+        assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         let metadata = match &handle._data {
             DataContainer::FileBytes(_) => panic!(),
@@ -351,7 +351,7 @@ mod tests {
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
         assert!(!handle.file_pointer.is_null());
         assert!(handle.file_handle.is_null());
-        assert_eq!(handle.product_kind as u32, ProductKind_PRODUCT_GRIB as u32);
+        assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         match &handle._data {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
