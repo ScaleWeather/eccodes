@@ -11,9 +11,9 @@ use std::{
 };
 
 use eccodes_sys::{
-    codes_context, codes_handle, codes_keys_iterator, codes_nearest, CODES_NEAREST_SAME_DATA,
-    CODES_NEAREST_SAME_GRID, CODES_TYPE_BYTES, CODES_TYPE_DOUBLE, CODES_TYPE_LABEL,
-    CODES_TYPE_LONG, CODES_TYPE_MISSING, CODES_TYPE_SECTION, CODES_TYPE_STRING,
+    codes_context, codes_handle, codes_index, codes_keys_iterator, codes_nearest,
+    CODES_NEAREST_SAME_DATA, CODES_NEAREST_SAME_GRID, CODES_TYPE_BYTES, CODES_TYPE_DOUBLE,
+    CODES_TYPE_LABEL, CODES_TYPE_LONG, CODES_TYPE_MISSING, CODES_TYPE_SECTION, CODES_TYPE_STRING,
     CODES_TYPE_UNDEFINED, _IO_FILE,
 };
 use libc::{c_void, FILE};
@@ -275,9 +275,11 @@ pub unsafe fn codes_get_message(
         return Err(err.into());
     }
 
-    assert!(buffer_size == message_size, 
+    assert!(
+        buffer_size == message_size,
         "Buffer and message sizes ar not equal in codes_get_message! 
-        Please report this panic on Github.");
+        Please report this panic on Github."
+    );
 
     Ok((buffer_ptr, message_size))
 }
@@ -300,9 +302,11 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
         return Err(err.into());
     }
 
-    assert!((buffer_size == message_size && message_size == buffer.len()), 
+    assert!(
+        (buffer_size == message_size && message_size == buffer.len()),
         "Buffer, vector and message sizes ar not equal in codes_get_message! 
-        Please report this panic on Github.");
+        Please report this panic on Github."
+    );
 
     Ok(buffer)
 }
@@ -315,6 +319,85 @@ pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &[u8]) -> *mut 
         message_buffer.as_ptr().cast::<libc::c_void>(),
         message_buffer.len(),
     )
+}
+
+pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, CodesError> {
+    let filename = CString::new(filename).unwrap();
+    let context: *mut codes_context = ptr::null_mut(); //default context
+    let mut error_code: i32 = 0;
+
+    let codes_index = eccodes_sys::codes_index_read(context, filename.as_ptr(), &mut error_code);
+    codes_index.drop_in_place();
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(codes_index)
+}
+
+pub unsafe fn codes_index_delete(index: *mut codes_index) -> Result<(), CodesError> {
+    eccodes_sys::codes_index_delete(index);
+    Ok(())
+}
+
+pub unsafe fn codes_index_select_long(
+    index: *mut codes_index,
+    key: &str,
+    value: i64,
+) -> Result<(), CodesError> {
+    let key = CString::new(key).unwrap();
+    let error_code = eccodes_sys::codes_index_select_long(index, key.as_ptr(), value);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(())
+}
+
+pub unsafe fn codes_index_select_double(
+    index: *mut codes_index,
+    key: &str,
+    value: f64,
+) -> Result<(), CodesError> {
+    let key = CString::new(key).unwrap();
+    let error_code = eccodes_sys::codes_index_select_double(index, key.as_ptr(), value);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(())
+}
+
+pub unsafe fn codes_index_select_string(
+    index: *mut codes_index,
+    key: &str,
+    value: &str,
+) -> Result<(), CodesError> {
+    let key = CString::new(key).unwrap();
+    let value = CString::new(value).unwrap();
+    let error_code = eccodes_sys::codes_index_select_string(index, key.as_ptr(), value.as_ptr());
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(())
+}
+
+pub unsafe fn codes_handle_new_from_index(
+    index: *mut codes_index,
+) -> Result<*mut codes_handle, CodesError> {
+    let mut error_code: i32 = 0;
+
+    let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(codes_handle)
 }
 
 pub unsafe fn codes_keys_iterator_new(

@@ -14,6 +14,7 @@ use crate::{
         codes_grib_nearest_new, codes_handle_delete, codes_handle_new_from_message_copy,
         codes_keys_iterator_delete,
     },
+    CodesHandle,
 };
 
 use super::{KeysIteratorFlags, NearestGridpoint};
@@ -157,6 +158,20 @@ impl Drop for KeyedMessage {
         }
 
         self.message_handle = null_mut();
+    }
+}
+
+impl TryFrom<CodesHandle> for KeyedMessage {
+    type Error = CodesError;
+    fn try_from(value: CodesHandle) -> Result<Self, CodesError> {
+        Ok(KeyedMessage {
+            message_handle: value.file_handle,
+            iterator_flags: None,
+            iterator_namespace: None,
+            keys_iterator: None,
+            keys_iterator_next_item_exists: false,
+            nearest_handle: None,
+        })
     }
 }
 
