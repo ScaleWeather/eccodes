@@ -14,7 +14,7 @@ use std::path::Path;
 
 #[derive(Debug)]
 pub struct CodesIndex {
-    pub index_handle: *mut codes_index,
+    pub(crate) index_handle: *mut codes_index,
 }
 pub trait Select<T> {
     fn select(&mut self, key: &str, value: T) -> Result<(), CodesError>;
@@ -22,10 +22,9 @@ pub trait Select<T> {
 
 impl CodesIndex {
     pub fn new_from_file(file_path: &Path) -> Result<Self, CodesError> {
-        let file_path_str = file_path.to_str().ok_or_else(|| std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "Path is not valid utf8",
-        ))?;
+        let file_path_str = file_path.to_str().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
+        })?;
         let index_handle;
         unsafe {
             index_handle = codes_index_read(file_path_str)?;
