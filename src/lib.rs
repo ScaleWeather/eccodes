@@ -1,3 +1,6 @@
+#![warn(clippy::pedantic)]
+#![allow(clippy::cast_possible_wrap)]
+
 //!# Unofficial high-level safe Rust bindings to ecCodes library
 //!
 //!This crate contains safe high-level bindings for ecCodes library.
