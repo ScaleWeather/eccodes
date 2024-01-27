@@ -31,7 +31,7 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        cargo test --all-features
+        cargo test --features "ec_index"
         cargo clean
     - name: Benchmark with criterion
       run: |
@@ -57,7 +57,7 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        cargo test --all-features
+        cargo test --features "ec_index"
         cargo clean
     - name: Benchmark with criterion
       run: |

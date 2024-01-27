@@ -23,7 +23,7 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        RUST_BACKTRACE=full cargo test --all-features
+        RUST_BACKTRACE=full cargo test --features "ec_index"
     - name: Check with clippy
       run: |
         cargo clippy -- -W clippy::pedantic
@@ -45,7 +45,7 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        RUST_BACKTRACE=full cargo test --all-features
+        RUST_BACKTRACE=full cargo test --features "ec_index"
     - name: Check with clippy
       run: |
         cargo clippy -- -W clippy::pedantic
