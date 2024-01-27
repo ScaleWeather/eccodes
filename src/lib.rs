@@ -217,6 +217,7 @@
 //!
 
 pub mod codes_handle;
+pub mod codes_index;
 pub mod errors;
 mod intermediate_bindings;
 

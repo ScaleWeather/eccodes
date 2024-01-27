@@ -1,7 +1,9 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
-use crate::errors::CodesError;
+use crate::{
+    codes_index::CodesIndex, errors::CodesError, intermediate_bindings::codes_handle_new_from_index,
+};
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
@@ -293,19 +295,38 @@ impl Drop for CodesHandle {
         //use of stream after the call to fclose() is undefined behaviour, so we clear it
         let return_code;
         unsafe {
-            return_code = libc::fclose(self.file_pointer);
-        }
-
-        if return_code != 0 {
-            let error_val = errno();
-            warn!(
+            if !self.file_pointer.is_null() {
+                return_code = libc::fclose(self.file_pointer);
+                if return_code != 0 {
+                    let error_val = errno();
+                    warn!(
                 "fclose() returned an error and your file might not have been correctly saved.
                 Error code: {}; Error message: {}",
                 error_val.0, error_val
             );
+                }
+            }
         }
 
         self.file_pointer = null_mut();
+    }
+}
+
+impl TryFrom<&CodesIndex> for CodesHandle {
+    type Error = CodesError;
+    fn try_from(value: &CodesIndex) -> Result<Self, CodesError> {
+        let handle: *mut codes_handle;
+        unsafe {
+            handle = codes_handle_new_from_index(value.index_handle)?;
+        }
+
+        let new_handle = CodesHandle {
+            _data: DataContainer::FileBytes(Bytes::new()), //unused, index owns data
+            file_pointer: null_mut(),
+            file_handle: handle,
+            product_kind: ProductKind::GRIB,
+        };
+        Ok(new_handle)
     }
 }
 
