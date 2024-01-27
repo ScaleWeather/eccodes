@@ -1,9 +1,11 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
+#[cfg(feature = "ec_index")]
 use crate::{
-    codes_index::CodesIndex, errors::CodesError, intermediate_bindings::codes_handle_new_from_index,
+    codes_index::CodesIndex, intermediate_bindings::codes_handle_new_from_index,
 };
+use crate::errors::CodesError;
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
@@ -312,6 +314,7 @@ impl Drop for CodesHandle {
     }
 }
 
+#[cfg(feature = "ec_index")]
 impl TryFrom<&CodesIndex> for CodesHandle {
     type Error = CodesError;
     fn try_from(value: &CodesIndex) -> Result<Self, CodesError> {

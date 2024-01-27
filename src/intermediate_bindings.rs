@@ -18,6 +18,8 @@ type _SYS_IO_FILE = eccodes_sys::__sFILE;
 #[cfg(not(target_os = "macos"))]
 type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
 
+#[cfg(feature = "ec_index")]
+use eccodes_sys::codes_index;
 use eccodes_sys::{
     codes_context, codes_handle, codes_keys_iterator, codes_nearest, CODES_NEAREST_SAME_DATA,
     CODES_NEAREST_SAME_GRID, CODES_TYPE_BYTES, CODES_TYPE_DOUBLE, CODES_TYPE_LABEL,
@@ -329,6 +331,7 @@ pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &[u8]) -> *mut 
     )
 }
 
+#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, CodesError> {
     let filename = CString::new(filename).unwrap();
     let context: *mut codes_context = ptr::null_mut(); //default context
@@ -343,11 +346,13 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
     Ok(codes_index)
 }
 
+#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_delete(index: *mut codes_index) -> Result<(), CodesError> {
     eccodes_sys::codes_index_delete(index);
     Ok(())
 }
 
+#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_select_long(
     index: *mut codes_index,
     key: &str,
@@ -363,6 +368,7 @@ pub unsafe fn codes_index_select_long(
     Ok(())
 }
 
+#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_select_double(
     index: *mut codes_index,
     key: &str,
@@ -378,6 +384,7 @@ pub unsafe fn codes_index_select_double(
     Ok(())
 }
 
+#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_select_string(
     index: *mut codes_index,
     key: &str,
@@ -394,6 +401,7 @@ pub unsafe fn codes_index_select_string(
     Ok(())
 }
 
+#[cfg(feature = "ec_index")]
 pub unsafe fn codes_handle_new_from_index(
     index: *mut codes_index,
 ) -> Result<*mut codes_handle, CodesError> {

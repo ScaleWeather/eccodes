@@ -37,6 +37,7 @@ testing_logger = "0.1"
 
 [features]
 docs = ["eccodes-sys/docs"]
+ec_index = []
 
 [package.metadata.docs.rs]
 features = ["docs"]
