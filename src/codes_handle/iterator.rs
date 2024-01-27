@@ -23,9 +23,9 @@ use crate::{
 ///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different
 ///than usage of `Iterator`, check its documentation for more details.
 ///
-///For a true memory safety and to provide a ful Rust Iterator functionality, 
-///this iterator clones each message to a new buffer.Although internal ecCodes 
-///message copy implementation makes this operation quite cheap, using this iterator 
+///For a true memory safety and to provide a ful Rust Iterator functionality,
+///this iterator clones each message to a new buffer.Although internal ecCodes
+///message copy implementation makes this operation quite cheap, using this iterator
 ///(and in effect this crate) comes with memory overhead, but is
 ///a necessity for memory safety.
 ///
@@ -188,8 +188,11 @@ mod tests {
         // First, filter and collect the messages to get those that we want
         let mut level: Vec<KeyedMessage> = handle
             .filter(|msg| {
-                Ok(msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
-                    && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string()))
+                Ok(
+                    msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
+                        && msg.read_key("typeOfLevel")?.value
+                            == KeyType::Str("surface".to_string()),
+                )
             })
             .collect()
             .unwrap();

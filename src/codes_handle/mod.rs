@@ -3,7 +3,7 @@
 
 use crate::errors::CodesError;
 use bytes::Bytes;
-use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle, codes_keys_iterator, codes_nearest};
+use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -131,7 +131,7 @@ pub struct NearestGridpoint {
     ///Distance from coordinates requested in `find_nearest()`
     pub distance: f64,
     ///Value of the filed at given coordinate
-    pub value: f64, 
+    pub value: f64,
 }
 
 impl CodesHandle {
@@ -314,8 +314,8 @@ mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
-    use std::path::Path;
     use log::Level;
+    use std::path::Path;
 
     #[test]
     fn file_constructor() {
@@ -363,35 +363,39 @@ mod tests {
     async fn codes_handle_drop() {
         testing_logger::setup();
 
-        let file_path = Path::new("./data/iceland-surface.grib");
-        let product_kind = ProductKind::GRIB;
+        {
+            let file_path = Path::new("./data/iceland-surface.grib");
+            let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        drop(handle);
+            let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+            drop(handle);
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 0);
-        });
+            testing_logger::validate(|captured_logs| {
+                assert_eq!(captured_logs.len(), 0);
+            });
+        }
 
-        let product_kind = ProductKind::GRIB;
-        let file_data = reqwest::get(
-            "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
-        )
-        .await
-        .unwrap()
-        .bytes()
-        .await
-        .unwrap();
+        {
+            let product_kind = ProductKind::GRIB;
+            let file_data = reqwest::get(
+                "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
+            )
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
 
-        let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
-        drop(handle);
+            let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+            drop(handle);
 
-        //logs from Reqwest are expected
-        testing_logger::validate(|captured_logs| {
-            for log in captured_logs {
-                assert_ne!(log.level, Level::Warn);
-                assert_ne!(log.level, Level::Error);
-            }
-        });
+            //logs from Reqwest are expected
+            testing_logger::validate(|captured_logs| {
+                for log in captured_logs {
+                    assert_ne!(log.level, Level::Warn);
+                    assert_ne!(log.level, Level::Error);
+                }
+            });
+        }
     }
 }
