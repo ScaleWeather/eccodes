@@ -21,15 +21,15 @@ jobs:
         sudo apt-get install libeccodes-dev
         rustup update stable
         cargo clean
-    - name: Build with cargo
+    - name: Test with cargo
       run: |
-        cargo build --release
+        RUST_BACKTRACE=full cargo test
     - name: Check with clippy
       run: |
         cargo clippy -- -W clippy::pedantic
-    - name: Test with cargo
+    - name: Build release
       run: |
-        cargo test
+        cargo build --release
 
   build-macos:
 
@@ -43,12 +43,12 @@ jobs:
         brew install eccodes
         rustup update stable
         cargo clean
-    - name: Build with cargo
+    - name: Test with cargo
       run: |
-        cargo build --release
+        RUST_BACKTRACE=full cargo test
     - name: Check with clippy
       run: |
         cargo clippy -- -W clippy::pedantic
-    - name: Test with cargo
+    - name: Build release
       run: |
-        cargo test
+        cargo build --release

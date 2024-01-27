@@ -259,4 +259,24 @@ mod tests {
 
         assert!(missing_key.is_err());
     }
+
+    #[test]
+    fn benchmark_keys() {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+
+        let msg = handle.next().unwrap().unwrap();
+
+        let _ = msg.read_key("dataDate").unwrap();
+        let _ = msg.read_key("jDirectionIncrementInDegrees").unwrap();
+        let _ = msg.read_key("values").unwrap();
+        let _ = msg.read_key("name").unwrap();
+        let _ = msg.read_key("section1Padding").unwrap();
+        let _ = msg.read_key("experimentVersionNumber").unwrap();
+        let _ = msg
+            .read_key("zero")
+            .unwrap_or_else(|_| msg.read_key("zeros").unwrap());
+    }
 }
