@@ -315,6 +315,7 @@ impl Drop for CodesHandle {
 }
 
 #[cfg(feature = "ec_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
 impl TryFrom<&CodesIndex> for CodesHandle {
     type Error = CodesError;
     fn try_from(value: &CodesIndex) -> Result<Self, CodesError> {

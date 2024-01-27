@@ -21,6 +21,7 @@ pub trait Select<T> {
 }
 
 impl CodesIndex {
+    #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
     pub fn new_from_file(file_path: &Path) -> Result<Self, CodesError> {
         let file_path_str = file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
