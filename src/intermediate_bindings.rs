@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 //!Module containing intermediate (type) bindings to ecCodes functions.
 //!
 //!These bindings convert Rust types to correct C types
@@ -11,9 +13,10 @@ use std::{
 };
 
 #[cfg(target_os = "macos")]
-use eccodes_sys::__sFILE;
+type _SYS_IO_FILE = eccodes_sys::__sFILE;
+
 #[cfg(not(target_os = "macos"))]
-use eccodes_sys::__IO_FILE;
+type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
 
 use eccodes_sys::{
     codes_context, codes_handle, codes_keys_iterator, codes_nearest, CODES_NEAREST_SAME_DATA,
@@ -49,17 +52,9 @@ pub unsafe fn codes_handle_new_from_file(
 
     let mut error_code: i32 = 0;
 
-    #[cfg(target_os = "macos")]
     let file_handle = eccodes_sys::codes_handle_new_from_file(
         context,
-        file_pointer.cast::<__sFILE>(),
-        product_kind as u32,
-        &mut error_code,
-    );
-    #[cfg(not(target_os = "macos"))]
-    let file_handle = eccodes_sys::codes_handle_new_from_file(
-        context,
-        file_pointer.cast::<__sFILE>(),
+        file_pointer.cast::<_SYS_IO_FILE>(),
         product_kind as u32,
         &mut error_code,
     );
