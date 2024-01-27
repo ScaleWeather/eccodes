@@ -11,6 +11,7 @@ env:
 jobs:
   build:
 
+    name: Build on Ubuntu
     runs-on: ubuntu-latest
 
     steps:
@@ -48,6 +49,7 @@ jobs:
       run: |
         brew install eccodes
         rustup update stable
+        cargo install cargo-criterion
         cargo clean
     - name: Build with cargo
       run: |
