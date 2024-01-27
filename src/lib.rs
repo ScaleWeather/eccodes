@@ -224,5 +224,6 @@ mod intermediate_bindings;
 pub use codes_handle::{
     CodesHandle, Key, KeyType, KeyedMessage, KeysIteratorFlags, NearestGridpoint, ProductKind,
 };
+pub use codes_index::CodesIndex;
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
