@@ -3,7 +3,7 @@
 
 use crate::errors::CodesError;
 use bytes::Bytes;
-use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle, codes_keys_iterator, codes_nearest};
+use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -131,7 +131,7 @@ pub struct NearestGridpoint {
     ///Distance from coordinates requested in `find_nearest()`
     pub distance: f64,
     ///Value of the filed at given coordinate
-    pub value: f64, 
+    pub value: f64,
 }
 
 impl CodesHandle {
@@ -314,8 +314,8 @@ mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
-    use std::path::Path;
     use log::Level;
+    use std::path::Path;
 
     #[test]
     fn file_constructor() {

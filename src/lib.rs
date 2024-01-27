@@ -48,7 +48,7 @@
 //!
 //!```
 //!// We are reading the mean sea level pressure for 4 gridpoints
-//!// nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC 
+//!// nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC
 //!// from ERA5 Climate Reanalysis
 //!
 //!// Open the GRIB file and create the CodesHandle
@@ -82,8 +82,8 @@
 //!let nearest_gridpoints = level.find_nearest(64.13, -21.89)?;
 //!
 //!// Print value and distance of the nearest gridpoint
-//!println!("value: {}, distance: {}", 
-//!    nearest_gridpoints[3].value, 
+//!println!("value: {}, distance: {}",
+//!    nearest_gridpoints[3].value,
 //!    nearest_gridpoints[3].distance);
 //!# Ok(())
 //!# }
@@ -91,8 +91,8 @@
 //!
 //!### Writing GRIB files
 //!
-//!The crate provides a basic support for setting `KeyedMessage` keys 
-//!and writing GRIB files. The easiests (and safest) way to create a 
+//!The crate provides a basic support for setting `KeyedMessage` keys
+//!and writing GRIB files. The easiests (and safest) way to create a
 //!new custom message is to copy exisitng one from other GRIB file,
 //!modify the keys and write to new file.
 //!
@@ -213,6 +213,8 @@ pub mod codes_handle;
 pub mod errors;
 mod intermediate_bindings;
 
-pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use codes_handle::{CodesHandle, Key, KeyedMessage, KeyType, KeysIteratorFlags, NearestGridpoint, ProductKind};
+pub use codes_handle::{
+    CodesHandle, Key, KeyType, KeyedMessage, KeysIteratorFlags, NearestGridpoint, ProductKind,
+};
 pub use errors::CodesError;
+pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
