@@ -172,7 +172,7 @@ impl CodesHandle {
     ///when the stream cannot be created from the file descriptor.
     ///
     ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///when internal [`codes_handle`] cannot be created.
     ///
     ///Returns [`CodesError::NoMessages`] when there is no message of requested type
     ///in the provided file.
@@ -224,7 +224,7 @@ impl CodesHandle {
     ///when the file stream cannot be created.
     ///
     ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///when internal [`codes_handle`] cannot be created.
     ///
     ///Returns [`CodesError::NoMessages`] when there is no message of requested type
     ///in the provided file.

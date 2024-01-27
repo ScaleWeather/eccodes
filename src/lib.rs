@@ -25,9 +25,9 @@
 //!### Accessing GRIB files
 //!
 //!This crate provides an access to GRIB file by creating a
-//![`CodesHandle`](codes_handle::CodesHandle) and reading messages from the file with it.
+//![`CodesHandle`] and reading messages from the file with it.
 //!
-//!The [`CodesHandle`](codes_handle::CodesHandle) can be constructed in two ways:
+//!The [`CodesHandle`] can be constructed in two ways:
 //!
 //!- The main option is to use [`new_from_file()`](codes_handle::CodesHandle::new_from_file) function
 //!to open a file under provided [`path`](`std::path::Path`) with filesystem,
@@ -41,8 +41,8 @@
 //!Data (messages) inside the GRIB file can be accessed using the [`FallibleIterator`](`codes_handle::CodesHandle#impl-FallibleIterator`)
 //!by iterating over the `CodesHandle`.
 //!
-//!The `FallibleIterator` returns a [`KeyedMessage`](codes_handle::KeyedMessage) structure which implements some
-//!methods to access data values. The data inside `KeyedMessage` is provided directly as [`Key`](codes_handle::Key)
+//!The `FallibleIterator` returns a [`KeyedMessage` structure which implements some
+//!methods to access data values. The data inside `KeyedMessage` is provided directly as [`Key`]
 //!or as more specific data type.
 //!
 //!#### Example

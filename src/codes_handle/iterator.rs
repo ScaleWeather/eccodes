@@ -18,7 +18,7 @@ use crate::{
 ///Therefore this crate utilizes the `Iterator` to provide the access to GRIB messages in
 ///a safe and convienient way.
 ///
-///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator`
+///[`FallibleIterator`] is used instead of classic `Iterator`
 ///because internal ecCodes functions can return error codes when the GRIB file
 ///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different
 ///than usage of `Iterator`, check its documentation for more details.
