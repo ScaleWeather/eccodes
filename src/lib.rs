@@ -210,6 +210,6 @@ pub mod codes_handle;
 pub mod errors;
 mod intermediate_bindings;
 
-pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator, FromFallibleIterator};
+pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 pub use codes_handle::{CodesHandle, Key, KeyedMessage, KeyType, KeysIteratorFlags, NearestGridpoint, ProductKind};
 pub use errors::CodesError;
