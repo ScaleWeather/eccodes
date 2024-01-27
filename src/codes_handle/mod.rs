@@ -384,35 +384,39 @@ mod tests {
     async fn codes_handle_drop() {
         testing_logger::setup();
 
-        let file_path = Path::new("./data/iceland-surface.grib");
-        let product_kind = ProductKind::GRIB;
+        {
+            let file_path = Path::new("./data/iceland-surface.grib");
+            let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        drop(handle);
+            let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+            drop(handle);
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 0);
-        });
+            testing_logger::validate(|captured_logs| {
+                assert_eq!(captured_logs.len(), 0);
+            });
+        }
 
-        let product_kind = ProductKind::GRIB;
-        let file_data = reqwest::get(
-            "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
-        )
-        .await
-        .unwrap()
-        .bytes()
-        .await
-        .unwrap();
+        {
+            let product_kind = ProductKind::GRIB;
+            let file_data = reqwest::get(
+                "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
+            )
+            .await
+            .unwrap()
+            .bytes()
+            .await
+            .unwrap();
 
-        let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
-        drop(handle);
+            let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+            drop(handle);
 
-        //logs from Reqwest are expected
-        testing_logger::validate(|captured_logs| {
-            for log in captured_logs {
-                assert_ne!(log.level, Level::Warn);
-                assert_ne!(log.level, Level::Error);
-            }
-        });
+            //logs from Reqwest are expected
+            testing_logger::validate(|captured_logs| {
+                for log in captured_logs {
+                    assert_ne!(log.level, Level::Warn);
+                    assert_ne!(log.level, Level::Error);
+                }
+            });
+        }
     }
 }

@@ -1,3 +1,6 @@
+#![warn(clippy::pedantic)]
+#![allow(clippy::cast_possible_wrap)]
+
 //!# Unofficial high-level safe Rust bindings to ecCodes library
 //!
 //!This crate contains safe high-level bindings for ecCodes library.
@@ -8,7 +11,8 @@
 //!Because of the ecCodes library API characteristics theses bindings are
 //!rather thick wrapper to make this crate safe and convenient to use.
 //!
-//!Because ecCodes supports mainly Linux platforms, this crate is not tested on other architectures.
+//!This crate officially supports mainly Linux platforms as the ecCodes library supports them.
+//!But it is possible to install ecCodes on MacOS and this crate successfully compiles and all tests pass.
 //!
 //!If you want to see more features released quicker do not hesitate
 //!to contribute and check out [Github repository](https://github.com/ScaleWeather/eccodes).
@@ -177,7 +181,13 @@
 //!For example, on Ubuntu you can use `apt-get`:
 //!
 //!```text
-//!$ sudo apt-get install libeccodes-dev
+//!sudo apt-get install libeccodes-dev
+//!```
+//!
+//!or `brew` on MacOS:
+//!
+//!```text
+//!brew install eccodes
 //!```
 //!
 //!Alternatively, you can install the library manually from source in suitable directory
@@ -215,4 +225,4 @@ pub use codes_handle::{
     CodesHandle, Key, KeyType, KeyedMessage, KeysIteratorFlags, NearestGridpoint, ProductKind,
 };
 pub use errors::CodesError;
-pub use fallible_iterator::{FallibleIterator, FromFallibleIterator, IntoFallibleIterator};
+pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};

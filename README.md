@@ -22,7 +22,8 @@ Read [this section](#crate-safety) to learn more about design decisions of this 
 open-source library for reading and writing GRIB and BUFR files
 developed by [European Centre for Medium-Range Weather Forecasts](https://www.ecmwf.int/).
 
-Because ecCodes supports mainly Linux platforms, this crate is not tested on other architectures.
+This crate officially supports mainly Linux platforms as the ecCodes library supports them.
+But it is possible to install ecCodes on MacOS and this crate successfully compiles and all tests pass.
 
 ## Usage
 
@@ -36,6 +37,12 @@ For example, on Ubuntu you can use `apt-get`:
 
 ```bash
 sudo apt-get install libeccodes-dev
+```
+
+or `brew` on MacOS:
+
+```bash
+brew install eccodes
 ```
 
 Alternatively, you can install the library manually from source in suitable directory

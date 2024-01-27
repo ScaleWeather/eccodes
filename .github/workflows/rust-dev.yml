@@ -6,12 +6,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-linux:
 
+    name: Build on Linux
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Prepare environment
       run: |
         sudo apt-get update
@@ -20,12 +21,34 @@ jobs:
         sudo apt-get install libeccodes-dev
         rustup update stable
         cargo clean
-    - name: Build with cargo
+    - name: Test with cargo
       run: |
-        cargo build --release
+        RUST_BACKTRACE=full cargo test
     - name: Check with clippy
       run: |
         cargo clippy -- -W clippy::pedantic
+    - name: Build release
+      run: |
+        cargo build --release
+
+  build-macos:
+
+    name: Build on MacOS
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Prepare environment
+      run: |
+        brew install eccodes
+        rustup update stable
+        cargo clean
     - name: Test with cargo
       run: |
-        cargo test
+        RUST_BACKTRACE=full cargo test
+    - name: Check with clippy
+      run: |
+        cargo clippy -- -W clippy::pedantic
+    - name: Build release
+      run: |
+        cargo build --release

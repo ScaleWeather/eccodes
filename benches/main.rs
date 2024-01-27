@@ -33,7 +33,7 @@ pub fn key_reading(c: &mut Criterion) {
     });
 
     c.bench_function("bytes reading", |b| {
-        b.iter(|| msg.read_key(black_box("mybits")).unwrap())
+        b.iter(|| msg.read_key(black_box("section1Padding")).unwrap())
     });
 
     c.bench_function("missing nul-byte termination reading", |b| {
