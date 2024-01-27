@@ -10,11 +10,16 @@ use std::{
     ptr::{self, addr_of_mut},
 };
 
+#[cfg(target_os = "macos")]
+use eccodes_sys::__sFILE;
+#[cfg(not(target_os = "macos"))]
+use eccodes_sys::__IO_FILE;
+
 use eccodes_sys::{
     codes_context, codes_handle, codes_keys_iterator, codes_nearest, CODES_NEAREST_SAME_DATA,
     CODES_NEAREST_SAME_GRID, CODES_TYPE_BYTES, CODES_TYPE_DOUBLE, CODES_TYPE_LABEL,
     CODES_TYPE_LONG, CODES_TYPE_MISSING, CODES_TYPE_SECTION, CODES_TYPE_STRING,
-    CODES_TYPE_UNDEFINED, _IO_FILE,
+    CODES_TYPE_UNDEFINED,
 };
 use libc::{c_void, FILE};
 use num_traits::FromPrimitive;
@@ -44,9 +49,17 @@ pub unsafe fn codes_handle_new_from_file(
 
     let mut error_code: i32 = 0;
 
+    #[cfg(target_os = "macos")]
     let file_handle = eccodes_sys::codes_handle_new_from_file(
         context,
-        file_pointer.cast::<_IO_FILE>(),
+        file_pointer.cast::<__sFILE>(),
+        product_kind as u32,
+        &mut error_code,
+    );
+    #[cfg(not(target_os = "macos"))]
+    let file_handle = eccodes_sys::codes_handle_new_from_file(
+        context,
+        file_pointer.cast::<__sFILE>(),
         product_kind as u32,
         &mut error_code,
     );
@@ -275,9 +288,11 @@ pub unsafe fn codes_get_message(
         return Err(err.into());
     }
 
-    assert!(buffer_size == message_size, 
+    assert!(
+        buffer_size == message_size,
         "Buffer and message sizes ar not equal in codes_get_message! 
-        Please report this panic on Github.");
+        Please report this panic on Github."
+    );
 
     Ok((buffer_ptr, message_size))
 }
@@ -300,9 +315,11 @@ pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8
         return Err(err.into());
     }
 
-    assert!((buffer_size == message_size && message_size == buffer.len()), 
+    assert!(
+        (buffer_size == message_size && message_size == buffer.len()),
         "Buffer, vector and message sizes ar not equal in codes_get_message! 
-        Please report this panic on Github.");
+        Please report this panic on Github."
+    );
 
     Ok(buffer)
 }
