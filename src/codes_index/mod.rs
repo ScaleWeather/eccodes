@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn collect_index_iterator() {
-        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+        let keys = vec!["typeOfLevel", "level"];
         let index = CodesIndex::new_from_keys(&keys).unwrap();
         let grib_path = Path::new("./data/iceland-levels.grib");
 
@@ -238,6 +238,6 @@ mod tests {
 
         let level = handle.collect::<Vec<_>>().unwrap();
 
-        assert_eq!(level.len(), 1);
+        assert_eq!(level.len(), 5);
     }
 }
