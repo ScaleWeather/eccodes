@@ -5,13 +5,12 @@ use crate::{
     codes_handle::SpecialDrop,
     errors::CodesError,
     intermediate_bindings::codes_index::{
-        codes_index_add_file, codes_index_new, codes_index_read,
-        codes_index_select_double, codes_index_select_long, codes_index_select_string,
+        codes_index_add_file, codes_index_new, codes_index_read, codes_index_select_double,
+        codes_index_select_long, codes_index_select_string,
     },
 };
 use eccodes_sys::codes_index;
-use fs2::FileExt;
-use std::{fs::OpenOptions, path::Path};
+use std::path::Path;
 
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
@@ -55,6 +54,8 @@ impl CodesIndex {
         })
     }
 
+    /// **WARNING: Trying to add GRIB file to a CodesIndex while GRIB's index file (or GRIB itself)
+    /// is in use can cause segfault, panic or error.**
     #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
     pub fn add_grib_file(self, index_file_path: &Path) -> Result<CodesIndex, CodesError> {
         let file_path = index_file_path.to_str().ok_or_else(|| {
@@ -112,10 +113,10 @@ mod tests {
 
     use crate::{
         codes_index::{CodesIndex, Select},
-        CodesHandle, KeyedMessage,
+        CodesHandle,
     };
     use crate::{KeyType, ProductKind};
-    use std::{borrow::Borrow, path::Path};
+    use std::path::Path;
     #[test]
     fn index_constructors() {
         {
@@ -139,11 +140,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn add_file() {
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
         let index = CodesIndex::new_from_keys(&keys).unwrap();
-        let grib_path = Path::new("./data/iceland-surface.grib");
+        let grib_path = Path::new("./data/iceland.grib");
         let index = index.add_grib_file(grib_path).unwrap();
 
         assert!(!index.pointer.is_null());
@@ -184,33 +184,60 @@ mod tests {
 
         let counter = handle.count().unwrap();
 
-        println!("Counter: {:?}", counter);
+        assert_eq!(counter, 1);
     }
 
-    //     {
-    //         let short_name = current_message.read_key("shortName").unwrap();
-    //         match short_name.value {
-    //             KeyType::Str(val) => assert!(val == "2t"),
-    //             _ => panic!("Unexpected key type"),
-    //         };
-    //     }
-    //     {
-    //         let level = current_message.read_key("level").unwrap();
-    //         match level.value {
-    //             KeyType::Int(val) => assert!(val == 0),
-    //             _ => panic!("Unexpected key type"),
-    //         };
-    //     }
-    //     {
-    //         index.select("shortName", "10v").unwrap();
-    //         handle = index.borrow().try_into().unwrap();
-    //         let current_message: KeyedMessage = handle.try_into().unwrap();
+    #[test]
+    fn read_index_messages() {
+        let file_path = Path::new("./data/iceland-surface.idx");
+        let index = CodesIndex::read_from_file(file_path)
+            .unwrap()
+            .select("shortName", "2t")
+            .unwrap()
+            .select("typeOfLevel", "surface")
+            .unwrap()
+            .select("level", 0)
+            .unwrap()
+            .select("stepType", "instant")
+            .unwrap();
 
-    //         let short_name = current_message.read_key("shortName").unwrap();
-    //         match short_name.value {
-    //             KeyType::Str(val) => assert!(val == "10v"),
-    //             _ => panic!("Unexpected key type"),
-    //         };
-    //     }
-    // }
+        let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+        let current_message = handle.next().unwrap().unwrap();
+
+        {
+            let short_name = current_message.read_key("shortName").unwrap();
+            match short_name.value {
+                KeyType::Str(val) => assert!(val == "2t"),
+                _ => panic!("Unexpected key type"),
+            };
+        }
+        {
+            let level = current_message.read_key("level").unwrap();
+            match level.value {
+                KeyType::Int(val) => assert!(val == 0),
+                _ => panic!("Unexpected key type"),
+            };
+        }
+    }
+
+    #[test]
+    fn collect_index_iterator() {
+        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+        let index = CodesIndex::new_from_keys(&keys).unwrap();
+        let grib_path = Path::new("./data/iceland-levels.grib");
+
+        let index = index
+            .add_grib_file(grib_path)
+            .unwrap()
+            .select("typeOfLevel", "isobaricInhPa")
+            .unwrap()
+            .select("level", 700)
+            .unwrap();
+
+        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+
+        let level = handle.collect::<Vec<_>>().unwrap();
+
+        assert_eq!(level.len(), 1);
+    }
 }

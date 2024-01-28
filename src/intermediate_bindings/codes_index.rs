@@ -116,20 +116,8 @@ pub unsafe fn codes_handle_new_from_index(
 
     let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
-    }
-    Ok(codes_handle)
-}
-
-pub unsafe fn codes_iter_next_from_index(
-    index: *mut codes_index,
-) -> Result<*mut codes_handle, CodesError> {
-    let mut error_code: i32 = 0;
-
-    let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
-
+    // special case! codes_handle_new_from_index returns -43 when there are no messages in the index
+    // but it's also indicated by a null pointer
     if error_code == -43 {
         return Ok(codes_handle);
     }
@@ -140,3 +128,4 @@ pub unsafe fn codes_iter_next_from_index(
     }
     Ok(codes_handle)
 }
+

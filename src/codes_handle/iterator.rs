@@ -6,10 +6,11 @@ use crate::{
     errors::CodesError,
     intermediate_bindings::{
         codes_get_message_copy, codes_handle_delete, codes_handle_new_from_file,
-        codes_handle_new_from_message_copy, codes_index::codes_iter_next_from_index,
+        codes_handle_new_from_message_copy,
     },
-    CodesIndex,
 };
+#[cfg(feature = "ec_index")]
+use crate::{intermediate_bindings::codes_index::codes_handle_new_from_index, CodesIndex};
 
 use super::GribFile;
 
@@ -108,6 +109,7 @@ impl FallibleIterator for CodesHandle<GribFile> {
     }
 }
 
+#[cfg(feature = "ec_index")]
 impl FallibleIterator for CodesHandle<CodesIndex> {
     type Item = KeyedMessage;
 
@@ -117,7 +119,7 @@ impl FallibleIterator for CodesHandle<CodesIndex> {
         let new_eccodes_handle;
         unsafe {
             codes_handle_delete(self.eccodes_handle)?;
-            new_eccodes_handle = codes_iter_next_from_index(self.source.pointer);
+            new_eccodes_handle = codes_handle_new_from_index(self.source.pointer);
         }
 
         match new_eccodes_handle {

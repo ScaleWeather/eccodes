@@ -2,10 +2,7 @@
 //!and all associated functions and data structures
 
 #[cfg(feature = "ec_index")]
-use crate::{
-    codes_index::CodesIndex,
-    intermediate_bindings::codes_index::{codes_handle_new_from_index, codes_index_delete},
-};
+use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index::codes_index_delete};
 use crate::{errors::CodesError, intermediate_bindings::codes_handle_delete};
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
@@ -246,11 +243,11 @@ impl CodesHandle<GribFile> {
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
-        let file_handle = null_mut();
+        let eccodes_handle = null_mut();
 
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
-            eccodes_handle: file_handle,
+            eccodes_handle,
             source: GribFile {
                 pointer: file_pointer,
             },
@@ -266,15 +263,11 @@ impl CodesHandle<CodesIndex> {
         index: CodesIndex,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
-        let handle: *mut codes_handle;
-
-        unsafe {
-            handle = codes_handle_new_from_index(index.pointer)?;
-        }
+        let eccodes_handle = null_mut();
 
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
-            eccodes_handle: handle,
+            eccodes_handle,
             source: index,
             product_kind,
         };
@@ -327,8 +320,6 @@ pub trait SpecialDrop {
 
 impl SpecialDrop for GribFile {
     fn spec_drop(&mut self) {
-        dbg!("GribFile drop");
-
         //fclose() can fail in several different cases, however there is not much
         //that we can nor we should do about it. the promise of fclose() is that
         //the stream will be disassociated from the file after the call, therefore
@@ -355,8 +346,6 @@ impl SpecialDrop for GribFile {
 #[cfg(feature = "ec_index")]
 impl SpecialDrop for CodesIndex {
     fn spec_drop(&mut self) {
-        dbg!("CodesIndex drop");
-
         unsafe {
             codes_index_delete(self.pointer);
         }
@@ -377,8 +366,6 @@ impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
     ///If any function called in the destructor returns an error warning will appear in log.
     ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
-        dbg!("CodesHandle drop");
-
         unsafe {
             codes_handle_delete(self.eccodes_handle).unwrap_or_else(|error| {
                 warn!("codes_handle_delete() returned an error: {:?}", &error);
@@ -395,11 +382,9 @@ impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
 mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
-    use crate::{
-        codes_handle::{CodesHandle, DataContainer, ProductKind},
-        codes_index::Select,
-        CodesIndex,
-    };
+    use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
+    #[cfg(feature = "ec_index")]
+    use crate::codes_index::{CodesIndex, Select};
     use log::Level;
     use std::path::Path;
 
@@ -446,6 +431,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ec_index")]
     fn index_constructor_and_destructor() {
         let file_path = Path::new("./data/iceland-surface.idx");
         let index = CodesIndex::read_from_file(file_path)
@@ -464,7 +450,7 @@ mod tests {
         let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
 
         assert_eq!(handle.source.pointer, i_ptr);
-        assert!(!handle.eccodes_handle.is_null());
+        assert!(handle.eccodes_handle.is_null());
     }
 
     #[tokio::test]
@@ -479,11 +465,6 @@ mod tests {
             drop(handle);
 
             testing_logger::validate(|captured_logs| {
-                for cl in captured_logs {
-                    let b = &cl.body;
-
-                    println!("{:?}", b);
-                }
                 assert_eq!(captured_logs.len(), 0);
             });
         }
