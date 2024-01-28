@@ -12,14 +12,13 @@ use num_traits::FromPrimitive;
 
 use crate::errors::{CodesError, CodesInternal};
 
-#[cfg(feature = "ec_index")]
-pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, CodesError> {
-    let filename = CString::new(filename).unwrap();
+pub unsafe fn codes_index_new(keys: &str) -> Result<*mut codes_index, CodesError> {
     let context: *mut codes_context = ptr::null_mut(); //default context
     let mut error_code: i32 = 0;
+    let keys = CString::new(keys).unwrap();
 
-    let codes_index = eccodes_sys::codes_index_read(context, filename.as_ptr(), &mut error_code);
-    codes_index.drop_in_place();
+    let codes_index = eccodes_sys::codes_index_new(context, keys.as_ptr(), &mut error_code);
+
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
         return Err(err.into());
@@ -27,13 +26,39 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
     Ok(codes_index)
 }
 
-#[cfg(feature = "ec_index")]
-pub unsafe fn codes_index_delete(index: *mut codes_index) -> Result<(), CodesError> {
+pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, CodesError> {
+    let filename = CString::new(filename).unwrap();
+    let context: *mut codes_context = ptr::null_mut(); //default context
+    let mut error_code: i32 = 0;
+
+    let codes_index = eccodes_sys::codes_index_read(context, filename.as_ptr(), &mut error_code);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(codes_index)
+}
+
+pub unsafe fn codes_index_delete(index: *mut codes_index) {
     eccodes_sys::codes_index_delete(index);
+}
+
+pub unsafe fn codes_index_add_file(
+    index: *mut codes_index,
+    filename: &str,
+) -> Result<(), CodesError> {
+    let filename = CString::new(filename).unwrap();
+
+    let error_code = eccodes_sys::codes_index_add_file(index, filename.as_ptr());
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
     Ok(())
 }
 
-#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_select_long(
     index: *mut codes_index,
     key: &str,
@@ -49,7 +74,6 @@ pub unsafe fn codes_index_select_long(
     Ok(())
 }
 
-#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_select_double(
     index: *mut codes_index,
     key: &str,
@@ -65,7 +89,6 @@ pub unsafe fn codes_index_select_double(
     Ok(())
 }
 
-#[cfg(feature = "ec_index")]
 pub unsafe fn codes_index_select_string(
     index: *mut codes_index,
     key: &str,
@@ -82,7 +105,6 @@ pub unsafe fn codes_index_select_string(
     Ok(())
 }
 
-#[cfg(feature = "ec_index")]
 pub unsafe fn codes_handle_new_from_index(
     index: *mut codes_index,
 ) -> Result<*mut codes_handle, CodesError> {

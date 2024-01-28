@@ -8,7 +8,7 @@
 //!but they are unsafe as they operate on raw `codes_handle`.  
 
 #[cfg(feature = "ec_index")]
-pub(crate) mod codes_index;
+pub mod codes_index;
 
 use std::{
     ffi::{CStr, CString},

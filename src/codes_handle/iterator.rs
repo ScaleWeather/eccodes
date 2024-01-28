@@ -10,6 +10,8 @@ use crate::{
     },
 };
 
+use super::GribFile;
+
 ///`FallibleIterator` implementation for `CodesHandle` to access GRIB messages inside file.
 ///
 ///To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
@@ -77,7 +79,7 @@ use crate::{
 ///## Errors
 ///The `next()` method will return [`CodesInternal`](crate::errors::CodesInternal)
 ///when internal ecCodes function returns non-zero code.
-impl FallibleIterator for CodesHandle {
+impl FallibleIterator for CodesHandle<GribFile> {
     type Item = KeyedMessage;
 
     type Error = CodesError;
@@ -85,15 +87,15 @@ impl FallibleIterator for CodesHandle {
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         let file_handle;
         unsafe {
-            codes_handle_delete(self.file_handle)?;
-            file_handle = codes_handle_new_from_file(self.file_pointer, self.product_kind);
+            codes_handle_delete(self.eccodes_handle)?;
+            file_handle = codes_handle_new_from_file(self.source.pointer, self.product_kind);
         }
 
         match file_handle {
             Ok(h) => {
-                self.file_handle = h;
+                self.eccodes_handle = h;
 
-                if self.file_handle.is_null() {
+                if self.eccodes_handle.is_null() {
                     Ok(None)
                 } else {
                     let message = get_message_from_handle(h);

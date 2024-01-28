@@ -3,15 +3,17 @@
 
 #[cfg(feature = "ec_index")]
 use crate::{
-    codes_index::CodesIndex, intermediate_bindings::codes_handle_new_from_index,
+    codes_index::CodesIndex,
+    intermediate_bindings::codes_index::{codes_handle_new_from_index, codes_index_delete},
 };
-use crate::errors::CodesError;
+use crate::{errors::CodesError, intermediate_bindings::codes_handle_delete};
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
 use std::{
+    fmt::Debug,
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
     path::Path,
@@ -28,14 +30,20 @@ use eccodes_sys::{
 mod iterator;
 mod keyed_message;
 
+#[derive(Debug)]
+#[doc(hidden)]
+pub struct GribFile {
+    pointer: *mut FILE,
+}
+
 ///Main structure used to operate on the GRIB file.
 ///It takes a full ownership of the accessed file.
 ///It can be constructed either using a file or a memory buffer.
 #[derive(Debug)]
-pub struct CodesHandle {
-    file_handle: *mut codes_handle,
+pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
+    eccodes_handle: *mut codes_handle,
     _data: DataContainer,
-    file_pointer: *mut FILE,
+    source: SOURCE,
     product_kind: ProductKind,
 }
 
@@ -113,6 +121,8 @@ pub enum KeysIteratorFlags {
 enum DataContainer {
     FileBytes(Bytes),
     FileBuffer(File),
+    #[cfg(feature = "ec_index")]
+    Empty(),
 }
 
 ///Enum representing the kind of product (file type) inside handled file.
@@ -138,7 +148,7 @@ pub struct NearestGridpoint {
     pub value: f64,
 }
 
-impl CodesHandle {
+impl CodesHandle<GribFile> {
     ///The constructor that takes a [`path`](Path) to an existing file and
     ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
     ///
@@ -184,8 +194,10 @@ impl CodesHandle {
 
         Ok(CodesHandle {
             _data: (DataContainer::FileBuffer(file)),
-            file_handle,
-            file_pointer,
+            eccodes_handle: file_handle,
+            source: GribFile {
+                pointer: file_pointer,
+            },
             product_kind,
         })
     }
@@ -238,10 +250,36 @@ impl CodesHandle {
 
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
-            file_handle,
-            file_pointer,
+            eccodes_handle: file_handle,
+            source: GribFile {
+                pointer: file_pointer,
+            },
             product_kind,
         })
+    }
+}
+
+#[cfg(feature = "ec_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+impl CodesHandle<CodesIndex> {
+    pub fn new_from_index(
+        index: CodesIndex,
+        product_kind: ProductKind,
+    ) -> Result<Self, CodesError> {
+        let handle: *mut codes_handle;
+
+        unsafe {
+            handle = codes_handle_new_from_index(index.pointer)?;
+        }
+
+        let new_handle = CodesHandle {
+            _data: DataContainer::Empty(), //unused, index owns data
+            eccodes_handle: handle,
+            source: index,
+            product_kind,
+        };
+
+        Ok(new_handle)
     }
 }
 
@@ -279,26 +317,26 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
-impl Drop for CodesHandle {
-    ///Executes the destructor for this type.
-    ///This method calls `fclose()` from libc for graceful cleanup.
-    ///
-    ///Currently it is assumed that under normal circumstances this destructor never fails.
-    ///However in some edge cases fclose can return non-zero code.
-    ///In such case all pointers and file descriptors are safely deleted.
-    ///However memory leaks can still occur.
-    ///
-    ///If any function called in the destructor returns an error warning will appear in log.
-    ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
-    fn drop(&mut self) {
+/// This trait is neccessary because (1) drop in GribFile/IndexFile cannot
+/// be called directly as source cannot be moved out of shared reference
+/// and (2) Drop drops fields in arbitrary order leading to fclose() failing
+#[doc(hidden)]
+pub trait SpecialDrop {
+    fn spec_drop(&mut self);
+}
+
+impl SpecialDrop for GribFile {
+    fn spec_drop(&mut self) {
+        dbg!("GribFile drop");
+
         //fclose() can fail in several different cases, however there is not much
         //that we can nor we should do about it. the promise of fclose() is that
         //the stream will be disassociated from the file after the call, therefore
         //use of stream after the call to fclose() is undefined behaviour, so we clear it
         let return_code;
         unsafe {
-            if !self.file_pointer.is_null() {
-                return_code = libc::fclose(self.file_pointer);
+            if !self.pointer.is_null() {
+                return_code = libc::fclose(self.pointer);
                 if return_code != 0 {
                     let error_val = errno();
                     warn!(
@@ -310,27 +348,50 @@ impl Drop for CodesHandle {
             }
         }
 
-        self.file_pointer = null_mut();
+        self.pointer = null_mut();
     }
 }
 
 #[cfg(feature = "ec_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
-impl TryFrom<&CodesIndex> for CodesHandle {
-    type Error = CodesError;
-    fn try_from(value: &CodesIndex) -> Result<Self, CodesError> {
-        let handle: *mut codes_handle;
-        unsafe {
-            handle = codes_handle_new_from_index(value.index_handle)?;
+impl SpecialDrop for CodesIndex {
+    fn spec_drop(&mut self) {
+        dbg!("CodesIndex drop");
+
+        if self.pointer.is_null() {
+            return;
         }
 
-        let new_handle = CodesHandle {
-            _data: DataContainer::FileBytes(Bytes::new()), //unused, index owns data
-            file_pointer: null_mut(),
-            file_handle: handle,
-            product_kind: ProductKind::GRIB,
-        };
-        Ok(new_handle)
+        unsafe {
+            codes_index_delete(self.pointer);
+        }
+
+        self.pointer = null_mut();
+    }
+}
+
+impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
+    ///Executes the destructor for this type.
+    ///This method calls `fclose()` from libc for graceful cleanup.
+    ///
+    ///Currently it is assumed that under normal circumstances this destructor never fails.
+    ///However in some edge cases fclose can return non-zero code.
+    ///In such case all pointers and file descriptors are safely deleted.
+    ///However memory leaks can still occur.
+    ///
+    ///If any function called in the destructor returns an error warning will appear in log.
+    ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
+    fn drop(&mut self) {
+        dbg!("CodesHandle drop");
+
+        unsafe {
+            codes_handle_delete(self.eccodes_handle).unwrap_or_else(|error| {
+                warn!("codes_handle_delete() returned an error: {:?}", &error);
+            });
+        }
+
+        self.eccodes_handle = null_mut();
+
+        self.source.spec_drop();
     }
 }
 
@@ -338,7 +399,11 @@ impl TryFrom<&CodesIndex> for CodesHandle {
 mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
-    use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
+    use crate::{
+        codes_handle::{CodesHandle, DataContainer, ProductKind},
+        codes_index::Select,
+        CodesIndex,
+    };
     use log::Level;
     use std::path::Path;
 
@@ -349,13 +414,13 @@ mod tests {
 
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
-        assert!(!handle.file_pointer.is_null());
-        assert!(handle.file_handle.is_null());
+        assert!(!handle.source.pointer.is_null());
+        assert!(handle.eccodes_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         let metadata = match &handle._data {
-            DataContainer::FileBytes(_) => panic!(),
             DataContainer::FileBuffer(file) => file.metadata().unwrap(),
+            _ => panic!(),
         };
 
         println!("{:?}", metadata);
@@ -374,14 +439,36 @@ mod tests {
         .unwrap();
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
-        assert!(!handle.file_pointer.is_null());
-        assert!(handle.file_handle.is_null());
+        assert!(!handle.source.pointer.is_null());
+        assert!(handle.eccodes_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         match &handle._data {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
-            DataContainer::FileBuffer(_) => panic!(),
+            _ => panic!(),
         };
+    }
+
+    #[test]
+    fn index_constructor_and_destructor() {
+        let file_path = Path::new("./data/iceland-surface.idx");
+        let index = CodesIndex::read_from_file(file_path)
+            .unwrap()
+            .select("shortName", "2t")
+            .unwrap()
+            .select("typeOfLevel", "surface")
+            .unwrap()
+            .select("level", 0)
+            .unwrap()
+            .select("stepType", "instant")
+            .unwrap();
+
+        let i_ptr = index.pointer.clone();
+
+        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+
+        assert_eq!(handle.source.pointer, i_ptr);
+        assert!(!handle.eccodes_handle.is_null());
     }
 
     #[tokio::test]
@@ -396,6 +483,11 @@ mod tests {
             drop(handle);
 
             testing_logger::validate(|captured_logs| {
+                for cl in captured_logs {
+                    let b = &cl.body;
+
+                    println!("{:?}", b);
+                }
                 assert_eq!(captured_logs.len(), 0);
             });
         }
