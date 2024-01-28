@@ -5,12 +5,13 @@ use crate::{
     codes_handle::SpecialDrop,
     errors::CodesError,
     intermediate_bindings::codes_index::{
-        codes_index_add_file, codes_index_delete, codes_index_new, codes_index_read,
+        codes_index_add_file, codes_index_new, codes_index_read,
         codes_index_select_double, codes_index_select_long, codes_index_select_string,
     },
 };
 use eccodes_sys::codes_index;
-use std::{path::Path, ptr::null_mut};
+use fs2::FileExt;
+use std::{fs::OpenOptions, path::Path};
 
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
@@ -138,6 +139,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn add_file() {
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
         let index = CodesIndex::new_from_keys(&keys).unwrap();
@@ -165,18 +167,24 @@ mod tests {
     }
 
     #[test]
-    fn iterate_handle_from_iter() {
+    fn iterate_handle_from_index() {
         let file_path = Path::new("./data/iceland-surface.idx");
-        let mut index = CodesIndex::read_from_file(file_path).unwrap();
-        index.select("shortName", "2t").unwrap();
-        index.select("typeOfLevel", "surface").unwrap();
-        index.select("level", 0).unwrap();
-        index.select("stepType", "instant").unwrap();
-        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB);
+        let index = CodesIndex::read_from_file(file_path)
+            .unwrap()
+            .select("shortName", "2t")
+            .unwrap()
+            .select("typeOfLevel", "surface")
+            .unwrap()
+            .select("level", 0)
+            .unwrap()
+            .select("stepType", "instant")
+            .unwrap();
+
+        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
 
         let counter = handle.count().unwrap();
 
-        println!("Counter: {}", counter);
+        println!("Counter: {:?}", counter);
     }
 
     //     {

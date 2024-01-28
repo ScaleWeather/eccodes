@@ -357,10 +357,6 @@ impl SpecialDrop for CodesIndex {
     fn spec_drop(&mut self) {
         dbg!("CodesIndex drop");
 
-        if self.pointer.is_null() {
-            return;
-        }
-
         unsafe {
             codes_index_delete(self.pointer);
         }

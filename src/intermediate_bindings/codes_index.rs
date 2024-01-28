@@ -41,6 +41,10 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
 }
 
 pub unsafe fn codes_index_delete(index: *mut codes_index) {
+    if index.is_null() {
+        return;
+    }
+
     eccodes_sys::codes_index_delete(index);
 }
 
@@ -111,6 +115,24 @@ pub unsafe fn codes_handle_new_from_index(
     let mut error_code: i32 = 0;
 
     let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
+
+    if error_code != 0 {
+        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+        return Err(err.into());
+    }
+    Ok(codes_handle)
+}
+
+pub unsafe fn codes_iter_next_from_index(
+    index: *mut codes_index,
+) -> Result<*mut codes_handle, CodesError> {
+    let mut error_code: i32 = 0;
+
+    let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
+
+    if error_code == -43 {
+        return Ok(codes_handle);
+    }
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();

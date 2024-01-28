@@ -6,8 +6,9 @@ use crate::{
     errors::CodesError,
     intermediate_bindings::{
         codes_get_message_copy, codes_handle_delete, codes_handle_new_from_file,
-        codes_handle_new_from_message_copy,
+        codes_handle_new_from_message_copy, codes_index::codes_iter_next_from_index,
     },
+    CodesIndex,
 };
 
 use super::GribFile;
@@ -85,13 +86,41 @@ impl FallibleIterator for CodesHandle<GribFile> {
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let file_handle;
+        let new_eccodes_handle;
         unsafe {
             codes_handle_delete(self.eccodes_handle)?;
-            file_handle = codes_handle_new_from_file(self.source.pointer, self.product_kind);
+            new_eccodes_handle = codes_handle_new_from_file(self.source.pointer, self.product_kind);
         }
 
-        match file_handle {
+        match new_eccodes_handle {
+            Ok(h) => {
+                self.eccodes_handle = h;
+
+                if self.eccodes_handle.is_null() {
+                    Ok(None)
+                } else {
+                    let message = get_message_from_handle(h);
+                    Ok(Some(message))
+                }
+            }
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl FallibleIterator for CodesHandle<CodesIndex> {
+    type Item = KeyedMessage;
+
+    type Error = CodesError;
+
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        let new_eccodes_handle;
+        unsafe {
+            codes_handle_delete(self.eccodes_handle)?;
+            new_eccodes_handle = codes_iter_next_from_index(self.source.pointer);
+        }
+
+        match new_eccodes_handle {
             Ok(h) => {
                 self.eccodes_handle = h;
 

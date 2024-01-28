@@ -71,6 +71,10 @@ pub unsafe fn codes_handle_new_from_file(
 }
 
 pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> {
+    if handle.is_null() {
+        return Ok(());
+    }
+
     let error_code = eccodes_sys::codes_handle_delete(handle);
 
     if error_code != 0 {
