@@ -1,9 +1,10 @@
 #![cfg(feature = "ec_index")]
 
-use std::path::Path;
+use std::{path::Path, thread};
 
 use eccodes::{codes_index::Select, CodesHandle, CodesIndex, KeyType, ProductKind};
 use fallible_iterator::FallibleIterator;
+use rand::Rng;
 
 #[test]
 fn iterate_handle_from_index() {
@@ -78,4 +79,119 @@ fn collect_index_iterator() {
     let level = handle.collect::<Vec<_>>().unwrap();
 
     assert_eq!(level.len(), 5);
+}
+
+#[test]
+fn add_file_error() {
+    for _ in 0..100 {
+        // running multiple times to catch segfaults
+        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+        let index = CodesIndex::new_from_keys(&keys).unwrap();
+        let grib_path = Path::new("./data/xxx.grib");
+        let index = index.add_grib_file(grib_path);
+
+        assert!(index.is_err());
+    }
+}
+
+#[test]
+fn add_file_while_index_open() {
+    thread::spawn(|| {
+        let file_path = Path::new("./data/iceland-surface.idx");
+        let mut index_op = CodesIndex::read_from_file(file_path).unwrap();
+
+        loop {
+            index_op = index_op
+                .select("shortName", "2t")
+                .unwrap()
+                .select("typeOfLevel", "surface")
+                .unwrap()
+                .select("level", 0)
+                .unwrap()
+                .select("stepType", "instant")
+                .unwrap();
+        }
+    });
+
+    let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+    let grib_path = Path::new("./data/iceland-surface.grib");
+    let index = CodesIndex::new_from_keys(&keys)
+        .unwrap()
+        .add_grib_file(grib_path);
+
+    assert!(index.is_ok());
+}
+
+#[test]
+fn add_file_to_read_index() {
+    let file_path = Path::new("./data/iceland-surface.idx");
+    let grib_path = Path::new("./data/iceland-surface.grib");
+
+    let _index = CodesIndex::read_from_file(file_path)
+        .unwrap()
+        .add_grib_file(grib_path)
+        .unwrap()
+        .select("shortName", "2t")
+        .unwrap()
+        .select("typeOfLevel", "surface")
+        .unwrap()
+        .select("level", 0)
+        .unwrap()
+        .select("stepType", "instant")
+        .unwrap();
+}
+
+#[test]
+fn simulatenous_index_destructors() {
+    let h1 = thread::spawn(|| {
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..1000 {
+            let sleep_time = rng.gen_range(12..50); // randomizing sleep time to hopefully catch segfaults
+
+            let file_path = Path::new("./data/iceland-surface.idx");
+            let index_op = CodesIndex::read_from_file(file_path)
+                .unwrap()
+                .select("shortName", "2t")
+                .unwrap()
+                .select("typeOfLevel", "surface")
+                .unwrap()
+                .select("level", 0)
+                .unwrap()
+                .select("stepType", "instant")
+                .unwrap();
+
+            thread::sleep(std::time::Duration::from_millis(sleep_time));
+            drop(index_op);
+        }
+    });
+
+    let h2 = thread::spawn(|| {
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..1000 {
+            let sleep_time = rng.gen_range(24..65); // randomizing sleep time to hopefully catch segfaults
+
+            let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+            let grib_path = Path::new("./data/iceland-surface.grib");
+            let index = CodesIndex::new_from_keys(&keys)
+                .unwrap()
+                .add_grib_file(grib_path)
+                .unwrap()
+                .select("shortName", "2t")
+                .unwrap()
+                .select("typeOfLevel", "surface")
+                .unwrap()
+                .select("level", 0)
+                .unwrap()
+                .select("stepType", "instant")
+                .unwrap();
+
+            thread::sleep(std::time::Duration::from_millis(sleep_time));
+            drop(index);
+        }
+    });
+
+    h1.join().unwrap();
+    h2.join().unwrap();
 }
