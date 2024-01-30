@@ -178,11 +178,11 @@ fn add_file_to_read_index() {
 fn simulatenous_index_destructors() {
     let h1 = thread::spawn(|| {
         let mut rng = rand::thread_rng();
+        let file_path = Path::new("./data/iceland-surface.idx");
 
         for _ in 0..10 {
-            let sleep_time = rng.gen_range(12..50); // randomizing sleep time to hopefully catch segfaults
+            let sleep_time = rng.gen_range(1..30); // randomizing sleep time to hopefully catch segfaults
 
-            let file_path = Path::new("./data/iceland-surface.idx");
             let index_op = CodesIndex::read_from_file(file_path)
                 .unwrap()
                 .select("shortName", "2t")
@@ -201,12 +201,12 @@ fn simulatenous_index_destructors() {
 
     let h2 = thread::spawn(|| {
         let mut rng = rand::thread_rng();
+        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+        let grib_path = Path::new("./data/iceland-surface.grib");
 
         for _ in 0..10 {
-            let sleep_time = rng.gen_range(24..65); // randomizing sleep time to hopefully catch segfaults
+            let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
 
-            let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-            let grib_path = Path::new("./data/iceland-surface.grib");
             let index = CodesIndex::new_from_keys(&keys)
                 .unwrap()
                 .add_grib_file(grib_path)
@@ -227,4 +227,35 @@ fn simulatenous_index_destructors() {
 
     h1.join().unwrap();
     h2.join().unwrap();
+}
+
+#[test]
+fn index_handle_interference() {
+    thread::spawn(|| {
+        let file_path = Path::new("./data/iceland.grib");
+
+        loop {
+            let handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB);
+
+            assert!(handle.is_ok());
+        }
+    });
+
+    let mut rng = rand::thread_rng();
+    let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+    let grib_path = Path::new("./data/iceland.grib");
+
+    for _ in 0..10 {
+        let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
+
+        let index = CodesIndex::new_from_keys(&keys)
+            .unwrap()
+            .add_grib_file(grib_path)
+            .unwrap();
+        let i_handle = CodesHandle::new_from_index(index, ProductKind::GRIB);
+
+        assert!(i_handle.is_ok());
+
+        thread::sleep(std::time::Duration::from_millis(sleep_time));
+    }
 }
