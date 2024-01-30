@@ -83,12 +83,48 @@ fn collect_index_iterator() {
 
 #[test]
 fn add_file_error() {
+    thread::spawn(|| {
+        let grib_path = Path::new("./data/iceland-levels.grib");
+        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+        let mut index_op = CodesIndex::new_from_keys(&keys).unwrap();
+
+        loop {
+            index_op = index_op.add_grib_file(grib_path).unwrap();
+        }
+    });
+
+    thread::sleep(std::time::Duration::from_millis(250));
+
     let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-    let index = CodesIndex::new_from_keys(&keys).unwrap();
-    let grib_path = Path::new("./data/xxx.grib");
-    let index = index.add_grib_file(grib_path);
+    let wrong_path = Path::new("./data/xxx.grib");
+    let index = CodesIndex::new_from_keys(&keys)
+        .unwrap()
+        .add_grib_file(wrong_path);
 
     assert!(index.is_err());
+}
+
+#[test]
+fn index_panic() {
+    thread::spawn(|| {
+        let grib_path = Path::new("./data/iceland-levels.grib");
+        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+        let mut index_op = CodesIndex::new_from_keys(&keys).unwrap();
+
+        loop {
+            index_op = index_op.add_grib_file(grib_path).unwrap();
+        }
+    });
+
+    thread::sleep(std::time::Duration::from_millis(250));
+
+    let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+    let wrong_path = Path::new("./data/xxx.grib");
+    let index = CodesIndex::new_from_keys(&keys).unwrap();
+
+    let result = std::panic::catch_unwind(|| index.add_grib_file(wrong_path).unwrap());
+
+    assert!(result.is_err());
 }
 
 #[test]
