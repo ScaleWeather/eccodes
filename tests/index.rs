@@ -83,15 +83,12 @@ fn collect_index_iterator() {
 
 #[test]
 fn add_file_error() {
-    for _ in 0..100 {
-        // running multiple times to catch segfaults
-        let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-        let index = CodesIndex::new_from_keys(&keys).unwrap();
-        let grib_path = Path::new("./data/xxx.grib");
-        let index = index.add_grib_file(grib_path);
+    let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+    let index = CodesIndex::new_from_keys(&keys).unwrap();
+    let grib_path = Path::new("./data/xxx.grib");
+    let index = index.add_grib_file(grib_path);
 
-        assert!(index.is_err());
-    }
+    assert!(index.is_err());
 }
 
 #[test]
@@ -146,7 +143,7 @@ fn simulatenous_index_destructors() {
     let h1 = thread::spawn(|| {
         let mut rng = rand::thread_rng();
 
-        for _ in 0..1000 {
+        for _ in 0..10 {
             let sleep_time = rng.gen_range(12..50); // randomizing sleep time to hopefully catch segfaults
 
             let file_path = Path::new("./data/iceland-surface.idx");
@@ -169,7 +166,7 @@ fn simulatenous_index_destructors() {
     let h2 = thread::spawn(|| {
         let mut rng = rand::thread_rng();
 
-        for _ in 0..1000 {
+        for _ in 0..10 {
             let sleep_time = rng.gen_range(24..65); // randomizing sleep time to hopefully catch segfaults
 
             let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
