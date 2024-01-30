@@ -26,10 +26,10 @@ jobs:
         RUST_BACKTRACE=full cargo test --features "ec_index"
     - name: Check with clippy
       run: |
-        cargo clippy -- -W clippy::pedantic
+        cargo clippy --features "ec_index"
     - name: Build release
       run: |
-        cargo build --release
+        cargo build --release --features "ec_index"
 
   build-macos:
 
@@ -48,7 +48,7 @@ jobs:
         RUST_BACKTRACE=full cargo test --features "ec_index"
     - name: Check with clippy
       run: |
-        cargo clippy -- -W clippy::pedantic
+        cargo clippy --features "ec_index"
     - name: Build release
       run: |
-        cargo build --release
+        cargo build --release --features "ec_index"

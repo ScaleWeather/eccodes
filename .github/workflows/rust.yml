@@ -27,7 +27,7 @@ jobs:
         cargo clean
     - name: Build with cargo
       run: |
-        cargo build --release
+        cargo build --release --features "ec_index"
         cargo clean
     - name: Test with cargo
       run: |
@@ -53,7 +53,7 @@ jobs:
         cargo clean
     - name: Build with cargo
       run: |
-        cargo build --release
+        cargo build --release --features "ec_index"
         cargo clean
     - name: Test with cargo
       run: |
