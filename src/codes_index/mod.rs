@@ -54,8 +54,6 @@ impl CodesIndex {
         })
     }
 
-    /// **WARNING: Trying to add GRIB file to a CodesIndex while GRIB's index file (or GRIB itself)
-    /// is in use can cause segfault, panic or error.**
     #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
     pub fn add_grib_file(self, index_file_path: &Path) -> Result<CodesIndex, CodesError> {
         let file_path = index_file_path.to_str().ok_or_else(|| {
