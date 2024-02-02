@@ -1,5 +1,8 @@
+use std::ptr;
+
 use eccodes_sys::codes_handle;
 use fallible_iterator::FallibleIterator;
+use fallible_streaming_iterator::FallibleStreamingIterator;
 
 use crate::{
     codes_handle::{CodesHandle, KeyedMessage},
@@ -138,6 +141,44 @@ impl FallibleIterator for CodesHandle<CodesIndex> {
     }
 }
 
+impl FallibleStreamingIterator for CodesHandle<GribFile> {
+    type Item = KeyedMessage;
+
+    type Error = CodesError;
+
+    fn advance(&mut self) -> Result<(), Self::Error> {
+        unsafe {
+            codes_handle_delete(self.unsafe_message.message_handle)?;
+        }
+
+        // nullify message handle so that destructor is harmless
+        // it might be excessive but it follows the correct pattern
+        self.unsafe_message.message_handle = ptr::null_mut();
+
+        let new_eccodes_handle =
+            unsafe { codes_handle_new_from_file(self.source.pointer, self.product_kind)? };
+
+        self.unsafe_message = KeyedMessage {
+            message_handle: new_eccodes_handle,
+            iterator_flags: None,
+            iterator_namespace: None,
+            keys_iterator: None,
+            keys_iterator_next_item_exists: false,
+            nearest_handle: None,
+        };
+
+        Ok(())
+    }
+
+    fn get(&self) -> Option<&Self::Item> {
+        if self.unsafe_message.message_handle.is_null() {
+            None
+        } else {
+            Some(&self.unsafe_message)
+        }
+    }
+}
+
 fn get_message_from_handle(handle: *mut codes_handle) -> KeyedMessage {
     let new_handle;
     let new_buffer;
@@ -163,7 +204,7 @@ fn get_message_from_handle(handle: *mut codes_handle) -> KeyedMessage {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, KeyType, KeyedMessage, ProductKind};
-    use crate::FallibleIterator;
+    use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::path::Path;
 
     #[test]
@@ -181,7 +222,11 @@ mod tests {
                 _ => panic!("Incorrect variant of string key"),
             }
         }
+    }
 
+    fn iterator_collected() {
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
         let handle_collected: Vec<KeyedMessage> = handle.collect().unwrap();

@@ -42,6 +42,7 @@ pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     _data: DataContainer,
     source: SOURCE,
     product_kind: ProductKind,
+    unsafe_message: KeyedMessage,
 }
 
 ///Structure used to access keys inside the GRIB file message.
@@ -196,6 +197,14 @@ impl CodesHandle<GribFile> {
                 pointer: file_pointer,
             },
             product_kind,
+            unsafe_message: KeyedMessage {
+                message_handle: null_mut(),
+                iterator_flags: None,
+                iterator_namespace: None,
+                keys_iterator: None,
+                keys_iterator_next_item_exists: false,
+                nearest_handle: None,
+            },
         })
     }
 
@@ -252,6 +261,14 @@ impl CodesHandle<GribFile> {
                 pointer: file_pointer,
             },
             product_kind,
+            unsafe_message: KeyedMessage {
+                message_handle: null_mut(),
+                iterator_flags: None,
+                iterator_namespace: None,
+                keys_iterator: None,
+                keys_iterator_next_item_exists: false,
+                nearest_handle: None,
+            },
         })
     }
 }
