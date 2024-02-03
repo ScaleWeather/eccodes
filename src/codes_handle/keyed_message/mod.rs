@@ -1,8 +1,8 @@
 mod iterator;
+mod nearest;
 mod read;
 mod write;
 
-use eccodes_sys::codes_nearest;
 use log::warn;
 use std::ptr::null_mut;
 
@@ -10,74 +10,20 @@ use crate::{
     codes_handle::KeyedMessage,
     errors::CodesError,
     intermediate_bindings::{
-        codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new,
-        codes_handle_clone, codes_handle_delete, codes_keys_iterator_delete,
+        codes_grib_nearest_new, codes_handle_clone, codes_handle_delete, codes_keys_iterator_delete,
     },
 };
 
-use super::{KeysIteratorFlags, NearestGridpoint};
+use super::{CodesNearest, KeysIteratorFlags};
 
 impl KeyedMessage {
-    fn nearest_handle(&mut self) -> Result<*mut codes_nearest, CodesError> {
-        if let Some(nrst) = self.nearest_handle {
-            Ok(nrst)
-        } else {
-            let nrst;
+    pub fn codes_nearest(&self) -> Result<CodesNearest, CodesError> {
+        let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
 
-            unsafe {
-                nrst = codes_grib_nearest_new(self.message_handle)?;
-            }
-
-            self.nearest_handle = Some(nrst);
-
-            Ok(nrst)
-        }
-    }
-
-    ///Function to get four [`NearestGridpoint`]s of a point represented by requested coordinates.
-    ///
-    ///The inputs are latitude and longitude of requested point in respectively degrees north and
-    ///degreed east.
-    ///
-    ///In the output gridpoints, the value field  refers to parameter held by the `KeyedMessage`
-    ///for which the function is called in adequate units,
-    ///coordinates are in degrees north/east,
-    ///and distance field represents the distance between requested point and output point in kilometers.
-    ///
-    ///### Example
-    ///
-    ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-    ///# use std::path::Path;
-    ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use eccodes::FallibleIterator;
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let mut msg = handle.next().unwrap().unwrap();
-    ///
-    ///
-    ///let out = msg.find_nearest(64.13, -21.89).unwrap();
-    ///```
-    ///
-    ///### Errors
-    ///
-    ///This function returns [`CodesInternal`](crate::errors::CodesInternal) when
-    ///one of ecCodes function returns the non-zero code.
-    pub fn find_nearest(
-        &mut self,
-        lat: f64,
-        lon: f64,
-    ) -> Result<[NearestGridpoint; 4], CodesError> {
-        let nrst = self.nearest_handle()?;
-        let output_points;
-
-        unsafe {
-            output_points = codes_grib_nearest_find(self.message_handle, nrst, lat, lon)?;
-        }
-
-        Ok(output_points)
+        Ok(CodesNearest {
+            nearest_handle,
+            parent_message: self,
+        })
     }
 }
 
@@ -115,19 +61,6 @@ impl Drop for KeyedMessage {
     ///In case of corrupt pointer segmentation fault will occur.
     ///The pointers are cleared at the end of drop as they are not functional despite the result of delete functions.
     fn drop(&mut self) {
-        if let Some(nrst) = self.nearest_handle {
-            unsafe {
-                codes_grib_nearest_delete(nrst).unwrap_or_else(|error| {
-                    warn!(
-                        "codes_grib_nearest_delete() returned an error: {:?}",
-                        &error
-                    );
-                });
-            }
-        }
-
-        self.nearest_handle = Some(null_mut());
-
         if let Some(kiter) = self.keys_iterator {
             unsafe {
                 codes_keys_iterator_delete(kiter).unwrap_or_else(|error| {
@@ -217,29 +150,6 @@ mod tests {
         testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 0);
         });
-
-        Ok(())
-    }
-
-    #[test]
-    fn find_nearest() -> Result<()> {
-        let file_path1 = Path::new("./data/iceland.grib");
-        let file_path2 = Path::new("./data/iceland-surface.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind).unwrap();
-        let msg1 = handle1.next()?.unwrap();
-        let out1 = msg1.clone().find_nearest(64.13, -21.89).unwrap();
-
-        let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind).unwrap();
-        let msg2 = handle2.next()?.unwrap();
-        let out2 = msg2.clone().find_nearest(64.13, -21.89).unwrap();
-
-        assert!(out1[0].value > 10000.0);
-        assert!(out2[3].index == 551);
-        assert!(out1[1].lat == 64.0);
-        assert!(out2[2].lon == -21.75);
-        assert!(out1[0].distance > 15.0);
 
         Ok(())
     }

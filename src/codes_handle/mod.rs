@@ -129,6 +129,12 @@ pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
 }
 
+#[derive(Debug)]
+pub struct CodesNearest<'a> {
+    nearest_handle: *mut codes_nearest,
+    parent_message: &'a KeyedMessage,
+}
+
 ///The structure returned by [`KeyedMessage::find_nearest()`].
 ///Should always be analysed in relation to the coordinates request in `find_nearest()`.
 #[derive(Copy, Clone, PartialEq, Debug, Default)]

@@ -283,12 +283,12 @@ mod tests {
 
         // Now unwrap and access the first and only element of resulting vector
         // Find nearest modifies internal KeyedMessage fields so we need mutable reference
-        let level = &mut level[0];
+        let level = &level[0];
 
         println!("{:?}", level.read_key("shortName"));
 
         // Get the four nearest gridpoints of Reykjavik
-        let nearest_gridpoints = level.find_nearest(64.13, -21.89).unwrap();
+        let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89).unwrap();
 
         // Print value and distance of the nearest gridpoint
         println!(
