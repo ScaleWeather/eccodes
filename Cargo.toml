@@ -36,12 +36,11 @@ testing_logger = "0.1"
 rand = "0.8"
 
 [features]
-default = ["ec_index"]
 docs = ["eccodes-sys/docs"]
-ec_index = []
+experimental_index = []
 
 [package.metadata.docs.rs]
-features = ["docs", "ec_index"]
+features = ["docs", "experimental_index"]
 
 [[bench]]
 name = "main"

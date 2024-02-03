@@ -27,11 +27,11 @@ jobs:
         cargo clean
     - name: Build with cargo
       run: |
-        cargo build --release --features "ec_index"
+        cargo build --release --features "experimental_index"
         cargo clean
     - name: Test with cargo
       run: |
-        cargo test --features "ec_index"
+        cargo test --features "experimental_index"
         cargo clean
     - name: Benchmark with criterion
       run: |
@@ -53,11 +53,11 @@ jobs:
         cargo clean
     - name: Build with cargo
       run: |
-        cargo build --release --features "ec_index"
+        cargo build --release --features "experimental_index"
         cargo clean
     - name: Test with cargo
       run: |
-        cargo test --features "ec_index"
+        cargo test --features "experimental_index"
         cargo clean
     - name: Benchmark with criterion
       run: |

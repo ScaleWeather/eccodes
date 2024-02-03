@@ -9,7 +9,7 @@ use crate::{
         codes_handle_new_from_message_copy,
     },
 };
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 use crate::{intermediate_bindings::codes_index::codes_handle_new_from_index, CodesIndex};
 
 use super::GribFile;
@@ -109,7 +109,7 @@ impl FallibleIterator for CodesHandle<GribFile> {
     }
 }
 
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 impl FallibleIterator for CodesHandle<CodesIndex> {
     type Item = KeyedMessage;
 
