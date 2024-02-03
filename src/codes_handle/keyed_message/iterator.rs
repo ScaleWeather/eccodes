@@ -156,17 +156,19 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
+
     use crate::codes_handle::{CodesHandle, KeysIteratorFlags, ProductKind};
-    use crate::FallibleIterator;
+    use crate::{FallibleIterator, FallibleStreamingIterator};
     use std::path::Path;
 
     #[test]
-    fn keys_iterator_parameters() {
+    fn keys_iterator_parameters() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut current_message = handle.next()?.unwrap().clone();
 
         assert!(current_message.iterator_flags.is_none());
         assert!(current_message.iterator_namespace.is_none());
@@ -193,15 +195,17 @@ mod tests {
         while let Some(key) = current_message.next().unwrap() {
             assert!(!key.name.is_empty());
         }
+
+        Ok(())
     }
 
     #[test]
-    fn invalid_namespace() {
+    fn invalid_namespace() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut current_message = handle.next()?.unwrap().clone();
 
         let flags = vec![
             KeysIteratorFlags::AllKeys, //0
@@ -214,5 +218,7 @@ mod tests {
         while let Some(key) = current_message.next().unwrap() {
             assert!(!key.name.is_empty());
         }
+
+        Ok(())
     }
 }

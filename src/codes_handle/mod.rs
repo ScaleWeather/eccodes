@@ -1,9 +1,9 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
+use crate::errors::CodesError;
 #[cfg(feature = "ec_index")]
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index::codes_index_delete};
-use crate::{errors::CodesError, intermediate_bindings::codes_handle_delete};
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
@@ -38,7 +38,6 @@ pub struct GribFile {
 ///It can be constructed either using a file or a memory buffer.
 #[derive(Debug)]
 pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
-    eccodes_handle: *mut codes_handle,
     _data: DataContainer,
     source: SOURCE,
     product_kind: ProductKind,
@@ -188,11 +187,8 @@ impl CodesHandle<GribFile> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
 
-        let file_handle = null_mut();
-
         Ok(CodesHandle {
             _data: (DataContainer::FileBuffer(file)),
-            eccodes_handle: file_handle,
             source: GribFile {
                 pointer: file_pointer,
             },
@@ -252,11 +248,8 @@ impl CodesHandle<GribFile> {
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
-        let eccodes_handle = null_mut();
-
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
-            eccodes_handle,
             source: GribFile {
                 pointer: file_pointer,
             },
@@ -280,13 +273,18 @@ impl CodesHandle<CodesIndex> {
         index: CodesIndex,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
-        let eccodes_handle = null_mut();
-
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
-            eccodes_handle,
             source: index,
             product_kind,
+            unsafe_message: KeyedMessage {
+                message_handle: null_mut(),
+                iterator_flags: None,
+                iterator_namespace: None,
+                keys_iterator: None,
+                keys_iterator_next_item_exists: false,
+                nearest_handle: None,
+            },
         };
 
         Ok(new_handle)
@@ -383,14 +381,6 @@ impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
     ///If any function called in the destructor returns an error warning will appear in log.
     ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
-        unsafe {
-            codes_handle_delete(self.eccodes_handle).unwrap_or_else(|error| {
-                warn!("codes_handle_delete() returned an error: {:?}", &error);
-            });
-        }
-
-        self.eccodes_handle = null_mut();
-
         self.source.spec_drop();
     }
 }
@@ -413,7 +403,7 @@ mod tests {
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.eccodes_handle.is_null());
+        assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         let metadata = match &handle._data {
@@ -438,7 +428,7 @@ mod tests {
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.eccodes_handle.is_null());
+        assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         match &handle._data {
@@ -467,7 +457,7 @@ mod tests {
         let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
 
         assert_eq!(handle.source.pointer, i_ptr);
-        assert!(handle.eccodes_handle.is_null());
+        assert!(handle.unsafe_message.message_handle.is_null());
     }
 
     #[tokio::test]

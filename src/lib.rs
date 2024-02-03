@@ -231,3 +231,4 @@ pub use codes_handle::{
 pub use codes_index::CodesIndex;
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
+pub use fallible_streaming_iterator::FallibleStreamingIterator;
