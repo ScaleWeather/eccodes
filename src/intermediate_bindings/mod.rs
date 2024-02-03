@@ -315,10 +315,16 @@ pub unsafe fn codes_keys_iterator_new(
     handle: *mut codes_handle,
     flags: u32,
     namespace: &str,
-) -> *mut codes_keys_iterator {
+) -> Result<*mut codes_keys_iterator, CodesError> {
     let namespace = CString::new(namespace).unwrap();
 
-    eccodes_sys::codes_keys_iterator_new(handle, u64::from(flags), namespace.as_ptr())
+    let kiter = eccodes_sys::codes_keys_iterator_new(handle, u64::from(flags), namespace.as_ptr());
+
+    if kiter.is_null() {
+        return Err(CodesError::KeysIteratorFailed);
+    }
+
+    Ok(kiter)
 }
 
 pub unsafe fn codes_keys_iterator_delete(

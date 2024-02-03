@@ -52,6 +52,10 @@ pub enum CodesError {
     /// indicating issues with cloning the message.
     #[error("Cannot clone the message")]
     CloneFailed,
+
+    /// Returned when codes_keys_iterator_new returns null pointer
+    #[error("Cannot create or manipulate keys iterator")]
+    KeysIteratorFailed,
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]

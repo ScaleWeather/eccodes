@@ -60,11 +60,6 @@ pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     message_handle: *mut codes_handle,
-    iterator_flags: Option<u32>,
-    iterator_namespace: Option<String>,
-    keys_iterator: Option<*mut codes_keys_iterator>,
-    keys_iterator_next_item_exists: bool,
-    nearest_handle: Option<*mut codes_nearest>,
 }
 
 ///Structure representing a single key from the `KeyedMessage`.
@@ -72,6 +67,13 @@ pub struct KeyedMessage {
 pub struct Key {
     pub name: String,
     pub value: KeyType,
+}
+
+#[derive(Debug)]
+pub struct KeysIterator<'a> {
+    parent_message: &'a KeyedMessage,
+    iterator_handle: *mut codes_keys_iterator,
+    next_item_exists: bool,
 }
 
 ///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
@@ -201,11 +203,6 @@ impl CodesHandle<GribFile> {
             product_kind,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
-                iterator_flags: None,
-                iterator_namespace: None,
-                keys_iterator: None,
-                keys_iterator_next_item_exists: false,
-                nearest_handle: None,
             },
         })
     }
@@ -262,11 +259,6 @@ impl CodesHandle<GribFile> {
             product_kind,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
-                iterator_flags: None,
-                iterator_namespace: None,
-                keys_iterator: None,
-                keys_iterator_next_item_exists: false,
-                nearest_handle: None,
             },
         })
     }
@@ -286,11 +278,6 @@ impl CodesHandle<CodesIndex> {
             product_kind,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
-                iterator_flags: None,
-                iterator_namespace: None,
-                keys_iterator: None,
-                keys_iterator_next_item_exists: false,
-                nearest_handle: None,
             },
         };
 

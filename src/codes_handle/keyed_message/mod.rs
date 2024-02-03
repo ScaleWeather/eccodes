@@ -9,9 +9,7 @@ use std::ptr::null_mut;
 use crate::{
     codes_handle::KeyedMessage,
     errors::CodesError,
-    intermediate_bindings::{
-        codes_grib_nearest_new, codes_handle_clone, codes_handle_delete, codes_keys_iterator_delete,
-    },
+    intermediate_bindings::{codes_grib_nearest_new, codes_handle_clone, codes_handle_delete},
 };
 
 use super::{CodesNearest, KeysIteratorFlags};
@@ -36,44 +34,25 @@ impl Clone for KeyedMessage {
 
         KeyedMessage {
             message_handle: new_handle,
-            iterator_flags: None,
-            iterator_namespace: None,
-            keys_iterator: None,
-            keys_iterator_next_item_exists: false,
-            nearest_handle: None,
         }
     }
 }
 
 impl Drop for KeyedMessage {
     ///Executes the destructor for this type.
-    ///This method calls `codes_handle_delete()`, `codes_keys_iterator_delete()`
-    ///`codes_grib_nearest_delete()` from ecCodes for graceful cleanup.
-    ///However in some edge cases ecCodes can return non-zero code.
+    ///This method calls destructor functions from ecCodes library.
+    ///In some edge cases these functions can return non-zero code.
     ///In such case all pointers and file descriptors are safely deleted.
     ///However memory leaks can still occur.
     ///
     ///If any function called in the destructor returns an error warning will appear in log.
-    ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
+    ///If bugs occur during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     ///
     ///Technical note: delete functions in ecCodes can only fail with [`CodesInternalError`](crate::errors::CodesInternal::CodesInternalError)
     ///when other functions corrupt the inner memory of pointer, in that case memory leak is possible.
     ///In case of corrupt pointer segmentation fault will occur.
-    ///The pointers are cleared at the end of drop as they are not functional despite the result of delete functions.
+    ///The pointers are cleared at the end of drop as they are not functional regardless of result of delete functions.
     fn drop(&mut self) {
-        if let Some(kiter) = self.keys_iterator {
-            unsafe {
-                codes_keys_iterator_delete(kiter).unwrap_or_else(|error| {
-                    warn!(
-                        "codes_keys_iterator_delete() returned an error: {:?}",
-                        &error
-                    );
-                });
-            }
-        }
-
-        self.keys_iterator = Some(null_mut());
-
         unsafe {
             codes_handle_delete(self.message_handle).unwrap_or_else(|error| {
                 warn!("codes_handle_delete() returned an error: {:?}", &error);
@@ -87,7 +66,7 @@ impl Drop for KeyedMessage {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator};
+    use crate::FallibleStreamingIterator;
     use anyhow::Result;
     use std::path::Path;
     use testing_logger;
@@ -105,10 +84,6 @@ mod tests {
             current_message.message_handle,
             cloned_message.message_handle
         );
-        assert!(cloned_message.iterator_flags.is_none());
-        assert!(cloned_message.iterator_namespace.is_none());
-        assert!(cloned_message.keys_iterator.is_none());
-        assert!(!cloned_message.keys_iterator_next_item_exists);
 
         Ok(())
     }
@@ -143,7 +118,8 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let mut current_message = handle.next()?.unwrap().clone();
 
-        let _key = current_message.next()?.unwrap();
+        let _kiter = current_message.default_keys_iterator()?;
+        let _niter = current_message.codes_nearest()?;
 
         drop(current_message);
 

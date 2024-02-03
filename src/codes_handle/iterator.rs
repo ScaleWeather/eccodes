@@ -98,11 +98,6 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
 
         self.unsafe_message = KeyedMessage {
             message_handle: new_eccodes_handle,
-            iterator_flags: None,
-            iterator_namespace: None,
-            keys_iterator: None,
-            keys_iterator_next_item_exists: false,
-            nearest_handle: None,
         };
 
         Ok(())
@@ -136,11 +131,6 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 
         self.unsafe_message = KeyedMessage {
             message_handle: new_eccodes_handle,
-            iterator_flags: None,
-            iterator_namespace: None,
-            keys_iterator: None,
-            keys_iterator_next_item_exists: false,
-            nearest_handle: None,
         };
 
         Ok(())
@@ -235,10 +225,6 @@ mod tests {
         let current_message = handle.next().unwrap().unwrap();
 
         assert!(!current_message.message_handle.is_null());
-        assert!(current_message.iterator_flags.is_none());
-        assert!(current_message.iterator_namespace.is_none());
-        assert!(current_message.keys_iterator.is_none());
-        assert!(!current_message.keys_iterator_next_item_exists);
     }
 
     #[test]

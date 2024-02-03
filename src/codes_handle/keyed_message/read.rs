@@ -229,10 +229,11 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.unwrap();
+        let mut kiter = current_message.default_keys_iterator()?;
 
         for i in 0..=300 {
-            let key = current_message.next();
+            let key = kiter.next()?.unwrap();
             println!("{}: {:?}", i, key);
         }
 
@@ -245,10 +246,11 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.unwrap();
+        let mut kiter = current_message.default_keys_iterator()?;
 
         for i in 0..=300 {
-            let key = current_message.next();
+            let key = kiter.next()?.unwrap();
             println!("{}: {:?}", i, key);
         }
 
