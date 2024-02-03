@@ -1,4 +1,4 @@
-#![cfg(feature = "ec_index")]
+#![cfg(feature = "experimental_index")]
 
 use std::{path::Path, thread};
 

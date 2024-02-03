@@ -13,7 +13,7 @@ use eccodes_sys::codes_index;
 use std::path::Path;
 
 #[derive(Debug)]
-#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub struct CodesIndex {
     pub(crate) pointer: *mut codes_index,
 }
@@ -22,7 +22,7 @@ pub trait Select<T> {
 }
 
 impl CodesIndex {
-    #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
     pub fn new_from_keys(keys: &[&str]) -> Result<CodesIndex, CodesError> {
         let keys = keys.join(",");
 
@@ -38,7 +38,7 @@ impl CodesIndex {
         })
     }
 
-    #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
     pub fn read_from_file(index_file_path: &Path) -> Result<CodesIndex, CodesError> {
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
@@ -54,7 +54,7 @@ impl CodesIndex {
         })
     }
 
-    #[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
     pub fn add_grib_file(self, index_file_path: &Path) -> Result<CodesIndex, CodesError> {
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")

@@ -217,8 +217,8 @@
 //!
 
 pub mod codes_handle;
-#[cfg(feature = "ec_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+#[cfg(feature = "experimental_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub mod codes_index;
 pub mod errors;
 mod intermediate_bindings;
@@ -226,8 +226,8 @@ mod intermediate_bindings;
 pub use codes_handle::{
     CodesHandle, Key, KeyType, KeyedMessage, KeysIteratorFlags, NearestGridpoint, ProductKind,
 };
-#[cfg(feature = "ec_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+#[cfg(feature = "experimental_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub use codes_index::CodesIndex;
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};

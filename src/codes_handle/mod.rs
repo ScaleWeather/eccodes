@@ -1,9 +1,9 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
-use crate::errors::CodesError;
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index::codes_index_delete};
+use crate::CodesError;
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
@@ -118,7 +118,7 @@ pub enum KeysIteratorFlags {
 enum DataContainer {
     FileBytes(Bytes),
     FileBuffer(File),
-    #[cfg(feature = "ec_index")]
+    #[cfg(feature = "experimental_index")]
     Empty(),
 }
 
@@ -266,8 +266,8 @@ impl CodesHandle<GribFile> {
     }
 }
 
-#[cfg(feature = "ec_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ec_index")))]
+#[cfg(feature = "experimental_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 impl CodesHandle<CodesIndex> {
     pub fn new_from_index(
         index: CodesIndex,
@@ -358,7 +358,7 @@ impl SpecialDrop for GribFile {
     }
 }
 
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 impl SpecialDrop for CodesIndex {
     fn spec_drop(&mut self) {
         unsafe {
@@ -390,7 +390,7 @@ mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
-    #[cfg(feature = "ec_index")]
+    #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use log::Level;
     use std::path::Path;
@@ -438,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "ec_index")]
+    #[cfg(feature = "experimental_index")]
     fn index_constructor_and_destructor() {
         let file_path = Path::new("./data/iceland-surface.idx");
         let index = CodesIndex::read_from_file(file_path)

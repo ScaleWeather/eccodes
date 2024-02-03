@@ -7,7 +7,7 @@ use crate::{
     errors::CodesError,
     intermediate_bindings::{codes_handle_delete, codes_handle_new_from_file},
 };
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 use crate::{intermediate_bindings::codes_index::codes_handle_new_from_index, CodesIndex};
 
 use super::GribFile;
@@ -117,7 +117,7 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
     }
 }
 
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
     type Item = KeyedMessage;
 

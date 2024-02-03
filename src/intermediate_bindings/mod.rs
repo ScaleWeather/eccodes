@@ -7,7 +7,7 @@
 //!to make ecCodes usage safer and easier,
 //!but they are unsafe as they operate on raw `codes_handle`.  
 
-#[cfg(feature = "ec_index")]
+#[cfg(feature = "experimental_index")]
 pub mod codes_index;
 
 use std::{

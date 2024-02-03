@@ -23,13 +23,13 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        RUST_BACKTRACE=full cargo test --features "ec_index"
+        RUST_BACKTRACE=full cargo test --features "experimental_index"
     - name: Check with clippy
       run: |
-        cargo clippy --features "ec_index"
+        cargo clippy --features "experimental_index"
     - name: Build release
       run: |
-        cargo build --release --features "ec_index"
+        cargo build --release --features "experimental_index"
 
   build-macos:
 
@@ -45,10 +45,10 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
-        RUST_BACKTRACE=full cargo test --features "ec_index"
+        RUST_BACKTRACE=full cargo test --features "experimental_index"
     - name: Check with clippy
       run: |
-        cargo clippy --features "ec_index"
+        cargo clippy --features "experimental_index"
     - name: Build release
       run: |
-        cargo build --release --features "ec_index"
+        cargo build --release --features "experimental_index"
