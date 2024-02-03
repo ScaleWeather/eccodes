@@ -15,13 +15,14 @@ use num_traits::FromPrimitive;
 
 use crate::errors::{CodesError, CodesInternal};
 
+// all index functions are safeguarded by a lock
+// because there are random errors appearing when using the index functions concurrently
+
 pub unsafe fn codes_index_new(keys: &str) -> Result<*mut codes_index, CodesError> {
     let context: *mut codes_context = ptr::null_mut(); //default context
     let mut error_code: i32 = 0;
     let keys = CString::new(keys).unwrap();
 
-    // this is a precaution as testing didn't show problems with index_new
-    // but performance penalty is negligible
     let _g = CODES_LOCK.lock().unwrap();
     let codes_index = eccodes_sys::codes_index_new(context, keys.as_ptr(), &mut error_code);
 
@@ -79,6 +80,7 @@ pub unsafe fn codes_index_select_long(
 ) -> Result<(), CodesError> {
     let key = CString::new(key).unwrap();
 
+    let _g = CODES_LOCK.lock().unwrap();
     let error_code = eccodes_sys::codes_index_select_long(index, key.as_ptr(), value);
 
     if error_code != 0 {
@@ -95,6 +97,7 @@ pub unsafe fn codes_index_select_double(
 ) -> Result<(), CodesError> {
     let key = CString::new(key).unwrap();
 
+    let _g = CODES_LOCK.lock().unwrap();
     let error_code = eccodes_sys::codes_index_select_double(index, key.as_ptr(), value);
 
     if error_code != 0 {
@@ -112,6 +115,7 @@ pub unsafe fn codes_index_select_string(
     let key = CString::new(key).unwrap();
     let value = CString::new(value).unwrap();
 
+    let _g = CODES_LOCK.lock().unwrap();
     let error_code = eccodes_sys::codes_index_select_string(index, key.as_ptr(), value.as_ptr());
 
     if error_code != 0 {
