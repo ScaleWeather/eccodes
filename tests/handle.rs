@@ -1,7 +1,6 @@
 use std::{path::Path, thread};
 
-use eccodes::{CodesHandle, KeyType, ProductKind};
-use fallible_iterator::FallibleIterator;
+use eccodes::{CodesHandle, KeyType, ProductKind, FallibleStreamingIterator};
 
 #[test]
 fn thread_safety() {
@@ -24,7 +23,6 @@ fn thread_safety() {
             assert_eq!(str_key.name, "name");
         }
 
-        drop(current_message);
         drop(handle);
     });
 
@@ -45,7 +43,6 @@ fn thread_safety() {
 
         assert_eq!(long_key.name, "numberOfPointsAlongAParallel");
 
-        drop(current_message);
         drop(handle);
     }
 }

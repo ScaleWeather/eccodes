@@ -27,6 +27,7 @@ errno = "0.3"
 num-derive = "0.4.1"
 num-traits = "0.2"
 fallible-iterator = "0.3"
+fallible-streaming-iterator = "0.1.9"
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["rustls-tls"] }
@@ -34,6 +35,7 @@ tokio = { version = "1.35", features = ["macros", "rt"] }
 criterion = "0.5"
 testing_logger = "0.1"
 rand = "0.8"
+anyhow = "1.0"
 
 [features]
 docs = ["eccodes-sys/docs"]
@@ -45,3 +47,6 @@ features = ["docs", "experimental_index"]
 [[bench]]
 name = "main"
 harness = false
+
+[lib]
+doctest = false

@@ -165,12 +165,14 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
+
     use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
-    use crate::FallibleIterator;
+    use crate::{FallibleIterator, FallibleStreamingIterator};
     use std::path::Path;
 
     #[test]
-    fn key_reader() {
+    fn key_reader() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -217,66 +219,76 @@ mod tests {
         }
 
         assert_eq!(double_arr_key.name, "values");
+
+        Ok(())
     }
 
     #[test]
-    fn era5_keys() {
+    fn era5_keys() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle.next()?.unwrap().clone();
 
         for i in 0..=300 {
             let key = current_message.next();
             println!("{}: {:?}", i, key);
         }
+
+        Ok(())
     }
 
     #[test]
-    fn gfs_keys() {
+    fn gfs_keys() -> Result<()> {
         let file_path = Path::new("./data/gfs.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle.next()?.unwrap().clone();
 
         for i in 0..=300 {
             let key = current_message.next();
             println!("{}: {:?}", i, key);
         }
+
+        Ok(())
     }
 
     #[test]
-    fn missing_key() {
+    fn missing_key() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap();
 
         let missing_key = current_message.read_key("doesNotExist");
 
         assert!(missing_key.is_err());
+
+        Ok(())
     }
 
     #[test]
-    fn benchmark_keys() {
+    fn benchmark_keys() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg = handle.next().unwrap().unwrap();
+        let msg = handle.next()?.unwrap();
 
-        let _ = msg.read_key("dataDate").unwrap();
-        let _ = msg.read_key("jDirectionIncrementInDegrees").unwrap();
-        let _ = msg.read_key("values").unwrap();
-        let _ = msg.read_key("name").unwrap();
-        let _ = msg.read_key("section1Padding").unwrap();
-        let _ = msg.read_key("experimentVersionNumber").unwrap();
+        let _ = msg.read_key("dataDate")?;
+        let _ = msg.read_key("jDirectionIncrementInDegrees")?;
+        let _ = msg.read_key("values")?;
+        let _ = msg.read_key("name")?;
+        let _ = msg.read_key("section1Padding")?;
+        let _ = msg.read_key("experimentVersionNumber")?;
         let _ = msg
             .read_key("zero")
             .unwrap_or_else(|_| msg.read_key("zeros").unwrap());
+
+        Ok(())
     }
 }

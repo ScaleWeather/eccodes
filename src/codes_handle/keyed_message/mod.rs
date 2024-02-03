@@ -163,17 +163,18 @@ impl Drop for KeyedMessage {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::FallibleIterator;
+    use crate::{FallibleIterator, FallibleStreamingIterator};
+    use anyhow::Result;
     use std::path::Path;
     use testing_logger;
 
     #[test]
-    fn key_clone() {
+    fn key_clone() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap();
         let cloned_message = current_message.clone();
 
         assert_ne!(
@@ -184,45 +185,50 @@ mod tests {
         assert!(cloned_message.iterator_namespace.is_none());
         assert!(cloned_message.keys_iterator.is_none());
         assert!(!cloned_message.keys_iterator_next_item_exists);
+
+        Ok(())
     }
 
     #[test]
-    fn message_drop() {
+    fn message_drop() -> Result<()> {
         testing_logger::setup();
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut current_message = handle.next()?.unwrap().clone();
 
-        let _key = current_message.next().unwrap().unwrap();
+        let _key = current_message.next()?.unwrap();
 
         drop(current_message);
 
         testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 0);
         });
+
+        Ok(())
     }
 
     #[test]
-    fn find_nearest() {
+    fn find_nearest() -> Result<()> {
         let file_path1 = Path::new("./data/iceland.grib");
         let file_path2 = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind).unwrap();
-        let mut msg1 = handle1.next().unwrap().unwrap();
+        let msg1 = handle1.next()?.unwrap();
+        let out1 = msg1.clone().find_nearest(64.13, -21.89).unwrap();
 
         let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind).unwrap();
-        let mut msg2 = handle2.next().unwrap().unwrap();
-
-        let out1 = msg1.find_nearest(64.13, -21.89).unwrap();
-        let out2 = msg2.find_nearest(64.13, -21.89).unwrap();
+        let msg2 = handle2.next()?.unwrap();
+        let out2 = msg2.clone().find_nearest(64.13, -21.89).unwrap();
 
         assert!(out1[0].value > 10000.0);
         assert!(out2[3].index == 551);
         assert!(out1[1].lat == 64.0);
         assert!(out2[2].lon == -21.75);
         assert!(out1[0].distance > 15.0);
+
+        Ok(())
     }
 }
