@@ -428,7 +428,7 @@ mod tests {
         .unwrap();
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
-        assert!(!handle.source.pointer.is_null());r
+        assert!(!handle.source.pointer.is_null());
         assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
