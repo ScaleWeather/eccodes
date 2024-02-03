@@ -134,120 +134,128 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::{Ok, Result};
+
     use crate::{
         codes_handle::{
             CodesHandle, Key,
             KeyType::{self},
             ProductKind,
         },
-        FallibleIterator,
+        FallibleStreamingIterator,
     };
     use std::{fs::remove_file, path::Path};
 
     #[test]
-    fn write_message() {
+    fn write_message_ref() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        drop(handle);
-
+        let current_message = handle.next()?.unwrap();
         let out_path = Path::new("./data/iceland_write.grib");
-        current_message.write_to_file(out_path, false).unwrap();
+        current_message.write_to_file(out_path, false)?;
 
-        remove_file(out_path).unwrap();
+        remove_file(out_path)?;
+
+        Ok(())
     }
 
     #[test]
-    fn write_message_clone() {
+    fn write_message_clone() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap().clone();
 
         drop(handle);
 
         let out_path = Path::new("./data/iceland_write_clone.grib");
-        current_message.write_to_file(out_path, false).unwrap();
+        current_message.write_to_file(out_path, false)?;
 
-        remove_file(out_path).unwrap();
+        remove_file(out_path)?;
+
+        Ok(())
     }
 
     #[test]
-    fn append_message() {
+    fn append_message() -> Result<()> {
         let product_kind = ProductKind::GRIB;
         let out_path = Path::new("./data/iceland_append.grib");
 
         let file_path = Path::new("./data/iceland-surface.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
-        current_message.write_to_file(out_path, false).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap();
+        current_message.write_to_file(out_path, false)?;
 
         let file_path = Path::new("./data/iceland-levels.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
-        current_message.write_to_file(out_path, true).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap();
+        current_message.write_to_file(out_path, true)?;
 
-        remove_file(out_path).unwrap();
+        remove_file(out_path)?;
+
+        Ok(())
     }
 
     #[test]
-    fn write_key() {
+    fn write_key() -> Result<()> {
         let product_kind = ProductKind::GRIB;
         let file_path = Path::new("./data/iceland.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle.next()?.unwrap().clone();
 
-        let old_key = current_message.read_key("centre").unwrap();
+        let old_key = current_message.read_key("centre")?;
 
         let new_key = Key {
             name: "centre".to_string(),
             value: KeyType::Str("cnmc".to_string()),
         };
 
-        current_message.write_key(new_key.clone()).unwrap();
+        current_message.write_key(new_key.clone())?;
 
-        let read_key = current_message.read_key("centre").unwrap();
+        let read_key = current_message.read_key("centre")?;
 
         assert_eq!(new_key, read_key);
         assert_ne!(old_key, read_key);
+
+        Ok(())
     }
 
     #[test]
-    fn edit_keys_and_save() {
+    fn edit_keys_and_save() -> Result<()> {
         let product_kind = ProductKind::GRIB;
         let file_path = Path::new("./data/iceland.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle.next()?.unwrap().clone();
 
-        let old_key = current_message.read_key("centre").unwrap();
+        let old_key = current_message.read_key("centre")?;
 
         let new_key = Key {
             name: "centre".to_string(),
             value: KeyType::Str("cnmc".to_string()),
         };
 
-        current_message.write_key(new_key.clone()).unwrap();
+        current_message.write_key(new_key.clone())?;
 
-        current_message
-            .write_to_file(Path::new("./data/iceland_edit.grib"), false)
-            .unwrap();
+        current_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
 
         let file_path = Path::new("./data/iceland_edit.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap();
 
-        let read_key = current_message.read_key("centre").unwrap();
+        let read_key = current_message.read_key("centre")?;
 
         assert_eq!(new_key, read_key);
         assert_ne!(old_key, read_key);
 
-        remove_file(Path::new("./data/iceland_edit.grib")).unwrap();
+        remove_file(Path::new("./data/iceland_edit.grib"))?;
+
+        Ok(())
     }
 }

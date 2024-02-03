@@ -1,13 +1,16 @@
 //!Main crate module containing definition of `CodesHandle`
 //!and all associated functions and data structures
 
-use crate::errors::CodesError;
+#[cfg(feature = "experimental_index")]
+use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index::codes_index_delete};
+use crate::CodesError;
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
 use std::{
+    fmt::Debug,
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
     path::Path,
@@ -24,15 +27,21 @@ use eccodes_sys::{
 mod iterator;
 mod keyed_message;
 
+#[derive(Debug)]
+#[doc(hidden)]
+pub struct GribFile {
+    pointer: *mut FILE,
+}
+
 ///Main structure used to operate on the GRIB file.
 ///It takes a full ownership of the accessed file.
 ///It can be constructed either using a file or a memory buffer.
 #[derive(Debug)]
-pub struct CodesHandle {
-    file_handle: *mut codes_handle,
+pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     _data: DataContainer,
-    file_pointer: *mut FILE,
+    source: SOURCE,
     product_kind: ProductKind,
+    unsafe_message: KeyedMessage,
 }
 
 ///Structure used to access keys inside the GRIB file message.
@@ -109,6 +118,8 @@ pub enum KeysIteratorFlags {
 enum DataContainer {
     FileBytes(Bytes),
     FileBuffer(File),
+    #[cfg(feature = "experimental_index")]
+    Empty(),
 }
 
 ///Enum representing the kind of product (file type) inside handled file.
@@ -134,7 +145,7 @@ pub struct NearestGridpoint {
     pub value: f64,
 }
 
-impl CodesHandle {
+impl CodesHandle<GribFile> {
     ///The constructor that takes a [`path`](Path) to an existing file and
     ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
     ///
@@ -168,7 +179,7 @@ impl CodesHandle {
     ///when the stream cannot be created from the file descriptor.
     ///
     ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///when internal [`codes_handle`] cannot be created.
     ///
     ///Returns [`CodesError::NoMessages`] when there is no message of requested type
     ///in the provided file.
@@ -176,13 +187,20 @@ impl CodesHandle {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
 
-        let file_handle = null_mut();
-
         Ok(CodesHandle {
             _data: (DataContainer::FileBuffer(file)),
-            file_handle,
-            file_pointer,
+            source: GribFile {
+                pointer: file_pointer,
+            },
             product_kind,
+            unsafe_message: KeyedMessage {
+                message_handle: null_mut(),
+                iterator_flags: None,
+                iterator_namespace: None,
+                keys_iterator: None,
+                keys_iterator_next_item_exists: false,
+                nearest_handle: None,
+            },
         })
     }
 
@@ -220,7 +238,7 @@ impl CodesHandle {
     ///when the file stream cannot be created.
     ///
     ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///when internal [`codes_handle`] cannot be created.
     ///
     ///Returns [`CodesError::NoMessages`] when there is no message of requested type
     ///in the provided file.
@@ -230,14 +248,46 @@ impl CodesHandle {
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
-        let file_handle = null_mut();
-
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
-            file_handle,
-            file_pointer,
+            source: GribFile {
+                pointer: file_pointer,
+            },
             product_kind,
+            unsafe_message: KeyedMessage {
+                message_handle: null_mut(),
+                iterator_flags: None,
+                iterator_namespace: None,
+                keys_iterator: None,
+                keys_iterator_next_item_exists: false,
+                nearest_handle: None,
+            },
         })
+    }
+}
+
+#[cfg(feature = "experimental_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+impl CodesHandle<CodesIndex> {
+    pub fn new_from_index(
+        index: CodesIndex,
+        product_kind: ProductKind,
+    ) -> Result<Self, CodesError> {
+        let new_handle = CodesHandle {
+            _data: DataContainer::Empty(), //unused, index owns data
+            source: index,
+            product_kind,
+            unsafe_message: KeyedMessage {
+                message_handle: null_mut(),
+                iterator_flags: None,
+                iterator_namespace: None,
+                keys_iterator: None,
+                keys_iterator_next_item_exists: false,
+                nearest_handle: None,
+            },
+        };
+
+        Ok(new_handle)
     }
 }
 
@@ -275,7 +325,51 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
-impl Drop for CodesHandle {
+/// This trait is neccessary because (1) drop in GribFile/IndexFile cannot
+/// be called directly as source cannot be moved out of shared reference
+/// and (2) Drop drops fields in arbitrary order leading to fclose() failing
+#[doc(hidden)]
+pub trait SpecialDrop {
+    fn spec_drop(&mut self);
+}
+
+impl SpecialDrop for GribFile {
+    fn spec_drop(&mut self) {
+        //fclose() can fail in several different cases, however there is not much
+        //that we can nor we should do about it. the promise of fclose() is that
+        //the stream will be disassociated from the file after the call, therefore
+        //use of stream after the call to fclose() is undefined behaviour, so we clear it
+        let return_code;
+        unsafe {
+            if !self.pointer.is_null() {
+                return_code = libc::fclose(self.pointer);
+                if return_code != 0 {
+                    let error_val = errno();
+                    warn!(
+                "fclose() returned an error and your file might not have been correctly saved.
+                Error code: {}; Error message: {}",
+                error_val.0, error_val
+            );
+                }
+            }
+        }
+
+        self.pointer = null_mut();
+    }
+}
+
+#[cfg(feature = "experimental_index")]
+impl SpecialDrop for CodesIndex {
+    fn spec_drop(&mut self) {
+        unsafe {
+            codes_index_delete(self.pointer);
+        }
+
+        self.pointer = null_mut();
+    }
+}
+
+impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
     ///Executes the destructor for this type.
     ///This method calls `fclose()` from libc for graceful cleanup.
     ///
@@ -287,25 +381,7 @@ impl Drop for CodesHandle {
     ///If any function called in the destructor returns an error warning will appear in log.
     ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
-        //fclose() can fail in several different cases, however there is not much
-        //that we can nor we should do about it. the promise of fclose() is that
-        //the stream will be disassociated from the file after the call, therefore
-        //use of stream after the call to fclose() is undefined behaviour, so we clear it
-        let return_code;
-        unsafe {
-            return_code = libc::fclose(self.file_pointer);
-        }
-
-        if return_code != 0 {
-            let error_val = errno();
-            warn!(
-                "fclose() returned an error and your file might not have been correctly saved.
-                Error code: {}; Error message: {}",
-                error_val.0, error_val
-            );
-        }
-
-        self.file_pointer = null_mut();
+        self.source.spec_drop();
     }
 }
 
@@ -314,6 +390,8 @@ mod tests {
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
+    #[cfg(feature = "experimental_index")]
+    use crate::codes_index::{CodesIndex, Select};
     use log::Level;
     use std::path::Path;
 
@@ -324,13 +402,13 @@ mod tests {
 
         let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
-        assert!(!handle.file_pointer.is_null());
-        assert!(handle.file_handle.is_null());
+        assert!(!handle.source.pointer.is_null());
+        assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         let metadata = match &handle._data {
-            DataContainer::FileBytes(_) => panic!(),
             DataContainer::FileBuffer(file) => file.metadata().unwrap(),
+            _ => panic!(),
         };
 
         println!("{:?}", metadata);
@@ -349,14 +427,37 @@ mod tests {
         .unwrap();
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
-        assert!(!handle.file_pointer.is_null());
-        assert!(handle.file_handle.is_null());
+        assert!(!handle.source.pointer.is_null());
+        assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         match &handle._data {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
-            DataContainer::FileBuffer(_) => panic!(),
+            _ => panic!(),
         };
+    }
+
+    #[test]
+    #[cfg(feature = "experimental_index")]
+    fn index_constructor_and_destructor() {
+        let file_path = Path::new("./data/iceland-surface.idx");
+        let index = CodesIndex::read_from_file(file_path)
+            .unwrap()
+            .select("shortName", "2t")
+            .unwrap()
+            .select("typeOfLevel", "surface")
+            .unwrap()
+            .select("level", 0)
+            .unwrap()
+            .select("stepType", "instant")
+            .unwrap();
+
+        let i_ptr = index.pointer.clone();
+
+        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+
+        assert_eq!(handle.source.pointer, i_ptr);
+        assert!(handle.unsafe_message.message_handle.is_null());
     }
 
     #[tokio::test]
