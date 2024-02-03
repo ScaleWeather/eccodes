@@ -220,7 +220,7 @@ fn simulatenous_index_destructors() -> Result<()> {
             thread::sleep(std::time::Duration::from_millis(sleep_time));
             drop(index);
         }
-
+      
         Ok(())
     });
 

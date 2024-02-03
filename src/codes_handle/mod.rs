@@ -247,7 +247,7 @@ impl CodesHandle<GribFile> {
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
-
+      
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
             source: GribFile {
@@ -273,6 +273,7 @@ impl CodesHandle<CodesIndex> {
         index: CodesIndex,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
+
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
             source: index,
@@ -427,7 +428,7 @@ mod tests {
         .unwrap();
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
-        assert!(!handle.source.pointer.is_null());
+        assert!(!handle.source.pointer.is_null());r
         assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 

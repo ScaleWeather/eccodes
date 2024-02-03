@@ -113,7 +113,7 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
             None
         } else {
             Some(&self.unsafe_message)
-        }
+      }
     }
 }
 
