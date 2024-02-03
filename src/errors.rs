@@ -47,6 +47,11 @@ pub enum CodesError {
     ///Similar to [`CodesInternal::CodesNotFound`] and [`CodesInternal::CodesMissingKey`].
     #[error("The key is missing in present message")]
     MissingKey,
+
+    /// Returned when codes_handle_clone returns null pointer
+    /// indicating issues with cloning the message.
+    #[error("Cannot clone the message")]
+    CloneFailed,
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]

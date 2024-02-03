@@ -299,41 +299,16 @@ pub unsafe fn codes_get_message(
     Ok((buffer_ptr, message_size))
 }
 
-pub unsafe fn codes_get_message_copy(handle: *mut codes_handle) -> Result<Vec<u8>, CodesError> {
-    let buffer_size = codes_get_message_size(handle)?;
+pub unsafe fn codes_handle_clone(
+    source_handle: *mut codes_handle,
+) -> Result<*mut codes_handle, CodesError> {
+    let clone_handle = unsafe { eccodes_sys::codes_handle_clone(source_handle) };
 
-    let mut buffer: Vec<u8> = vec![0; buffer_size];
-
-    let mut message_size = buffer_size;
-
-    let error_code = eccodes_sys::codes_get_message_copy(
-        handle,
-        buffer.as_mut_ptr().cast::<libc::c_void>(),
-        &mut message_size,
-    );
-
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+    if clone_handle.is_null() {
+        return Err(CodesError::CloneFailed);
     }
 
-    assert!(
-        (buffer_size == message_size && message_size == buffer.len()),
-        "Buffer, vector and message sizes ar not equal in codes_get_message! 
-        Please report this panic on Github."
-    );
-
-    Ok(buffer)
-}
-
-pub unsafe fn codes_handle_new_from_message_copy(message_buffer: &[u8]) -> *mut codes_handle {
-    let default_context: *mut codes_context = ptr::null_mut();
-
-    eccodes_sys::codes_handle_new_from_message_copy(
-        default_context,
-        message_buffer.as_ptr().cast::<libc::c_void>(),
-        message_buffer.len(),
-    )
+    Ok(clone_handle)
 }
 
 pub unsafe fn codes_keys_iterator_new(

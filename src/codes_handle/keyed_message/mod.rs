@@ -10,9 +10,8 @@ use crate::{
     codes_handle::KeyedMessage,
     errors::CodesError,
     intermediate_bindings::{
-        codes_get_message_copy, codes_grib_nearest_delete, codes_grib_nearest_find,
-        codes_grib_nearest_new, codes_handle_delete, codes_handle_new_from_message_copy,
-        codes_keys_iterator_delete,
+        codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new,
+        codes_handle_clone, codes_handle_delete, codes_keys_iterator_delete,
     },
 };
 
@@ -86,16 +85,8 @@ impl Clone for KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
     ///During clone iterator flags and namespace are not copied, and the iterator is reset.
     fn clone(&self) -> KeyedMessage {
-        let new_handle;
-        let new_buffer;
-
-        unsafe {
-            new_buffer = codes_get_message_copy(self.message_handle).expect(
-                "Getting message clone failed.
-            Please report this panic on Github",
-            );
-            new_handle = codes_handle_new_from_message_copy(&new_buffer);
-        }
+        let new_handle =
+            unsafe { codes_handle_clone(self.message_handle).expect("Cannot clone the message") };
 
         KeyedMessage {
             message_handle: new_handle,
@@ -190,12 +181,33 @@ mod tests {
     }
 
     #[test]
+    fn message_clone() -> Result<()> {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let msg = handle.next()?.unwrap().clone();
+        let _ = handle.next()?;
+
+        drop(handle);
+
+        let _ = msg.read_key("dataDate")?;
+        let _ = msg.read_key("jDirectionIncrementInDegrees")?;
+        let _ = msg.read_key("values")?;
+        let _ = msg.read_key("name")?;
+        let _ = msg.read_key("section1Padding")?;
+        let _ = msg.read_key("experimentVersionNumber")?;
+
+        Ok(())
+    }
+
+    #[test]
     fn message_drop() -> Result<()> {
         testing_logger::setup();
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let mut current_message = handle.next()?.unwrap().clone();
 
         let _key = current_message.next()?.unwrap();
