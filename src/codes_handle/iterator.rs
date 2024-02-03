@@ -113,7 +113,7 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
             None
         } else {
             Some(&self.unsafe_message)
-      }
+        }
     }
 }
 
@@ -158,7 +158,7 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
-    use anyhow::Result;
+    use anyhow::{Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::path::Path;
 
@@ -239,6 +239,27 @@ mod tests {
         assert!(current_message.iterator_namespace.is_none());
         assert!(current_message.keys_iterator.is_none());
         assert!(!current_message.keys_iterator_next_item_exists);
+    }
+
+    #[test]
+    fn iterator_beyond_none() -> Result<()> {
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+
+        assert!(handle.next()?.is_none());
+        assert!(handle.next()?.is_none());
+        assert!(handle.next()?.is_none());
+        assert!(handle.next()?.is_none());
+
+        Ok(())
     }
 
     #[test]
