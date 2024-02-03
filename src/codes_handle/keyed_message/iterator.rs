@@ -18,7 +18,7 @@ use super::KeysIteratorFlags;
 ///so it is probably more efficient to call that function directly only for keys you
 ///are interested in.
 ///
-///[`FallibleIterator`](fallible_iterator::FallibleIterator) is used instead of classic `Iterator`
+///[`FallibleIterator`] is used instead of classic `Iterator`
 ///because internal ecCodes functions can return internal error in some edge-cases.
 ///The usage of `FallibleIterator` is sligthly different than usage of `Iterator`,
 ///check its documentation for more details.
