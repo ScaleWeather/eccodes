@@ -1,19 +1,14 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::module_name_repetitions)]
 
-use eccodes_sys::{codes_index, CODES_LOCK};
+use eccodes_sys::{codes_context, codes_index, CODES_LOCK};
+use num_traits::FromPrimitive;
 use std::{ffi::CString, ptr};
 
-#[cfg(target_os = "macos")]
-type _SYS_IO_FILE = eccodes_sys::__sFILE;
-
-#[cfg(not(target_os = "macos"))]
-type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
-
-use eccodes_sys::{codes_context, codes_handle};
-use num_traits::FromPrimitive;
-
-use crate::{errors::{CodesError, CodesInternal}, pointer_guard};
+use crate::{
+    errors::{CodesError, CodesInternal},
+    pointer_guard,
+};
 
 // all index functions are safeguarded by a lock
 // because there are random errors appearing when using the index functions concurrently
@@ -81,7 +76,7 @@ pub unsafe fn codes_index_select_long(
     value: i64,
 ) -> Result<(), CodesError> {
     pointer_guard::non_null!(index);
-    
+
     let key = CString::new(key).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
@@ -131,27 +126,4 @@ pub unsafe fn codes_index_select_string(
         return Err(err.into());
     }
     Ok(())
-}
-
-pub unsafe fn codes_handle_new_from_index(
-    index: *mut codes_index,
-) -> Result<*mut codes_handle, CodesError> {
-    pointer_guard::non_null!(index);
-
-    let mut error_code: i32 = 0;
-
-    let _g = CODES_LOCK.lock().unwrap();
-    let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
-
-    // special case! codes_handle_new_from_index returns -43 when there are no messages left in the index
-    // this is also indicated by a null pointer, which is handled upstream
-    if error_code == -43 {
-        return Ok(codes_handle);
-    }
-
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
-    }
-    Ok(codes_handle)
 }

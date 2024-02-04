@@ -8,7 +8,7 @@ use crate::{
     intermediate_bindings::{codes_handle_delete, codes_handle_new_from_file},
 };
 #[cfg(feature = "experimental_index")]
-use crate::{intermediate_bindings::codes_index::codes_handle_new_from_index, CodesIndex};
+use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};
 
 use super::GribFile;
 

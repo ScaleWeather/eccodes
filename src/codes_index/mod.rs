@@ -4,7 +4,7 @@
 use crate::{
     codes_handle::SpecialDrop,
     errors::CodesError,
-    intermediate_bindings::codes_index::{
+    intermediate_bindings::{
         codes_index_add_file, codes_index_new, codes_index_read, codes_index_select_double,
         codes_index_select_long, codes_index_select_string,
     },

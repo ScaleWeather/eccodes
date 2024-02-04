@@ -2,7 +2,7 @@
 //!and all associated functions and data structures
 
 #[cfg(feature = "experimental_index")]
-use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index::codes_index_delete};
+use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
 use crate::CodesError;
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
