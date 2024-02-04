@@ -3,7 +3,7 @@
 
 #[cfg(feature = "experimental_index")]
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
-use crate::CodesError;
+use crate::{pointer_guard, CodesError};
 use bytes::Bytes;
 use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
 use errno::errno;
@@ -286,10 +286,10 @@ impl CodesHandle<CodesIndex> {
 }
 
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
-    let file_ptr;
+    let file_ptr = 
     unsafe {
-        file_ptr = libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>());
-    }
+        libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>())
+    };
 
     if file_ptr.is_null() {
         let error_val = errno();
@@ -301,10 +301,13 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
 }
 
 fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
+    let file_data_ptr = file_data.as_ptr() as *mut c_void;
+    pointer_guard::non_null!(file_data_ptr);
+
     let file_ptr;
     unsafe {
         file_ptr = libc::fmemopen(
-            file_data.as_ptr() as *mut c_void,
+            file_data_ptr,
             file_data.len() as size_t,
             "r".as_ptr().cast::<c_char>(),
         );
