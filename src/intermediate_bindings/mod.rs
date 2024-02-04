@@ -32,10 +32,10 @@ pub use codes_get::{
     codes_get_long_array, codes_get_message, codes_get_native_type, codes_get_size,
     codes_get_string,
 };
-pub use codes_handle::{
-    codes_handle_clone, codes_handle_delete, codes_handle_new_from_file,
-    codes_handle_new_from_index,
-};
+#[cfg(feature = "experimental_index")]
+pub use codes_handle::codes_handle_new_from_index;
+pub use codes_handle::{codes_handle_clone, codes_handle_delete, codes_handle_new_from_file};
+#[cfg(feature = "experimental_index")]
 pub use codes_index::{
     codes_index_add_file, codes_index_delete, codes_index_new, codes_index_read,
     codes_index_select_double, codes_index_select_long, codes_index_select_string,

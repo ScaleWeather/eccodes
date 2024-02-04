@@ -1,6 +1,8 @@
 use std::ptr::{self};
 
-use eccodes_sys::{codes_context, codes_handle, codes_index, CODES_LOCK};
+use eccodes_sys::{codes_context, codes_handle};
+#[cfg(feature = "experimental_index")]
+use eccodes_sys::{codes_index, CODES_LOCK};
 use libc::FILE;
 use num_traits::FromPrimitive;
 
@@ -56,6 +58,7 @@ pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), Codes
     Ok(())
 }
 
+#[cfg(feature = "experimental_index")]
 pub unsafe fn codes_handle_new_from_index(
     index: *mut codes_index,
 ) -> Result<*mut codes_handle, CodesError> {
