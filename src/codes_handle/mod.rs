@@ -3,9 +3,9 @@
 
 #[cfg(feature = "experimental_index")]
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
-use crate::{pointer_guard, CodesError};
+use crate::{pointer_guard, CodesError, KeyedMessage};
 use bytes::Bytes;
-use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::ProductKind_PRODUCT_GRIB;
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -18,7 +18,6 @@ use std::{
 };
 
 mod iterator;
-mod keyed_message;
 
 #[derive(Debug)]
 #[doc(hidden)]
@@ -35,24 +34,6 @@ pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     source: SOURCE,
     product_kind: ProductKind,
     unsafe_message: KeyedMessage,
-}
-
-///Structure used to access keys inside the GRIB file message.
-///All data (including data values) contained by the file can only be accessed
-///through the message and keys.
-///
-///The structure implements `Clone` trait which comes with a memory overhead.
-///You should take care that your system has enough memory before cloning `KeyedMessage`.
-///
-///Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
-///function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
-///The function [`find_nearest()`](KeyedMessage::find_nearest()) allows to get the values of four nearest gridpoints
-///to requested coordinates.
-///`FallibleIterator` parameters can be set with [`set_iterator_parameters()`](KeyedMessage::set_iterator_parameters())
-///to specify the subset of keys to iterate over.
-#[derive(Hash, Debug)]
-pub struct KeyedMessage {
-    pub(crate) message_handle: *mut codes_handle,
 }
 
 ///Structure representing a single key from the `KeyedMessage`.

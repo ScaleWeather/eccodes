@@ -3,9 +3,9 @@ use std::ptr;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 
 use crate::{
-    codes_handle::{CodesHandle, KeyedMessage},
     errors::CodesError,
     intermediate_bindings::{codes_handle_delete, codes_handle_new_from_file},
+    CodesHandle, KeyedMessage,
 };
 #[cfg(feature = "experimental_index")]
 use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};

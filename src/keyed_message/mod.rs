@@ -1,14 +1,29 @@
 mod read;
 mod write;
 
+use eccodes_sys::codes_handle;
 use log::warn;
 use std::ptr::null_mut;
 
-use crate::{
-    codes_handle::KeyedMessage,
-    intermediate_bindings::{codes_handle_clone, codes_handle_delete},
-};
+use crate::intermediate_bindings::{codes_handle_clone, codes_handle_delete};
 
+///Structure used to access keys inside the GRIB file message.
+///All data (including data values) contained by the file can only be accessed
+///through the message and keys.
+///
+///The structure implements `Clone` trait which comes with a memory overhead.
+///You should take care that your system has enough memory before cloning `KeyedMessage`.
+///
+///Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
+///function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
+///The function [`find_nearest()`](KeyedMessage::find_nearest()) allows to get the values of four nearest gridpoints
+///to requested coordinates.
+///`FallibleIterator` parameters can be set with [`set_iterator_parameters()`](KeyedMessage::set_iterator_parameters())
+///to specify the subset of keys to iterate over.
+#[derive(Hash, Debug)]
+pub struct KeyedMessage {
+    pub(crate) message_handle: *mut codes_handle,
+}
 
 impl Clone for KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.

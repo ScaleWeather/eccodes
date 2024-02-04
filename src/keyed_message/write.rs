@@ -1,12 +1,10 @@
 use std::{fs::OpenOptions, io::Write, path::Path, slice};
 
 use crate::{
-    codes_handle::{Key, KeyType, KeyedMessage},
-    errors::CodesError,
-    intermediate_bindings::{
+    codes_handle::{Key, KeyType}, errors::CodesError, intermediate_bindings::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
         codes_set_long, codes_set_long_array, codes_set_string,
-    },
+    }, KeyedMessage
 };
 
 impl KeyedMessage {
