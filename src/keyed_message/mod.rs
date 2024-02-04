@@ -90,7 +90,7 @@ impl Drop for KeyedMessage {
 mod tests {
     use crate::codes_handle::{CodesHandle, ProductKind};
     use crate::FallibleStreamingIterator;
-    use anyhow::Result;
+    use anyhow::{Context, Result};
     use std::path::Path;
     use testing_logger;
 
@@ -100,7 +100,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
         let cloned_message = current_message.clone();
 
         assert_ne!(
@@ -117,7 +117,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let msg = handle.next()?.unwrap().clone();
+        let msg = handle.next()?.context("Message not some")?.clone();
         let _ = handle.next()?;
 
         drop(handle);
@@ -139,7 +139,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.context("Message not some")?.clone();
 
         let _kiter = current_message.default_keys_iterator()?;
         let _niter = current_message.codes_nearest()?;

@@ -134,7 +134,7 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{Ok, Result};
+    use anyhow::{Context, Ok, Result};
 
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
@@ -149,7 +149,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
         let out_path = Path::new("./data/iceland_write.grib");
         current_message.write_to_file(out_path, false)?;
 
@@ -164,7 +164,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.context("Message not some")?.clone();
 
         drop(handle);
 
@@ -183,12 +183,12 @@ mod tests {
 
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
         current_message.write_to_file(out_path, false)?;
 
         let file_path = Path::new("./data/iceland-levels.grib");
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
         current_message.write_to_file(out_path, true)?;
 
         remove_file(out_path)?;
@@ -202,7 +202,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let mut current_message = handle.next()?.context("Message not some")?.clone();
 
         let old_key = current_message.read_key("centre")?;
 
@@ -227,7 +227,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let mut current_message = handle.next()?.context("Message not some")?.clone();
 
         let old_key = current_message.read_key("centre")?;
 
@@ -243,7 +243,7 @@ mod tests {
         let file_path = Path::new("./data/iceland_edit.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
 
         let read_key = current_message.read_key("centre")?;
 

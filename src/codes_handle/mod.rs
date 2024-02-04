@@ -278,6 +278,7 @@ impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
@@ -287,37 +288,35 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn file_constructor() {
+    fn file_constructor() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         assert!(!handle.source.pointer.is_null());
         assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
-        let metadata = match &handle._data {
-            DataContainer::FileBuffer(file) => file.metadata().unwrap(),
+        match &handle._data {
+            DataContainer::FileBuffer(file) => file.metadata()?,
             _ => panic!(),
         };
 
-        println!("{:?}", metadata);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn memory_constructor() {
+    async fn memory_constructor() -> Result<()> {
         let product_kind = ProductKind::GRIB;
         let file_data = reqwest::get(
             "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
         )
-        .await
-        .unwrap()
+        .await?
         .bytes()
-        .await
-        .unwrap();
+        .await?;
 
-        let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
         assert!(!handle.source.pointer.is_null());
         assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
@@ -326,40 +325,41 @@ mod tests {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
             _ => panic!(),
         };
+
+        Ok(())
     }
 
     #[test]
     #[cfg(feature = "experimental_index")]
-    fn index_constructor_and_destructor() {
+    fn index_constructor_and_destructor() -> Result<()> {
+        use anyhow::Ok;
+
         let file_path = Path::new("./data/iceland-surface.idx");
-        let index = CodesIndex::read_from_file(file_path)
-            .unwrap()
-            .select("shortName", "2t")
-            .unwrap()
-            .select("typeOfLevel", "surface")
-            .unwrap()
-            .select("level", 0)
-            .unwrap()
-            .select("stepType", "instant")
-            .unwrap();
+        let index = CodesIndex::read_from_file(file_path)?
+            .select("shortName", "2t")?
+            .select("typeOfLevel", "surface")?
+            .select("level", 0)?
+            .select("stepType", "instant")?;
 
         let i_ptr = index.pointer.clone();
 
-        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
 
         assert_eq!(handle.source.pointer, i_ptr);
         assert!(handle.unsafe_message.message_handle.is_null());
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn codes_handle_drop() {
+    async fn codes_handle_drop() -> Result<()> {
         testing_logger::setup();
 
         {
             let file_path = Path::new("./data/iceland-surface.grib");
             let product_kind = ProductKind::GRIB;
 
-            let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+            let handle = CodesHandle::new_from_file(file_path, product_kind)?;
             drop(handle);
 
             testing_logger::validate(|captured_logs| {
@@ -372,13 +372,11 @@ mod tests {
             let file_data = reqwest::get(
                 "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
             )
-            .await
-            .unwrap()
+            .await?
             .bytes()
-            .await
-            .unwrap();
+            .await?;
 
-            let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+            let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
             drop(handle);
 
             //logs from Reqwest are expected
@@ -389,5 +387,7 @@ mod tests {
                 }
             });
         }
+
+        Ok(())
     }
 }

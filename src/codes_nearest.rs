@@ -110,7 +110,7 @@ impl Drop for CodesNearest<'_> {
 mod tests {
     use std::path::Path;
 
-    use anyhow::Result;
+    use anyhow::{Context, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
 
     use crate::{CodesHandle, ProductKind};
@@ -121,13 +121,13 @@ mod tests {
         let file_path2 = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind).unwrap();
-        let msg1 = handle1.next()?.unwrap();
+        let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind)?;
+        let msg1 = handle1.next()?.context("Message not some")?;
         let nrst1 = msg1.codes_nearest()?;
         let out1 = nrst1.find_nearest(64.13, -21.89)?;
 
-        let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind).unwrap();
-        let msg2 = handle2.next()?.unwrap();
+        let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind)?;
+        let msg2 = handle2.next()?.context("Message not some")?;
         let nrst2 = msg2.codes_nearest()?;
         let out2 = nrst2.find_nearest(64.13, -21.89)?;
 

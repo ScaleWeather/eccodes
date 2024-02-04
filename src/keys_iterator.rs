@@ -192,7 +192,7 @@ impl Drop for KeysIterator<'_> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
+    use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
     use crate::{FallibleIterator, FallibleStreamingIterator};
@@ -205,8 +205,8 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next()?.unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.context("Message not some")?;
 
         let flags = vec![
             KeysIteratorFlags::AllKeys,        //0
@@ -219,7 +219,7 @@ mod tests {
 
         let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
 
-        while let Some(key) = kiter.next().unwrap() {
+        while let Some(key) = kiter.next()? {
             assert!(!key.name.is_empty());
         }
 
@@ -232,7 +232,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
 
         let flags = vec![
             KeysIteratorFlags::AllKeys, //0
@@ -242,7 +242,7 @@ mod tests {
 
         let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
 
-        while let Some(key) = kiter.next().unwrap() {
+        while let Some(key) = kiter.next()? {
             assert!(!key.name.is_empty());
         }
 

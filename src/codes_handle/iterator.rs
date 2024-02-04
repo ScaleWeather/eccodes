@@ -200,7 +200,7 @@ mod tests {
     fn iterator_collected() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let mut handle_collected = vec![];
 
@@ -209,7 +209,7 @@ mod tests {
         }
 
         for msg in handle_collected {
-            let key = msg.read_key("name").unwrap();
+            let key = msg.read_key("name")?;
             match key.value {
                 KeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
@@ -220,14 +220,16 @@ mod tests {
     }
 
     #[test]
-    fn iterator_return() {
+    fn iterator_return() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.context("Message not some")?;
 
         assert!(!current_message.message_handle.is_null());
+
+        Ok(())
     }
 
     #[test]
@@ -256,7 +258,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         // Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
         // First, filter and collect the messages to get those that we want
@@ -277,7 +279,7 @@ mod tests {
         println!("{:?}", level.read_key("shortName"));
 
         // Get the four nearest gridpoints of Reykjavik
-        let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89).unwrap();
+        let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89)?;
 
         // Print value and distance of the nearest gridpoint
         println!(
