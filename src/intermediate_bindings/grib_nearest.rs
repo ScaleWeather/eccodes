@@ -5,7 +5,8 @@ use eccodes_sys::{codes_handle, codes_nearest, CODES_NEAREST_SAME_DATA, CODES_NE
 use num_traits::FromPrimitive;
 
 use crate::{
-    errors::{CodesError, CodesInternal}, pointer_guard, NearestGridpoint
+    errors::{CodesError, CodesInternal},
+    pointer_guard, NearestGridpoint,
 };
 
 pub unsafe fn codes_grib_nearest_new(

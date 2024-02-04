@@ -4,7 +4,10 @@ use eccodes_sys::codes_nearest;
 use log::warn;
 
 use crate::{
-    intermediate_bindings::{codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new}, CodesError, KeyedMessage,
+    intermediate_bindings::{
+        codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new,
+    },
+    CodesError, KeyedMessage,
 };
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 use std::{path::Path, thread};
 
-use eccodes::{CodesHandle, KeyType, ProductKind, FallibleStreamingIterator};
+use eccodes::{CodesHandle, FallibleStreamingIterator, KeyType, ProductKind};
 
 #[test]
 fn thread_safety() {

@@ -56,7 +56,7 @@ pub enum CodesError {
     /// Returned when codes_keys_iterator_new returns null pointer
     #[error("Cannot create or manipulate keys iterator")]
     KeysIteratorFailed,
-    
+
     /// This error can be returned by almost any function in the crate.
     /// It is returned when null pointer was passed to ecCodes function
     /// which cannot handle null pointers. This error may indicate both
