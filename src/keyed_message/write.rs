@@ -1,10 +1,12 @@
 use std::{fs::OpenOptions, io::Write, path::Path, slice};
 
 use crate::{
-    codes_handle::{Key, KeyType}, errors::CodesError, intermediate_bindings::{
+    errors::CodesError,
+    intermediate_bindings::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
         codes_set_long, codes_set_long_array, codes_set_string,
-    }, KeyedMessage
+    },
+    Key, KeyType, KeyedMessage,
 };
 
 impl KeyedMessage {
@@ -135,12 +137,8 @@ mod tests {
     use anyhow::{Ok, Result};
 
     use crate::{
-        codes_handle::{
-            CodesHandle, Key,
-            KeyType::{self},
-            ProductKind,
-        },
-        FallibleStreamingIterator,
+        codes_handle::{CodesHandle, ProductKind},
+        FallibleStreamingIterator, Key, KeyType,
     };
     use std::{fs::remove_file, path::Path};
 

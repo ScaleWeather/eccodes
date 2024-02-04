@@ -1,9 +1,11 @@
 use crate::{
-    codes_handle::{Key, KeyType}, errors::CodesError, intermediate_bindings::{
+    errors::CodesError,
+    intermediate_bindings::{
         codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
         NativeKeyType,
-    }, KeyedMessage
+    },
+    Key, KeyType, KeyedMessage,
 };
 
 impl KeyedMessage {
@@ -165,8 +167,8 @@ impl KeyedMessage {
 mod tests {
     use anyhow::Result;
 
-    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator};
+    use crate::codes_handle::{CodesHandle, ProductKind};
+    use crate::{FallibleIterator, FallibleStreamingIterator, KeyType};
     use std::path::Path;
 
     #[test]

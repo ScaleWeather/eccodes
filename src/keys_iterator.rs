@@ -4,13 +4,10 @@ use log::warn;
 use std::ptr::null_mut;
 
 use crate::{
-    codes_handle::Key,
-    errors::CodesError,
-    intermediate_bindings::{
+    errors::CodesError, intermediate_bindings::{
         codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
         codes_keys_iterator_next,
-    },
-    KeyedMessage,
+    }, Key, KeyedMessage
 };
 
 #[derive(Debug)]

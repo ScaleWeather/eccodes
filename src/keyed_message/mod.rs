@@ -25,6 +25,29 @@ pub struct KeyedMessage {
     pub(crate) message_handle: *mut codes_handle,
 }
 
+///Structure representing a single key from the `KeyedMessage`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Key {
+    pub name: String,
+    pub value: KeyType,
+}
+
+///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
+///
+///Messages inside GRIB files can contain arbitrary keys set by the file author.
+///The type of a given key is only known at runtime (after being checked).
+///There are several possible types of keys, which are represented by this enum
+///and each variant contains the respective data type.
+#[derive(Clone, Debug, PartialEq)]
+pub enum KeyType {
+    Float(f64),
+    Int(i64),
+    FloatArray(Vec<f64>),
+    IntArray(Vec<i64>),
+    Str(String),
+    Bytes(Vec<u8>),
+}
+
 impl Clone for KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
     ///During clone iterator flags and namespace are not copied, and the iterator is reset.

@@ -147,7 +147,7 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
+    use crate::{codes_handle::{CodesHandle, ProductKind}, KeyType};
     use anyhow::{Context, Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::path::Path;
