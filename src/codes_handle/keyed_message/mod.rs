@@ -1,4 +1,3 @@
-mod iterator;
 mod read;
 mod write;
 
@@ -10,7 +9,6 @@ use crate::{
     intermediate_bindings::{codes_handle_clone, codes_handle_delete},
 };
 
-use super::KeysIteratorFlags;
 
 impl Clone for KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.

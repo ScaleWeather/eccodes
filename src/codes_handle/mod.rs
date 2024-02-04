@@ -5,7 +5,7 @@
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
 use crate::{pointer_guard, CodesError};
 use bytes::Bytes;
-use eccodes_sys::{codes_handle, codes_keys_iterator, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -15,13 +15,6 @@ use std::{
     os::unix::prelude::AsRawFd,
     path::Path,
     ptr::null_mut,
-};
-
-use eccodes_sys::{
-    CODES_KEYS_ITERATOR_ALL_KEYS, CODES_KEYS_ITERATOR_DUMP_ONLY, CODES_KEYS_ITERATOR_SKIP_CODED,
-    CODES_KEYS_ITERATOR_SKIP_COMPUTED, CODES_KEYS_ITERATOR_SKIP_DUPLICATES,
-    CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC, CODES_KEYS_ITERATOR_SKIP_FUNCTION,
-    CODES_KEYS_ITERATOR_SKIP_OPTIONAL, CODES_KEYS_ITERATOR_SKIP_READ_ONLY,
 };
 
 mod iterator;
@@ -69,13 +62,6 @@ pub struct Key {
     pub value: KeyType,
 }
 
-#[derive(Debug)]
-pub struct KeysIterator<'a> {
-    parent_message: &'a KeyedMessage,
-    iterator_handle: *mut codes_keys_iterator,
-    next_item_exists: bool,
-}
-
 ///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
 ///
 ///Messages inside GRIB files can contain arbitrary keys set by the file author.
@@ -90,30 +76,6 @@ pub enum KeyType {
     IntArray(Vec<i64>),
     Str(String),
     Bytes(Vec<u8>),
-}
-
-///Flags to specify the subset of keys to iterate over
-///by `FallibleIterator` in `KeyedMessage`. The flags can be used together.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum KeysIteratorFlags {
-    ///Iterate over all keys
-    AllKeys = CODES_KEYS_ITERATOR_ALL_KEYS as isize,
-    ///Iterate only dump keys
-    DumpOnly = CODES_KEYS_ITERATOR_DUMP_ONLY as isize,
-    ///Exclude coded keys from iteration
-    SkipCoded = CODES_KEYS_ITERATOR_SKIP_CODED as isize,
-    ///Exclude computed keys from iteration
-    SkipComputed = CODES_KEYS_ITERATOR_SKIP_COMPUTED as isize,
-    ///Exclude function keys from iteration
-    SkipFunction = CODES_KEYS_ITERATOR_SKIP_FUNCTION as isize,
-    ///Exclude optional keys from iteration
-    SkipOptional = CODES_KEYS_ITERATOR_SKIP_OPTIONAL as isize,
-    ///Exclude read-only keys from iteration
-    SkipReadOnly = CODES_KEYS_ITERATOR_SKIP_READ_ONLY as isize,
-    ///Exclude duplicate keys from iteration
-    SkipDuplicates = CODES_KEYS_ITERATOR_SKIP_DUPLICATES as isize,
-    ///Exclude file edition specific keys from iteration
-    SkipEditionSpecific = CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
 #[derive(Debug)]
