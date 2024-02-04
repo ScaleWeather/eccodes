@@ -72,7 +72,7 @@ mod tests {
     use testing_logger;
 
     #[test]
-    fn key_clone() -> Result<()> {
+    fn message_clone_1() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -89,7 +89,7 @@ mod tests {
     }
 
     #[test]
-    fn message_clone() -> Result<()> {
+    fn message_clone_2() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -116,11 +116,14 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.unwrap().clone();
 
         let _kiter = current_message.default_keys_iterator()?;
         let _niter = current_message.codes_nearest()?;
 
+        drop(handle);
+        drop(_kiter);
+        drop(_niter);
         drop(current_message);
 
         testing_logger::validate(|captured_logs| {

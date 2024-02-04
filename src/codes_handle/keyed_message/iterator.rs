@@ -157,8 +157,6 @@ impl Drop for KeysIterator<'_> {
         }
 
         self.iterator_handle = null_mut();
-
-        todo!()
     }
 }
 
@@ -176,12 +174,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next()?.unwrap().clone();
-
-        assert!(current_message.iterator_flags.is_none());
-        assert!(current_message.iterator_namespace.is_none());
-        assert!(current_message.keys_iterator.is_none());
-        assert!(!current_message.keys_iterator_next_item_exists);
+        let current_message = handle.next()?.unwrap();
 
         let flags = vec![
             KeysIteratorFlags::AllKeys,        //0
@@ -192,15 +185,9 @@ mod tests {
 
         let namespace = "geography".to_owned();
 
-        current_message.set_iterator_parameters(flags, namespace);
+        let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
 
-        assert_eq!(current_message.iterator_flags, Some(35));
-        assert_eq!(
-            current_message.iterator_namespace,
-            Some("geography".to_owned())
-        );
-
-        while let Some(key) = current_message.next().unwrap() {
+        while let Some(key) = kiter.next().unwrap() {
             assert!(!key.name.is_empty());
         }
 
@@ -212,8 +199,8 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let mut current_message = handle.next()?.unwrap().clone();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.unwrap();
 
         let flags = vec![
             KeysIteratorFlags::AllKeys, //0
@@ -221,9 +208,9 @@ mod tests {
 
         let namespace = "blabla".to_owned();
 
-        current_message.set_iterator_parameters(flags, namespace);
+        let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
 
-        while let Some(key) = current_message.next().unwrap() {
+        while let Some(key) = kiter.next().unwrap() {
             assert!(!key.name.is_empty());
         }
 

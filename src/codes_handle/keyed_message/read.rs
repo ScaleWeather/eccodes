@@ -232,9 +232,8 @@ mod tests {
         let current_message = handle.next()?.unwrap();
         let mut kiter = current_message.default_keys_iterator()?;
 
-        for i in 0..=300 {
-            let key = kiter.next()?.unwrap();
-            println!("{}: {:?}", i, key);
+        while let Some(key) = kiter.next()? {
+            assert!(!key.name.is_empty());
         }
 
         Ok(())
@@ -249,9 +248,8 @@ mod tests {
         let current_message = handle.next()?.unwrap();
         let mut kiter = current_message.default_keys_iterator()?;
 
-        for i in 0..=300 {
-            let key = kiter.next()?.unwrap();
-            println!("{}: {:?}", i, key);
+        while let Some(key) = kiter.next()? {
+            assert!(!key.name.is_empty());
         }
 
         Ok(())
