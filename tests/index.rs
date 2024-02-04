@@ -130,6 +130,7 @@ fn index_panic() -> Result<()> {
 }
 
 #[test]
+#[ignore = "for releases, indexing is experimental"]
 fn add_file_while_index_open() -> Result<()> {
     thread::spawn(|| -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.idx");
@@ -169,6 +170,7 @@ fn add_file_to_read_index() -> Result<()> {
 }
 
 #[test]
+#[ignore = "for releases, indexing is experimental"]
 fn simulatenous_index_destructors() -> Result<()> {
     let h1 = thread::spawn(|| -> anyhow::Result<(), CodesError> {
         let mut rng = rand::thread_rng();
@@ -219,6 +221,7 @@ fn simulatenous_index_destructors() -> Result<()> {
 }
 
 #[test]
+#[ignore = "for releases, indexing is experimental"]
 fn index_handle_interference() -> Result<()> {
     thread::spawn(|| -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
