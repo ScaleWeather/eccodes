@@ -1,11 +1,11 @@
 use crate::{
-    codes_handle::{Key, KeyType, KeyedMessage},
     errors::CodesError,
     intermediate_bindings::{
         codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
         NativeKeyType,
     },
+    Key, KeyType, KeyedMessage,
 };
 
 impl KeyedMessage {
@@ -165,10 +165,10 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
+    use anyhow::{Context, Result};
 
-    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator};
+    use crate::codes_handle::{CodesHandle, ProductKind};
+    use crate::{FallibleIterator, FallibleStreamingIterator, KeyType};
     use std::path::Path;
 
     #[test]
@@ -176,11 +176,11 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let current_message = handle.next().unwrap().unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
 
-        let str_key = current_message.read_key("name").unwrap();
+        let str_key = current_message.read_key("name")?;
 
         match str_key.value {
             KeyType::Str(_) => {}
@@ -189,10 +189,7 @@ mod tests {
 
         assert_eq!(str_key.name, "name");
 
-        let double_key = current_message
-            .read_key("jDirectionIncrementInDegrees")
-            .unwrap();
-
+        let double_key = current_message.read_key("jDirectionIncrementInDegrees")?;
         match double_key.value {
             KeyType::Float(_) => {}
             _ => panic!("Incorrect variant of double key"),
@@ -200,9 +197,7 @@ mod tests {
 
         assert_eq!(double_key.name, "jDirectionIncrementInDegrees");
 
-        let long_key = current_message
-            .read_key("numberOfPointsAlongAParallel")
-            .unwrap();
+        let long_key = current_message.read_key("numberOfPointsAlongAParallel")?;
 
         match long_key.value {
             KeyType::Int(_) => {}
@@ -211,7 +206,7 @@ mod tests {
 
         assert_eq!(long_key.name, "numberOfPointsAlongAParallel");
 
-        let double_arr_key = current_message.read_key("values").unwrap();
+        let double_arr_key = current_message.read_key("values")?;
 
         match double_arr_key.value {
             KeyType::FloatArray(_) => {}
@@ -229,11 +224,11 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.context("Message not some")?;
+        let mut kiter = current_message.default_keys_iterator()?;
 
-        for i in 0..=300 {
-            let key = current_message.next();
-            println!("{}: {:?}", i, key);
+        while let Some(key) = kiter.next()? {
+            assert!(!key.name.is_empty());
         }
 
         Ok(())
@@ -245,11 +240,11 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.unwrap().clone();
+        let current_message = handle.next()?.context("Message not some")?;
+        let mut kiter = current_message.default_keys_iterator()?;
 
-        for i in 0..=300 {
-            let key = current_message.next();
-            println!("{}: {:?}", i, key);
+        while let Some(key) = kiter.next()? {
+            assert!(!key.name.is_empty());
         }
 
         Ok(())
@@ -261,7 +256,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.unwrap();
+        let current_message = handle.next()?.context("Message not some")?;
 
         let missing_key = current_message.read_key("doesNotExist");
 
@@ -277,7 +272,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg = handle.next()?.unwrap();
+        let msg = handle.next()?.context("Message not some")?;
 
         let _ = msg.read_key("dataDate")?;
         let _ = msg.read_key("jDirectionIncrementInDegrees")?;

@@ -2,10 +2,10 @@
 //!and all associated functions and data structures
 
 #[cfg(feature = "experimental_index")]
-use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index::codes_index_delete};
-use crate::CodesError;
+use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
+use crate::{pointer_guard, CodesError, KeyedMessage};
 use bytes::Bytes;
-use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::ProductKind_PRODUCT_GRIB;
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -17,15 +17,7 @@ use std::{
     ptr::null_mut,
 };
 
-use eccodes_sys::{
-    CODES_KEYS_ITERATOR_ALL_KEYS, CODES_KEYS_ITERATOR_DUMP_ONLY, CODES_KEYS_ITERATOR_SKIP_CODED,
-    CODES_KEYS_ITERATOR_SKIP_COMPUTED, CODES_KEYS_ITERATOR_SKIP_DUPLICATES,
-    CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC, CODES_KEYS_ITERATOR_SKIP_FUNCTION,
-    CODES_KEYS_ITERATOR_SKIP_OPTIONAL, CODES_KEYS_ITERATOR_SKIP_READ_ONLY,
-};
-
 mod iterator;
-mod keyed_message;
 
 #[derive(Debug)]
 #[doc(hidden)]
@@ -44,76 +36,6 @@ pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     unsafe_message: KeyedMessage,
 }
 
-///Structure used to access keys inside the GRIB file message.
-///All data (including data values) contained by the file can only be accessed
-///through the message and keys.
-///
-///The structure implements `Clone` trait which comes with a memory overhead.
-///You should take care that your system has enough memory before cloning `KeyedMessage`.
-///
-///Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
-///function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
-///The function [`find_nearest()`](KeyedMessage::find_nearest()) allows to get the values of four nearest gridpoints
-///to requested coordinates.
-///`FallibleIterator` parameters can be set with [`set_iterator_parameters()`](KeyedMessage::set_iterator_parameters())
-///to specify the subset of keys to iterate over.
-#[derive(Hash, Debug)]
-pub struct KeyedMessage {
-    message_handle: *mut codes_handle,
-    iterator_flags: Option<u32>,
-    iterator_namespace: Option<String>,
-    keys_iterator: Option<*mut codes_keys_iterator>,
-    keys_iterator_next_item_exists: bool,
-    nearest_handle: Option<*mut codes_nearest>,
-}
-
-///Structure representing a single key from the `KeyedMessage`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Key {
-    pub name: String,
-    pub value: KeyType,
-}
-
-///Enum to represent and contain all possible types of keys inside `KeyedMessage`.
-///
-///Messages inside GRIB files can contain arbitrary keys set by the file author.
-///The type of a given key is only known at runtime (after being checked).
-///There are several possible types of keys, which are represented by this enum
-///and each variant contains the respective data type.
-#[derive(Clone, Debug, PartialEq)]
-pub enum KeyType {
-    Float(f64),
-    Int(i64),
-    FloatArray(Vec<f64>),
-    IntArray(Vec<i64>),
-    Str(String),
-    Bytes(Vec<u8>),
-}
-
-///Flags to specify the subset of keys to iterate over
-///by `FallibleIterator` in `KeyedMessage`. The flags can be used together.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
-pub enum KeysIteratorFlags {
-    ///Iterate over all keys
-    AllKeys = CODES_KEYS_ITERATOR_ALL_KEYS as isize,
-    ///Iterate only dump keys
-    DumpOnly = CODES_KEYS_ITERATOR_DUMP_ONLY as isize,
-    ///Exclude coded keys from iteration
-    SkipCoded = CODES_KEYS_ITERATOR_SKIP_CODED as isize,
-    ///Exclude computed keys from iteration
-    SkipComputed = CODES_KEYS_ITERATOR_SKIP_COMPUTED as isize,
-    ///Exclude function keys from iteration
-    SkipFunction = CODES_KEYS_ITERATOR_SKIP_FUNCTION as isize,
-    ///Exclude optional keys from iteration
-    SkipOptional = CODES_KEYS_ITERATOR_SKIP_OPTIONAL as isize,
-    ///Exclude read-only keys from iteration
-    SkipReadOnly = CODES_KEYS_ITERATOR_SKIP_READ_ONLY as isize,
-    ///Exclude duplicate keys from iteration
-    SkipDuplicates = CODES_KEYS_ITERATOR_SKIP_DUPLICATES as isize,
-    ///Exclude file edition specific keys from iteration
-    SkipEditionSpecific = CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
-}
-
 #[derive(Debug)]
 enum DataContainer {
     FileBytes(Bytes),
@@ -127,22 +49,6 @@ enum DataContainer {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
-}
-
-///The structure returned by [`KeyedMessage::find_nearest()`].
-///Should always be analysed in relation to the coordinates request in `find_nearest()`.
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
-pub struct NearestGridpoint {
-    ///Index of gridpoint
-    pub index: i32,
-    ///Latitude in degrees north
-    pub lat: f64,
-    ///Longitude in degrees east
-    pub lon: f64,
-    ///Distance from coordinates requested in `find_nearest()`
-    pub distance: f64,
-    ///Value of the filed at given coordinate
-    pub value: f64,
 }
 
 impl CodesHandle<GribFile> {
@@ -195,11 +101,6 @@ impl CodesHandle<GribFile> {
             product_kind,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
-                iterator_flags: None,
-                iterator_namespace: None,
-                keys_iterator: None,
-                keys_iterator_next_item_exists: false,
-                nearest_handle: None,
             },
         })
     }
@@ -247,7 +148,7 @@ impl CodesHandle<GribFile> {
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
-      
+
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
             source: GribFile {
@@ -256,11 +157,6 @@ impl CodesHandle<GribFile> {
             product_kind,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
-                iterator_flags: None,
-                iterator_namespace: None,
-                keys_iterator: None,
-                keys_iterator_next_item_exists: false,
-                nearest_handle: None,
             },
         })
     }
@@ -273,18 +169,12 @@ impl CodesHandle<CodesIndex> {
         index: CodesIndex,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
-
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
             source: index,
             product_kind,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
-                iterator_flags: None,
-                iterator_namespace: None,
-                keys_iterator: None,
-                keys_iterator_next_item_exists: false,
-                nearest_handle: None,
             },
         };
 
@@ -293,10 +183,7 @@ impl CodesHandle<CodesIndex> {
 }
 
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
-    let file_ptr;
-    unsafe {
-        file_ptr = libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>());
-    }
+    let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>()) };
 
     if file_ptr.is_null() {
         let error_val = errno();
@@ -308,10 +195,13 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
 }
 
 fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
+    let file_data_ptr = file_data.as_ptr() as *mut c_void;
+    pointer_guard::non_null!(file_data_ptr);
+
     let file_ptr;
     unsafe {
         file_ptr = libc::fmemopen(
-            file_data.as_ptr() as *mut c_void,
+            file_data_ptr,
             file_data.len() as size_t,
             "r".as_ptr().cast::<c_char>(),
         );
@@ -388,6 +278,7 @@ impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Result;
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
@@ -397,37 +288,35 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn file_constructor() {
+    fn file_constructor() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         assert!(!handle.source.pointer.is_null());
         assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
-        let metadata = match &handle._data {
-            DataContainer::FileBuffer(file) => file.metadata().unwrap(),
+        match &handle._data {
+            DataContainer::FileBuffer(file) => file.metadata()?,
             _ => panic!(),
         };
 
-        println!("{:?}", metadata);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn memory_constructor() {
+    async fn memory_constructor() -> Result<()> {
         let product_kind = ProductKind::GRIB;
         let file_data = reqwest::get(
             "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
         )
-        .await
-        .unwrap()
+        .await?
         .bytes()
-        .await
-        .unwrap();
+        .await?;
 
-        let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
         assert!(!handle.source.pointer.is_null());
         assert!(handle.unsafe_message.message_handle.is_null());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
@@ -436,40 +325,41 @@ mod tests {
             DataContainer::FileBytes(file) => assert!(!file.is_empty()),
             _ => panic!(),
         };
+
+        Ok(())
     }
 
     #[test]
     #[cfg(feature = "experimental_index")]
-    fn index_constructor_and_destructor() {
+    fn index_constructor_and_destructor() -> Result<()> {
+        use anyhow::Ok;
+
         let file_path = Path::new("./data/iceland-surface.idx");
-        let index = CodesIndex::read_from_file(file_path)
-            .unwrap()
-            .select("shortName", "2t")
-            .unwrap()
-            .select("typeOfLevel", "surface")
-            .unwrap()
-            .select("level", 0)
-            .unwrap()
-            .select("stepType", "instant")
-            .unwrap();
+        let index = CodesIndex::read_from_file(file_path)?
+            .select("shortName", "2t")?
+            .select("typeOfLevel", "surface")?
+            .select("level", 0)?
+            .select("stepType", "instant")?;
 
         let i_ptr = index.pointer.clone();
 
-        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
 
         assert_eq!(handle.source.pointer, i_ptr);
         assert!(handle.unsafe_message.message_handle.is_null());
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn codes_handle_drop() {
+    async fn codes_handle_drop() -> Result<()> {
         testing_logger::setup();
 
         {
             let file_path = Path::new("./data/iceland-surface.grib");
             let product_kind = ProductKind::GRIB;
 
-            let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+            let handle = CodesHandle::new_from_file(file_path, product_kind)?;
             drop(handle);
 
             testing_logger::validate(|captured_logs| {
@@ -482,13 +372,11 @@ mod tests {
             let file_data = reqwest::get(
                 "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
             )
-            .await
-            .unwrap()
+            .await?
             .bytes()
-            .await
-            .unwrap();
+            .await?;
 
-            let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+            let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
             drop(handle);
 
             //logs from Reqwest are expected
@@ -499,5 +387,7 @@ mod tests {
                 }
             });
         }
+
+        Ok(())
     }
 }

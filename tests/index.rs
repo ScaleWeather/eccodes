@@ -2,7 +2,7 @@
 
 use std::{path::Path, thread};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use eccodes::{
     codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyType,
     ProductKind,
@@ -10,57 +10,51 @@ use eccodes::{
 use rand::Rng;
 
 #[test]
-fn iterate_handle_from_index() {
+fn iterate_handle_from_index() -> Result<()> {
     let file_path = Path::new("./data/iceland-surface.idx");
-    let index = CodesIndex::read_from_file(file_path)
-        .unwrap()
-        .select("shortName", "2t")
-        .unwrap()
-        .select("typeOfLevel", "surface")
-        .unwrap()
-        .select("level", 0)
-        .unwrap()
-        .select("stepType", "instant")
-        .unwrap();
+    let index = CodesIndex::read_from_file(file_path)?
+        .select("shortName", "2t")?
+        .select("typeOfLevel", "surface")?
+        .select("level", 0)?
+        .select("stepType", "instant")?;
 
-    let handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
+    let handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
 
-    let counter = handle.count().unwrap();
+    let counter = handle.count()?;
 
     assert_eq!(counter, 1);
+
+    Ok(())
 }
 
 #[test]
-fn read_index_messages() {
+fn read_index_messages() -> Result<()> {
     let file_path = Path::new("./data/iceland-surface.idx");
-    let index = CodesIndex::read_from_file(file_path)
-        .unwrap()
-        .select("shortName", "2t")
-        .unwrap()
-        .select("typeOfLevel", "surface")
-        .unwrap()
-        .select("level", 0)
-        .unwrap()
-        .select("stepType", "instant")
-        .unwrap();
+    let index = CodesIndex::read_from_file(file_path)?
+        .select("shortName", "2t")?
+        .select("typeOfLevel", "surface")?
+        .select("level", 0)?
+        .select("stepType", "instant")?;
 
-    let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB).unwrap();
-    let current_message = handle.next().unwrap().unwrap();
+    let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let current_message = handle.next()?.context("Message not some")?;
 
     {
-        let short_name = current_message.read_key("shortName").unwrap();
+        let short_name = current_message.read_key("shortName")?;
         match short_name.value {
             KeyType::Str(val) => assert!(val == "2t"),
             _ => panic!("Unexpected key type"),
         };
     }
     {
-        let level = current_message.read_key("level").unwrap();
+        let level = current_message.read_key("level")?;
         match level.value {
             KeyType::Int(val) => assert!(val == 0),
             _ => panic!("Unexpected key type"),
         };
     }
+
+    Ok(())
 }
 
 #[test]
@@ -88,14 +82,14 @@ fn collect_index_iterator() -> Result<()> {
 }
 
 #[test]
-fn add_file_error() {
-    thread::spawn(|| {
+fn add_file_error() -> Result<()> {
+    thread::spawn(|| -> Result<()> {
         let grib_path = Path::new("./data/iceland-levels.grib");
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-        let mut index_op = CodesIndex::new_from_keys(&keys).unwrap();
+        let mut index_op = CodesIndex::new_from_keys(&keys)?;
 
         loop {
-            index_op = index_op.add_grib_file(grib_path).unwrap();
+            index_op = index_op.add_grib_file(grib_path)?;
         }
     });
 
@@ -103,22 +97,22 @@ fn add_file_error() {
 
     let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
     let wrong_path = Path::new("./data/xxx.grib");
-    let index = CodesIndex::new_from_keys(&keys)
-        .unwrap()
-        .add_grib_file(wrong_path);
+    let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(wrong_path);
 
     assert!(index.is_err());
+
+    Ok(())
 }
 
 #[test]
-fn index_panic() {
-    thread::spawn(|| {
+fn index_panic() -> Result<()> {
+    thread::spawn(|| -> Result<()> {
         let grib_path = Path::new("./data/iceland-levels.grib");
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-        let mut index_op = CodesIndex::new_from_keys(&keys).unwrap();
+        let mut index_op = CodesIndex::new_from_keys(&keys)?;
 
         loop {
-            index_op = index_op.add_grib_file(grib_path).unwrap();
+            index_op = index_op.add_grib_file(grib_path)?;
         }
     });
 
@@ -126,61 +120,57 @@ fn index_panic() {
 
     let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
     let wrong_path = Path::new("./data/xxx.grib");
-    let index = CodesIndex::new_from_keys(&keys).unwrap();
+    let index = CodesIndex::new_from_keys(&keys)?;
 
     let result = std::panic::catch_unwind(|| index.add_grib_file(wrong_path).unwrap());
 
     assert!(result.is_err());
+
+    Ok(())
 }
 
 #[test]
-fn add_file_while_index_open() {
-    thread::spawn(|| {
+#[ignore = "for releases, indexing is experimental"]
+fn add_file_while_index_open() -> Result<()> {
+    thread::spawn(|| -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.idx");
-        let mut index_op = CodesIndex::read_from_file(file_path).unwrap();
+        let mut index_op = CodesIndex::read_from_file(file_path)?;
 
         loop {
             index_op = index_op
-                .select("shortName", "2t")
-                .unwrap()
-                .select("typeOfLevel", "surface")
-                .unwrap()
-                .select("level", 0)
-                .unwrap()
-                .select("stepType", "instant")
-                .unwrap();
+                .select("shortName", "2t")?
+                .select("typeOfLevel", "surface")?
+                .select("level", 0)?
+                .select("stepType", "instant")?;
         }
     });
 
     let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
     let grib_path = Path::new("./data/iceland-surface.grib");
-    let index = CodesIndex::new_from_keys(&keys)
-        .unwrap()
-        .add_grib_file(grib_path);
+    let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path);
 
     assert!(index.is_ok());
+
+    Ok(())
 }
 
 #[test]
-fn add_file_to_read_index() {
+fn add_file_to_read_index() -> Result<()> {
     let file_path = Path::new("./data/iceland-surface.idx");
     let grib_path = Path::new("./data/iceland-surface.grib");
 
-    let _index = CodesIndex::read_from_file(file_path)
-        .unwrap()
-        .add_grib_file(grib_path)
-        .unwrap()
-        .select("shortName", "2t")
-        .unwrap()
-        .select("typeOfLevel", "surface")
-        .unwrap()
-        .select("level", 0)
-        .unwrap()
-        .select("stepType", "instant")
-        .unwrap();
+    let _index = CodesIndex::read_from_file(file_path)?
+        .add_grib_file(grib_path)?
+        .select("shortName", "2t")?
+        .select("typeOfLevel", "surface")?
+        .select("level", 0)?
+        .select("stepType", "instant")?;
+
+    Ok(())
 }
 
 #[test]
+#[ignore = "for releases, indexing is experimental"]
 fn simulatenous_index_destructors() -> Result<()> {
     let h1 = thread::spawn(|| -> anyhow::Result<(), CodesError> {
         let mut rng = rand::thread_rng();
@@ -220,7 +210,7 @@ fn simulatenous_index_destructors() -> Result<()> {
             thread::sleep(std::time::Duration::from_millis(sleep_time));
             drop(index);
         }
-      
+
         Ok(())
     });
 
@@ -231,8 +221,9 @@ fn simulatenous_index_destructors() -> Result<()> {
 }
 
 #[test]
-fn index_handle_interference() {
-    thread::spawn(|| {
+#[ignore = "for releases, indexing is experimental"]
+fn index_handle_interference() -> Result<()> {
+    thread::spawn(|| -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
 
         loop {
@@ -249,14 +240,13 @@ fn index_handle_interference() {
     for _ in 0..10 {
         let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
 
-        let index = CodesIndex::new_from_keys(&keys)
-            .unwrap()
-            .add_grib_file(grib_path)
-            .unwrap();
+        let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path)?;
         let i_handle = CodesHandle::new_from_index(index, ProductKind::GRIB);
 
         assert!(i_handle.is_ok());
 
         thread::sleep(std::time::Duration::from_millis(sleep_time));
     }
+
+    Ok(())
 }

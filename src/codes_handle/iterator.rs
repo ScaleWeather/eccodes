@@ -3,12 +3,12 @@ use std::ptr;
 use fallible_streaming_iterator::FallibleStreamingIterator;
 
 use crate::{
-    codes_handle::{CodesHandle, KeyedMessage},
     errors::CodesError,
     intermediate_bindings::{codes_handle_delete, codes_handle_new_from_file},
+    CodesHandle, KeyedMessage,
 };
 #[cfg(feature = "experimental_index")]
-use crate::{intermediate_bindings::codes_index::codes_handle_new_from_index, CodesIndex};
+use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};
 
 use super::GribFile;
 
@@ -98,11 +98,6 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
 
         self.unsafe_message = KeyedMessage {
             message_handle: new_eccodes_handle,
-            iterator_flags: None,
-            iterator_namespace: None,
-            keys_iterator: None,
-            keys_iterator_next_item_exists: false,
-            nearest_handle: None,
         };
 
         Ok(())
@@ -113,7 +108,7 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
             None
         } else {
             Some(&self.unsafe_message)
-      }
+        }
     }
 }
 
@@ -136,11 +131,6 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 
         self.unsafe_message = KeyedMessage {
             message_handle: new_eccodes_handle,
-            iterator_flags: None,
-            iterator_namespace: None,
-            keys_iterator: None,
-            keys_iterator_next_item_exists: false,
-            nearest_handle: None,
         };
 
         Ok(())
@@ -157,8 +147,11 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
-    use anyhow::Result;
+    use crate::{
+        codes_handle::{CodesHandle, ProductKind},
+        KeyType,
+    };
+    use anyhow::{Context, Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::path::Path;
 
@@ -166,15 +159,15 @@ mod tests {
     fn iterator_lifetimes() -> Result<()> {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg1 = handle.next()?.unwrap();
+        let msg1 = handle.next()?.context("Message not some")?;
         let key1 = msg1.read_key("typeOfLevel")?;
 
-        let msg2 = handle.next()?.unwrap();
+        let msg2 = handle.next()?.context("Message not some")?;
         let key2 = msg2.read_key("typeOfLevel")?;
 
-        let msg3 = handle.next()?.unwrap();
+        let msg3 = handle.next()?.context("Message not some")?;
         let key3 = msg3.read_key("typeOfLevel")?;
 
         assert_eq!(key1.value, KeyType::Str("isobaricInhPa".to_string()));
@@ -189,7 +182,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         while let Some(msg) = handle.next()? {
             let key = msg.read_key("shortName")?;
@@ -207,7 +200,7 @@ mod tests {
     fn iterator_collected() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let mut handle_collected = vec![];
 
@@ -216,7 +209,7 @@ mod tests {
         }
 
         for msg in handle_collected {
-            let key = msg.read_key("name").unwrap();
+            let key = msg.read_key("name")?;
             match key.value {
                 KeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
@@ -227,18 +220,37 @@ mod tests {
     }
 
     #[test]
-    fn iterator_return() {
+    fn iterator_return() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-        let current_message = handle.next().unwrap().unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.context("Message not some")?;
 
         assert!(!current_message.message_handle.is_null());
-        assert!(current_message.iterator_flags.is_none());
-        assert!(current_message.iterator_namespace.is_none());
-        assert!(current_message.keys_iterator.is_none());
-        assert!(!current_message.keys_iterator_next_item_exists);
+
+        Ok(())
+    }
+
+    #[test]
+    fn iterator_beyond_none() -> Result<()> {
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+        assert!(handle.next()?.is_some());
+
+        assert!(handle.next()?.is_none());
+        assert!(handle.next()?.is_none());
+        assert!(handle.next()?.is_none());
+        assert!(handle.next()?.is_none());
+
+        Ok(())
     }
 
     #[test]
@@ -246,7 +258,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         // Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
         // First, filter and collect the messages to get those that we want
@@ -262,12 +274,12 @@ mod tests {
 
         // Now unwrap and access the first and only element of resulting vector
         // Find nearest modifies internal KeyedMessage fields so we need mutable reference
-        let level = &mut level[0];
+        let level = &level[0];
 
         println!("{:?}", level.read_key("shortName"));
 
         // Get the four nearest gridpoints of Reykjavik
-        let nearest_gridpoints = level.find_nearest(64.13, -21.89).unwrap();
+        let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89)?;
 
         // Print value and distance of the nearest gridpoint
         println!(

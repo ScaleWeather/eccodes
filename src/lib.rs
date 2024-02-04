@@ -220,15 +220,20 @@ pub mod codes_handle;
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub mod codes_index;
+pub mod codes_nearest;
 pub mod errors;
 mod intermediate_bindings;
+pub mod keyed_message;
+pub mod keys_iterator;
+mod pointer_guard;
 
-pub use codes_handle::{
-    CodesHandle, Key, KeyType, KeyedMessage, KeysIteratorFlags, NearestGridpoint, ProductKind,
-};
+pub use codes_handle::{CodesHandle, ProductKind};
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub use codes_index::CodesIndex;
+pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 pub use fallible_streaming_iterator::FallibleStreamingIterator;
+pub use keyed_message::{Key, KeyType, KeyedMessage};
+pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
