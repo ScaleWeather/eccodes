@@ -28,6 +28,7 @@ num-derive = "0.4.1"
 num-traits = "0.2"
 fallible-iterator = "0.3"
 fallible-streaming-iterator = "0.1.9"
+ndarray = { version = "0.15", default-features = false, optional = true, features = ["std"]}
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["rustls-tls"] }
@@ -36,10 +37,12 @@ criterion = "0.5"
 testing_logger = "0.1"
 rand = "0.8"
 anyhow = "1.0"
+float-cmp = "0.9"
 
 [features]
 docs = ["eccodes-sys/docs"]
 experimental_index = []
+message_ndarray = ["ndarray"]
 
 [package.metadata.docs.rs]
 features = ["docs", "experimental_index"]

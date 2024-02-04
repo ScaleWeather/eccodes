@@ -225,6 +225,9 @@ pub mod errors;
 mod intermediate_bindings;
 pub mod keyed_message;
 pub mod keys_iterator;
+#[cfg(feature = "message_ndarray")]
+#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+pub mod message_ndarray;
 mod pointer_guard;
 
 pub use codes_handle::{CodesHandle, ProductKind};
