@@ -1,5 +1,4 @@
 mod iterator;
-mod nearest;
 mod read;
 mod write;
 
@@ -8,22 +7,10 @@ use std::ptr::null_mut;
 
 use crate::{
     codes_handle::KeyedMessage,
-    errors::CodesError,
-    intermediate_bindings::{codes_grib_nearest_new, codes_handle_clone, codes_handle_delete},
+    intermediate_bindings::{codes_handle_clone, codes_handle_delete},
 };
 
-use super::{CodesNearest, KeysIteratorFlags};
-
-impl KeyedMessage {
-    pub fn codes_nearest(&self) -> Result<CodesNearest, CodesError> {
-        let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
-
-        Ok(CodesNearest {
-            nearest_handle,
-            parent_message: self,
-        })
-    }
-}
+use super::KeysIteratorFlags;
 
 impl Clone for KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.

@@ -1,12 +1,44 @@
 use std::ptr::null_mut;
 
+use eccodes_sys::codes_nearest;
 use log::warn;
 
 use crate::{
-    codes_handle::CodesNearest,
-    intermediate_bindings::{codes_grib_nearest_delete, codes_grib_nearest_find},
-    CodesError, NearestGridpoint,
+    intermediate_bindings::{codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new}, CodesError, KeyedMessage,
 };
+
+#[derive(Debug)]
+pub struct CodesNearest<'a> {
+    nearest_handle: *mut codes_nearest,
+    parent_message: &'a KeyedMessage,
+}
+
+///The structure returned by [`KeyedMessage::find_nearest()`].
+///Should always be analysed in relation to the coordinates request in `find_nearest()`.
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
+pub struct NearestGridpoint {
+    ///Index of gridpoint
+    pub index: i32,
+    ///Latitude in degrees north
+    pub lat: f64,
+    ///Longitude in degrees east
+    pub lon: f64,
+    ///Distance from coordinates requested in `find_nearest()`
+    pub distance: f64,
+    ///Value of the filed at given coordinate
+    pub value: f64,
+}
+
+impl KeyedMessage {
+    pub fn codes_nearest(&self) -> Result<CodesNearest, CodesError> {
+        let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
+
+        Ok(CodesNearest {
+            nearest_handle,
+            parent_message: self,
+        })
+    }
+}
 
 impl CodesNearest<'_> {
     ///Function to get four [`NearestGridpoint`]s of a point represented by requested coordinates.

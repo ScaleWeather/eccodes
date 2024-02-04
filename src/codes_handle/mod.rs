@@ -5,7 +5,7 @@
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
 use crate::{pointer_guard, CodesError};
 use bytes::Bytes;
-use eccodes_sys::{codes_handle, codes_keys_iterator, codes_nearest, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::{codes_handle, codes_keys_iterator, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use log::warn;
@@ -59,7 +59,7 @@ pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
 ///to specify the subset of keys to iterate over.
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
-    message_handle: *mut codes_handle,
+    pub(crate) message_handle: *mut codes_handle,
 }
 
 ///Structure representing a single key from the `KeyedMessage`.
@@ -129,28 +129,6 @@ enum DataContainer {
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
-}
-
-#[derive(Debug)]
-pub struct CodesNearest<'a> {
-    nearest_handle: *mut codes_nearest,
-    parent_message: &'a KeyedMessage,
-}
-
-///The structure returned by [`KeyedMessage::find_nearest()`].
-///Should always be analysed in relation to the coordinates request in `find_nearest()`.
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
-pub struct NearestGridpoint {
-    ///Index of gridpoint
-    pub index: i32,
-    ///Latitude in degrees north
-    pub lat: f64,
-    ///Longitude in degrees east
-    pub lon: f64,
-    ///Distance from coordinates requested in `find_nearest()`
-    pub distance: f64,
-    ///Value of the filed at given coordinate
-    pub value: f64,
 }
 
 impl CodesHandle<GribFile> {
@@ -250,7 +228,7 @@ impl CodesHandle<GribFile> {
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
-      
+
         Ok(CodesHandle {
             _data: (DataContainer::FileBytes(file_data)),
             source: GribFile {
@@ -271,7 +249,6 @@ impl CodesHandle<CodesIndex> {
         index: CodesIndex,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
-
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
             source: index,
@@ -286,10 +263,7 @@ impl CodesHandle<CodesIndex> {
 }
 
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
-    let file_ptr = 
-    unsafe {
-        libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>())
-    };
+    let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>()) };
 
     if file_ptr.is_null() {
         let error_val = errno();
