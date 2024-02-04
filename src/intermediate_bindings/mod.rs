@@ -31,8 +31,7 @@ use libc::{c_void, FILE};
 use num_traits::FromPrimitive;
 
 use crate::{
-    codes_handle::{NearestGridpoint, ProductKind},
-    errors::{CodesError, CodesInternal},
+    codes_handle::{NearestGridpoint, ProductKind}, errors::{CodesError, CodesInternal}, pointer_guard
 };
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Debug, num_derive::FromPrimitive)]
@@ -51,6 +50,8 @@ pub unsafe fn codes_handle_new_from_file(
     file_pointer: *mut FILE,
     product_kind: ProductKind,
 ) -> Result<*mut codes_handle, CodesError> {
+    pointer_guard::non_null!(file_pointer);
+
     let context: *mut codes_context = ptr::null_mut(); //default context
 
     let mut error_code: i32 = 0;
@@ -89,6 +90,8 @@ pub unsafe fn codes_get_native_type(
     handle: *mut codes_handle,
     key: &str,
 ) -> Result<NativeKeyType, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
     let mut key_type: i32 = 0;
 
@@ -103,6 +106,8 @@ pub unsafe fn codes_get_native_type(
 }
 
 pub unsafe fn codes_get_size(handle: *mut codes_handle, key: &str) -> Result<usize, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
     let mut key_size: usize = 0;
 
@@ -117,6 +122,8 @@ pub unsafe fn codes_get_size(handle: *mut codes_handle, key: &str) -> Result<usi
 }
 
 pub unsafe fn codes_get_long(handle: *mut codes_handle, key: &str) -> Result<i64, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
     let mut key_value: i64 = 0;
 
@@ -131,6 +138,8 @@ pub unsafe fn codes_get_long(handle: *mut codes_handle, key: &str) -> Result<i64
 }
 
 pub unsafe fn codes_get_double(handle: *mut codes_handle, key: &str) -> Result<f64, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
     let mut key_value: f64 = 0.0;
 
@@ -148,6 +157,8 @@ pub unsafe fn codes_get_double_array(
     handle: *mut codes_handle,
     key: &str,
 ) -> Result<Vec<f64>, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let mut key_size = codes_get_size(handle, key)?;
     let key = CString::new(key).unwrap();
 
@@ -172,6 +183,8 @@ pub unsafe fn codes_get_long_array(
     handle: *mut codes_handle,
     key: &str,
 ) -> Result<Vec<i64>, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let mut key_size = codes_get_size(handle, key)?;
     let key = CString::new(key).unwrap();
 
@@ -193,6 +206,8 @@ pub unsafe fn codes_get_long_array(
 }
 
 pub unsafe fn codes_get_length(handle: *mut codes_handle, key: &str) -> Result<usize, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
     let mut key_length: usize = 0;
 
@@ -207,6 +222,8 @@ pub unsafe fn codes_get_length(handle: *mut codes_handle, key: &str) -> Result<u
 }
 
 pub unsafe fn codes_get_string(handle: *mut codes_handle, key: &str) -> Result<String, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let mut key_length = codes_get_length(handle, key)?;
     let key = CString::new(key).unwrap();
 
@@ -240,6 +257,8 @@ pub unsafe fn codes_get_string(handle: *mut codes_handle, key: &str) -> Result<S
 }
 
 pub unsafe fn codes_get_bytes(handle: *mut codes_handle, key: &str) -> Result<Vec<u8>, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let mut key_size = codes_get_length(handle, key)?;
     let key = CString::new(key).unwrap();
 
@@ -261,6 +280,8 @@ pub unsafe fn codes_get_bytes(handle: *mut codes_handle, key: &str) -> Result<Ve
 }
 
 pub unsafe fn codes_get_message_size(handle: *mut codes_handle) -> Result<usize, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let mut size: usize = 0;
 
     let error_code = eccodes_sys::codes_get_message_size(handle, &mut size);
@@ -276,6 +297,8 @@ pub unsafe fn codes_get_message_size(handle: *mut codes_handle) -> Result<usize,
 pub unsafe fn codes_get_message(
     handle: *mut codes_handle,
 ) -> Result<(*const c_void, usize), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let buffer_size = codes_get_message_size(handle)?;
 
     let buffer: Vec<u8> = vec![0; buffer_size];
@@ -302,6 +325,8 @@ pub unsafe fn codes_get_message(
 pub unsafe fn codes_handle_clone(
     source_handle: *mut codes_handle,
 ) -> Result<*mut codes_handle, CodesError> {
+    pointer_guard::non_null!(source_handle);
+
     let clone_handle = unsafe { eccodes_sys::codes_handle_clone(source_handle) };
 
     if clone_handle.is_null() {
@@ -316,6 +341,8 @@ pub unsafe fn codes_keys_iterator_new(
     flags: u32,
     namespace: &str,
 ) -> Result<*mut codes_keys_iterator, CodesError> {
+    pointer_guard::non_null!(handle);
+    
     let namespace = CString::new(namespace).unwrap();
 
     let kiter = eccodes_sys::codes_keys_iterator_new(handle, u64::from(flags), namespace.as_ptr());
@@ -330,6 +357,10 @@ pub unsafe fn codes_keys_iterator_new(
 pub unsafe fn codes_keys_iterator_delete(
     keys_iterator: *mut codes_keys_iterator,
 ) -> Result<(), CodesError> {
+    if keys_iterator.is_null() {
+        return Ok(());
+    }
+
     let error_code = eccodes_sys::codes_keys_iterator_delete(keys_iterator);
 
     if error_code != 0 {
@@ -340,15 +371,19 @@ pub unsafe fn codes_keys_iterator_delete(
     Ok(())
 }
 
-pub unsafe fn codes_keys_iterator_next(keys_iterator: *mut codes_keys_iterator) -> bool {
+pub unsafe fn codes_keys_iterator_next(keys_iterator: *mut codes_keys_iterator) -> Result<bool, CodesError> {
+    pointer_guard::non_null!(keys_iterator);
+
     let next_item_exists = eccodes_sys::codes_keys_iterator_next(keys_iterator);
 
-    next_item_exists == 1
+    Ok(next_item_exists == 1)
 }
 
 pub unsafe fn codes_keys_iterator_get_name(
     keys_iterator: *mut codes_keys_iterator,
 ) -> Result<String, CodesError> {
+    pointer_guard::non_null!(keys_iterator);
+
     let name_pointer = eccodes_sys::codes_keys_iterator_get_name(keys_iterator);
 
     let name_c_str = CStr::from_ptr(name_pointer);
@@ -361,6 +396,8 @@ pub unsafe fn codes_keys_iterator_get_name(
 pub unsafe fn codes_grib_nearest_new(
     handle: *mut codes_handle,
 ) -> Result<*mut codes_nearest, CodesError> {
+    pointer_guard::non_null!(handle);
+
     let mut error_code: i32 = 0;
 
     let nearest = eccodes_sys::codes_grib_nearest_new(handle, &mut error_code);
@@ -374,6 +411,10 @@ pub unsafe fn codes_grib_nearest_new(
 }
 
 pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(), CodesError> {
+    if nearest.is_null() {
+        return Ok(())
+    }
+
     let error_code = eccodes_sys::codes_grib_nearest_delete(nearest);
 
     if error_code != 0 {
@@ -390,6 +431,9 @@ pub unsafe fn codes_grib_nearest_find(
     lat: f64,
     lon: f64,
 ) -> Result<[NearestGridpoint; 4], CodesError> {
+    pointer_guard::non_null!(handle);
+    pointer_guard::non_null!(nearest);
+
     // such flags are set because find nearest for given nearest is always
     // called on the same grib message
     let flags = CODES_NEAREST_SAME_GRID + CODES_NEAREST_SAME_DATA;
@@ -439,6 +483,8 @@ pub unsafe fn codes_set_long(
     key: &str,
     value: i64,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
 
     let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
@@ -456,6 +502,8 @@ pub unsafe fn codes_set_double(
     key: &str,
     value: f64,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
 
     let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
@@ -473,6 +521,8 @@ pub unsafe fn codes_set_long_array(
     key: &str,
     values: &[i64],
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
 
     let length = values.len();
@@ -497,6 +547,8 @@ pub unsafe fn codes_set_double_array(
     key: &str,
     values: &[f64],
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
 
     let length = values.len();
@@ -521,6 +573,8 @@ pub unsafe fn codes_set_string(
     key: &str,
     value: &str,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
     let mut length = value.len();
     let value = CString::new(value).unwrap();
@@ -541,6 +595,8 @@ pub unsafe fn codes_set_bytes(
     key: &str,
     values: &[u8],
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(handle);
+
     let key = CString::new(key).unwrap();
 
     let mut length = values.len();

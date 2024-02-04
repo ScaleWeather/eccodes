@@ -66,7 +66,7 @@ impl KeyedMessage {
 
         let iterator_handle =
             unsafe { codes_keys_iterator_new(self.message_handle, flags, &namespace)? };
-        let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle) };
+        let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
         Ok(KeysIterator {
             parent_message: self,
@@ -77,7 +77,7 @@ impl KeyedMessage {
 
     pub fn default_keys_iterator(&self) -> Result<KeysIterator, CodesError> {
         let iterator_handle = unsafe { codes_keys_iterator_new(self.message_handle, 0, "")? };
-        let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle) };
+        let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
         Ok(KeysIterator {
             parent_message: self,
@@ -131,7 +131,7 @@ impl FallibleIterator for KeysIterator<'_> {
 
             unsafe {
                 key_name = codes_keys_iterator_get_name(self.iterator_handle)?;
-                next_item_exists = codes_keys_iterator_next(self.iterator_handle);
+                next_item_exists = codes_keys_iterator_next(self.iterator_handle)?;
             }
 
             let key = KeyedMessage::read_key(self.parent_message, &key_name)?;

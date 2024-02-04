@@ -148,7 +148,7 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesHandle, KeyType, ProductKind};
-    use anyhow::{Ok, Result};
+    use anyhow::{Context, Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::path::Path;
 
@@ -156,15 +156,15 @@ mod tests {
     fn iterator_lifetimes() -> Result<()> {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg1 = handle.next()?.unwrap();
+        let msg1 = handle.next()?.context("Message not some")?;
         let key1 = msg1.read_key("typeOfLevel")?;
 
-        let msg2 = handle.next()?.unwrap();
+        let msg2 = handle.next()?.context("Message not some")?;
         let key2 = msg2.read_key("typeOfLevel")?;
 
-        let msg3 = handle.next()?.unwrap();
+        let msg3 = handle.next()?.context("Message not some")?;
         let key3 = msg3.read_key("typeOfLevel")?;
 
         assert_eq!(key1.value, KeyType::Str("isobaricInhPa".to_string()));
@@ -179,7 +179,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         while let Some(msg) = handle.next()? {
             let key = msg.read_key("shortName")?;

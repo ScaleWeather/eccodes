@@ -13,7 +13,7 @@ type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
 use eccodes_sys::{codes_context, codes_handle};
 use num_traits::FromPrimitive;
 
-use crate::errors::{CodesError, CodesInternal};
+use crate::{errors::{CodesError, CodesInternal}, pointer_guard};
 
 // all index functions are safeguarded by a lock
 // because there are random errors appearing when using the index functions concurrently
@@ -61,6 +61,8 @@ pub unsafe fn codes_index_add_file(
     index: *mut codes_index,
     filename: &str,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(index);
+
     let filename = CString::new(filename).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
@@ -78,6 +80,8 @@ pub unsafe fn codes_index_select_long(
     key: &str,
     value: i64,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(index);
+    
     let key = CString::new(key).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
@@ -95,6 +99,8 @@ pub unsafe fn codes_index_select_double(
     key: &str,
     value: f64,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(index);
+
     let key = CString::new(key).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
@@ -112,6 +118,8 @@ pub unsafe fn codes_index_select_string(
     key: &str,
     value: &str,
 ) -> Result<(), CodesError> {
+    pointer_guard::non_null!(index);
+
     let key = CString::new(key).unwrap();
     let value = CString::new(value).unwrap();
 
@@ -128,6 +136,8 @@ pub unsafe fn codes_index_select_string(
 pub unsafe fn codes_handle_new_from_index(
     index: *mut codes_index,
 ) -> Result<*mut codes_handle, CodesError> {
+    pointer_guard::non_null!(index);
+
     let mut error_code: i32 = 0;
 
     let _g = CODES_LOCK.lock().unwrap();
