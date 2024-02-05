@@ -51,6 +51,9 @@ pub enum KeyType {
 impl Clone for KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
     ///During clone iterator flags and namespace are not copied, and the iterator is reset.
+    /// 
+    /// # Panics
+    /// This function will panic if ecCodes fails to clone the message.
     fn clone(&self) -> KeyedMessage {
         let new_handle =
             unsafe { codes_handle_clone(self.message_handle).expect("Cannot clone the message") };

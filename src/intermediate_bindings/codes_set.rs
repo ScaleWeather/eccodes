@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+#![allow(clippy::module_name_repetitions)]
+
 use std::ffi::CString;
 
 use eccodes_sys::codes_handle;

@@ -2,75 +2,78 @@ use ndarray::{s, Array2, Array3};
 
 use crate::{errors::MessageNdarrayError, CodesError, KeyType, KeyedMessage};
 
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct RustyCodesMessage {
+    pub longitudes: Array2<f64>,
+    pub latitudes: Array2<f64>,
+    pub values: Array2<f64>,
+}
+
 impl KeyedMessage {
     /// Returns [y, x] ([Nj, Ni], [lat, lon]) ndarray from the message,
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
-        let ni = if let KeyType::Int(ni) = self.read_key("Ni")?.value {
-            ni
-        } else {
+        let KeyType::Int(ni) = self.read_key("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
         };
 
-        let nj = if let KeyType::Int(nj) = self.read_key("Nj")?.value {
-            nj
-        } else {
+        let KeyType::Int(nj) = self.read_key("Nj")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
         };
 
-        let vals = if let KeyType::FloatArray(vals) = self.read_key("values")?.value {
-            vals
-        } else {
+        let KeyType::FloatArray(vals) = self.read_key("values")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("values".to_owned()).into());
         };
 
-        if vals.len() != (ni * nj) as usize {
+        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
+        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
+
+        if vals.len() != (ni * nj) {
             return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
         }
 
-        let shape = (nj as usize, ni as usize);
-        let vals = Array2::from_shape_vec(shape, vals).map_err(|e| MessageNdarrayError::from(e))?;
+        let shape = (nj, ni);
+        let vals = Array2::from_shape_vec(shape, vals).map_err(MessageNdarrayError::from)?;
 
         Ok(vals)
     }
 
-    pub fn to_lons_lats_values(
-        &self,
-    ) -> Result<(Array2<f64>, Array2<f64>, Array2<f64>), CodesError> {
-        let ni = if let KeyType::Int(ni) = self.read_key("Ni")?.value {
-            ni
-        } else {
+    pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
+        let KeyType::Int(ni) = self.read_key("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
         };
 
-        let nj = if let KeyType::Int(nj) = self.read_key("Nj")?.value {
-            nj
-        } else {
+        let KeyType::Int(nj) = self.read_key("Nj")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
         };
 
-        let latlonvals = if let KeyType::FloatArray(vals) = self.read_key("latLonValues")?.value {
-            vals
-        } else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("values".to_owned()).into());
+        let KeyType::FloatArray(latlonvals) = self.read_key("latLonValues")?.value else {
+            return Err(MessageNdarrayError::UnexpectedKeyType("latLonValues".to_owned()).into());
         };
 
-        if latlonvals.len() != (ni * nj * 3) as usize {
+        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
+        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
+
+        if latlonvals.len() != (ni * nj * 3) {
             return Err(
                 MessageNdarrayError::UnexpectedValuesLength(latlonvals.len(), ni * nj * 3).into(),
             );
         }
 
-        let shape = (nj as usize, ni as usize, 3_usize);
+        let shape = (nj, ni, 3_usize);
         let mut latlonvals =
-            Array3::from_shape_vec(shape, latlonvals).map_err(|e| MessageNdarrayError::from(e))?;
+            Array3::from_shape_vec(shape, latlonvals).map_err(MessageNdarrayError::from)?;
         let (lats, lons, vals) =
             latlonvals
                 .view_mut()
                 .multi_slice_move((s![.., .., 0], s![.., .., 1], s![.., .., 2]));
 
-        Ok((lons.into_owned(), lats.into_owned(), vals.into_owned()))
+        Ok(RustyCodesMessage {
+            longitudes: lons.into_owned(),
+            latitudes: lats.into_owned(),
+            values: vals.into_owned(),
+        })
     }
 }
 
@@ -118,7 +121,11 @@ mod tests {
 
         while let Some(msg) = handle.next()? {
             if msg.read_key("shortName")?.value == KeyType::Str("2d".to_string()) {
-                let (lons, lats, vals) = msg.to_lons_lats_values()?;
+                let rmsg = msg.to_lons_lats_values()?;
+
+                let vals = rmsg.values;
+                let lons = rmsg.longitudes;
+                let lats = rmsg.latitudes;
 
                 // values from cfgrib
                 assert_approx_eq!(f64, vals[[0, 0]], 276.37793, epsilon = 0.000_1);

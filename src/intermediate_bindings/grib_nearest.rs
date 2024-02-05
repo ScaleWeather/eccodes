@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+#![allow(clippy::module_name_repetitions)]
+
 use std::ptr::addr_of_mut;
 
 use eccodes_sys::{codes_handle, codes_nearest, CODES_NEAREST_SAME_DATA, CODES_NEAREST_SAME_GRID};

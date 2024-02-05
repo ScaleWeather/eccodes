@@ -12,6 +12,7 @@ use crate::{
     Key, KeyedMessage,
 };
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct KeysIterator<'a> {
     parent_message: &'a KeyedMessage,
@@ -21,6 +22,7 @@ pub struct KeysIterator<'a> {
 
 ///Flags to specify the subset of keys to iterate over
 ///by `FallibleIterator` in `KeyedMessage`. The flags can be used together.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum KeysIteratorFlags {
     ///Iterate over all keys
@@ -89,13 +91,13 @@ impl KeyedMessage {
     ///```
     pub fn new_keys_iterator(
         &self,
-        flags: Vec<KeysIteratorFlags>,
+        flags: &[KeysIteratorFlags],
         namespace: &str,
     ) -> Result<KeysIterator, CodesError> {
         let flags = flags.iter().map(|f| *f as u32).sum();
 
         let iterator_handle =
-            unsafe { codes_keys_iterator_new(self.message_handle, flags, &namespace)? };
+            unsafe { codes_keys_iterator_new(self.message_handle, flags, namespace)? };
         let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
         Ok(KeysIterator {
@@ -217,7 +219,7 @@ mod tests {
 
         let namespace = "geography";
 
-        let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
+        let mut kiter = current_message.new_keys_iterator(&flags, namespace)?;
 
         while let Some(key) = kiter.next()? {
             assert!(!key.name.is_empty());
@@ -240,7 +242,7 @@ mod tests {
 
         let namespace = "blabla";
 
-        let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
+        let mut kiter = current_message.new_keys_iterator(&flags, namespace)?;
 
         while let Some(key) = kiter.next()? {
             assert!(!key.name.is_empty());

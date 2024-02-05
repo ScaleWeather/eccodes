@@ -86,10 +86,17 @@ pub enum MessageNdarrayError {
     /// Returned when length of values array is not equal to
     /// product of Ni and Nj keys.
     #[error("The length of the values array ({0}) is different than expected ({1})")]
-    UnexpectedValuesLength(usize, i64),
+    UnexpectedValuesLength(usize, usize),
 
+    /// Returned when ndarray cannot create an array with the shape
+    /// defined by Ni and Nj keys.
     #[error("Error occured while converting to ndarray: {0}")]
     InvalidShape(#[from] ndarray::ShapeError),
+
+    /// This error can occur when casting types of shape fails
+    /// on 32-bit systems or for very large arrays.
+    #[error(transparent)]
+    IntCasting(#[from] std::num::TryFromIntError),
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
