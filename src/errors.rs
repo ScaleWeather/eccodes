@@ -18,6 +18,12 @@ pub enum CodesError {
     #[error("ecCodes function returned a non-zero code {0}")]
     Internal(#[from] CodesInternal),
 
+    #[cfg(feature = "message_ndarray")]
+    /// Returned when function in `message_ndarray` module cannot convert
+    /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
+    #[error("error occured while converting KeyedMessage to ndarray {0}")]
+    NdarrayConvert(#[from] MessageNdarrayError),
+
     ///Returned when one of libc functions returns a non-zero error code.
     ///Check libc documentation for details of the errors.
     ///For libc reference check these websites: ([1](https://man7.org/linux/man-pages/index.html))
@@ -65,6 +71,25 @@ pub enum CodesError {
     /// it cannot be guaranteed that the null pointer is not caused by the user's mistake.
     #[error("Null pointer encountered where it should not be")]
     NullPtr,
+}
+
+#[cfg(feature = "message_ndarray")]
+#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[derive(Error, Debug)]
+/// Errors returned by the `message_ndarray` module.
+pub enum MessageNdarrayError {
+    /// Returned when functions converting to ndarray cannot correctly
+    /// read key necessary for the conversion.
+    #[error("Requested key {0} has a different type than expected")]
+    UnexpectedKeyType(String),
+
+    /// Returned when length of values array is not equal to
+    /// product of Ni and Nj keys.
+    #[error("The length of the values array ({0}) is different than expected ({1})")]
+    UnexpectedValuesLength(usize, i64),
+
+    #[error("Error occured while converting to ndarray: {0}")]
+    InvalidShape(#[from] ndarray::ShapeError),
 }
 
 #[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]

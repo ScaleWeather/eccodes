@@ -90,7 +90,7 @@ impl KeyedMessage {
     pub fn new_keys_iterator(
         &self,
         flags: Vec<KeysIteratorFlags>,
-        namespace: String,
+        namespace: &str,
     ) -> Result<KeysIterator, CodesError> {
         let flags = flags.iter().map(|f| *f as u32).sum();
 
@@ -215,7 +215,7 @@ mod tests {
             KeysIteratorFlags::SkipDuplicates, //32
         ];
 
-        let namespace = "geography".to_owned();
+        let namespace = "geography";
 
         let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
 
@@ -238,7 +238,7 @@ mod tests {
             KeysIteratorFlags::AllKeys, //0
         ];
 
-        let namespace = "blabla".to_owned();
+        let namespace = "blabla";
 
         let mut kiter = current_message.new_keys_iterator(flags, namespace)?;
 
