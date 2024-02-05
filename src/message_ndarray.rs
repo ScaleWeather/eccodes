@@ -13,6 +13,7 @@ impl KeyedMessage {
     /// Returns [y, x] ([Nj, Ni], [lat, lon]) ndarray from the message,
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
+    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
         let KeyType::Int(ni) = self.read_key("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
@@ -39,6 +40,7 @@ impl KeyedMessage {
         Ok(vals)
     }
 
+    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
         let KeyType::Int(ni) = self.read_key("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());

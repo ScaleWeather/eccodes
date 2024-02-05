@@ -16,8 +16,8 @@ pub struct CodesNearest<'a> {
     parent_message: &'a KeyedMessage,
 }
 
-///The structure returned by [`KeyedMessage::find_nearest()`].
-///Should always be analysed in relation to the coordinates request in `find_nearest()`.
+///The structure returned by [`CodesNearest::find_nearest()`].
+///Should always be analysed in relation to the coordinates requested in `find_nearest()`.
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct NearestGridpoint {
     ///Index of gridpoint

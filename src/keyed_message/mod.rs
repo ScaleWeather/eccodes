@@ -16,10 +16,8 @@ use crate::intermediate_bindings::{codes_handle_clone, codes_handle_delete};
 ///
 ///Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
 ///function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
-///The function [`find_nearest()`](KeyedMessage::find_nearest()) allows to get the values of four nearest gridpoints
+///The function [`find_nearest()`](crate::codes_nearest::CodesNearest::find_nearest()) allows to get the values of four nearest gridpoints
 ///to requested coordinates.
-///`FallibleIterator` parameters can be set with [`set_iterator_parameters()`](KeyedMessage::set_iterator_parameters())
-///to specify the subset of keys to iterate over.
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     pub(crate) message_handle: *mut codes_handle,
