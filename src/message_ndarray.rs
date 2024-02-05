@@ -118,9 +118,9 @@ mod tests {
 
         while let Some(msg) = handle.next()? {
             if msg.read_key("shortName")?.value == KeyType::Str("2d".to_string()) {
-                let (lats, lons, vals) = msg.to_lons_lats_values()?;
+                let (lons, lats, vals) = msg.to_lons_lats_values()?;
 
-                // values from xarray
+                // values from cfgrib
                 assert_approx_eq!(f64, vals[[0, 0]], 276.37793, epsilon = 0.000_1);
                 assert_approx_eq!(f64, vals[[0, 48]], 276.65723, epsilon = 0.000_1);
                 assert_approx_eq!(f64, vals[[16, 0]], 277.91113, epsilon = 0.000_1);
@@ -130,10 +130,28 @@ mod tests {
                 assert_approx_eq!(f64, vals[[15, 15]], 277.68652, epsilon = 0.000_1);
                 assert_approx_eq!(f64, vals[[8, 37]], 273.2744, epsilon = 0.000_1);
 
+                assert_approx_eq!(f64, lons[[0, 0]], -25.0);
+                assert_approx_eq!(f64, lons[[0, 48]], -13.0);
+                assert_approx_eq!(f64, lons[[16, 0]], -25.0);
+                assert_approx_eq!(f64, lons[[16, 48]], -13.0);
+                assert_approx_eq!(f64, lons[[5, 5]], -23.75);
+                assert_approx_eq!(f64, lons[[10, 10]], -22.5);
+                assert_approx_eq!(f64, lons[[15, 15]], -21.25);
+                assert_approx_eq!(f64, lons[[8, 37]], -15.75);
+
+                assert_approx_eq!(f64, lats[[0, 0]], 67.0);
+                assert_approx_eq!(f64, lats[[0, 48]], 67.0);
+                assert_approx_eq!(f64, lats[[16, 0]], 63.0);
+                assert_approx_eq!(f64, lats[[16, 48]], 63.0);
+                assert_approx_eq!(f64, lats[[5, 5]], 65.75);
+                assert_approx_eq!(f64, lats[[10, 10]], 64.5);
+                assert_approx_eq!(f64, lats[[15, 15]], 63.25);
+                assert_approx_eq!(f64, lats[[8, 37]], 65.0);
+
                 break;
             }
         }
 
-        todo!("Test lats and lons")
+        Ok(())
     }
 }
