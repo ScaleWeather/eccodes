@@ -57,18 +57,21 @@ impl CodesNearest<'_> {
     ///### Example
     ///
     ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-    ///# use std::path::Path;
-    ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use eccodes::FallibleIterator;
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let mut msg = handle.next().unwrap().unwrap();
-    ///
-    ///
-    ///let out = msg.find_nearest(64.13, -21.89).unwrap();
+    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
+    /// # use std::path::Path;
+    /// use eccodes::FallibleStreamingIterator;
+    /// # use anyhow::Context;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let file_path = Path::new("./data/iceland.grib");
+    /// let product_kind = ProductKind::GRIB;
+    /// 
+    /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// let msg = handle.next()?.context("no message")?;
+    /// 
+    /// let c_nearest = msg.codes_nearest()?;
+    /// let out = c_nearest.find_nearest(64.13, -21.89)?;
+    /// # Ok(())
+    /// # }
     ///```
     ///
     ///### Errors

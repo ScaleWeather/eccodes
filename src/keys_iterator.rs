@@ -62,32 +62,35 @@ impl KeyedMessage {
     ///### Example
     ///
     ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-    ///# use std::path::Path;
-    ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use eccodes::FallibleIterator;
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let mut current_message = handle.next().unwrap().unwrap();
-    ///
-    ///
-    ///let flags = vec![
-    ///    KeysIteratorFlags::AllKeys,
-    ///    KeysIteratorFlags::SkipOptional,
-    ///    KeysIteratorFlags::SkipReadOnly,
-    ///    KeysIteratorFlags::SkipDuplicates,
-    ///];
-    ///
-    ///let namespace = "geography".to_owned();
-    ///
-    ///current_message.set_iterator_parameters(flags, namespace);
-    ///
-    ///
-    ///while let Some(key) = current_message.next().unwrap() {
-    ///    println!("{:?}", key);
-    ///}
+    /// use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags, KeyType};
+    /// # use std::path::Path;
+    /// # use anyhow::Context;
+    /// use eccodes::{FallibleIterator, FallibleStreamingIterator};
+    /// #
+    /// # fn main() -> anyhow::Result<()> {
+    /// #
+    /// let file_path = Path::new("./data/iceland.grib");
+    /// let product_kind = ProductKind::GRIB;
+    /// 
+    /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// let current_message = handle.next()?.context("no message")?;
+    /// 
+    /// let flags = vec![
+    ///     KeysIteratorFlags::AllKeys,
+    ///     KeysIteratorFlags::SkipOptional,
+    ///     KeysIteratorFlags::SkipReadOnly,
+    ///     KeysIteratorFlags::SkipDuplicates,
+    /// ];
+    /// 
+    /// let namespace = "geography";
+    /// 
+    /// let mut keys_iter = current_message.new_keys_iterator(&flags, namespace)?;
+    /// 
+    /// while let Some(key) = keys_iter.next()? {
+    ///     println!("{:?}", key);
+    /// }
+    /// # Ok(())
+    /// # }
     ///```
     pub fn new_keys_iterator(
         &self,
@@ -134,19 +137,26 @@ impl KeyedMessage {
 ///## Example
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-///# use std::path::Path;
-///# use eccodes::codes_handle::KeyType::Str;
-///# use eccodes::FallibleIterator;
-///let file_path = Path::new("./data/iceland.grib");
-///let product_kind = ProductKind::GRIB;
-///
-///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-///let mut current_message = handle.next().unwrap().unwrap();
-///
-///while let Some(key) = current_message.next().unwrap() {
-///    println!("{:?}", key);
-///}
+/// use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags, KeyType};
+/// # use std::path::Path;
+/// # use anyhow::Context;
+/// use eccodes::{FallibleIterator, FallibleStreamingIterator};
+/// #
+/// # fn main() -> anyhow::Result<()> {
+/// #
+/// let file_path = Path::new("./data/iceland.grib");
+/// let product_kind = ProductKind::GRIB;
+/// 
+/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+/// let current_message = handle.next()?.context("no message")?;
+/// 
+/// let mut keys_iter = current_message.default_keys_iterator()?;
+/// 
+/// while let Some(key) = keys_iter.next()? {
+///     println!("{:?}", key);
+/// }
+/// # Ok(())
+/// # }
 ///```
 ///
 ///## Errors

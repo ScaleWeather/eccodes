@@ -35,24 +35,27 @@ use super::GribFile;
 ///Its basic usage is simply with while let statement (similar to for loop for classic `Iterator`):
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType};
-///# use std::path::Path;
-///# use eccodes::FallibleIterator;
-///#
-///let file_path = Path::new("./data/iceland-surface.grib");
-///let product_kind = ProductKind::GRIB;
-///
-///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-///
-///// Print names of messages in the file
-///while let Some(message) = handle.next().unwrap() {
-///// The message must be unwraped as internal Iterator methods can fail
-///    let key = message.read_key("name").unwrap();
-///
-///    if let KeyType::Str(name) = key.value {
-///        println!("{:?}", name);    
-///    }
-///}
+/// use eccodes::{ProductKind, CodesHandle, KeyType};
+/// # use std::path::Path;
+/// use eccodes::FallibleStreamingIterator;
+/// #
+/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
+/// let file_path = Path::new("./data/iceland-surface.grib");
+/// let product_kind = ProductKind::GRIB;
+/// 
+/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+/// 
+/// // Print names of messages in the file
+/// while let Some(message) = handle.next()? {
+/// // The message must be unwraped as internal Iterator methods can fail
+///     let key = message.read_key("name")?;
+/// 
+///     if let KeyType::Str(name) = key.value {
+///         println!("{:?}", name);    
+///     }
+/// }
+/// # Ok(())
+/// # }
 ///```
 ///
 ///The `FallibleIterator` can be collected to convert the handle into a
@@ -60,17 +63,24 @@ use super::GribFile;
 ///For example:
 ///
 ///```
-///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
-///# use eccodes::errors::CodesError;
-///# use std::path::Path;
-///# use eccodes::FallibleIterator;
-///#
-///let file_path = Path::new("./data/iceland-surface.grib");
-///let product_kind = ProductKind::GRIB;
-///
-///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-///
-///let handle_collected: Vec<KeyedMessage> = handle.collect().unwrap();
+/// use eccodes::{ProductKind, CodesHandle, KeyedMessage};
+/// # use eccodes::errors::CodesError;
+/// # use std::path::Path;
+/// use eccodes::FallibleStreamingIterator;
+/// #
+/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
+/// let file_path = Path::new("./data/iceland-surface.grib");
+/// let product_kind = ProductKind::GRIB;
+/// 
+/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+/// 
+/// let mut handle_collected = vec![];
+/// 
+/// while let Some(msg) = handle.next()? {
+///     handle_collected.push(msg.clone());
+/// }
+/// # Ok(())
+/// # }
 ///```
 ///
 ///Use of `filter()`, `map()` and other methods provided with `Iterator` allow for

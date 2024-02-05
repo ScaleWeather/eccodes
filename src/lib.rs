@@ -53,41 +53,33 @@
 //!// from ERA5 Climate Reanalysis
 //!
 //!// Open the GRIB file and create the CodesHandle
-//!# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage};
-//!# use eccodes::errors::{CodesError};
-//!# use std::path::Path;
-//!# use eccodes::codes_handle::KeyType::Str;
-//!# use eccodes::FallibleIterator;
-//!#
-//!# fn main() -> Result<(), CodesError> {
-//!let file_path = Path::new("./data/iceland.grib");
-//!let product_kind = ProductKind::GRIB;
+//!  use eccodes::{ProductKind, CodesHandle, KeyType};
+//! # use std::path::Path;
+//!  use eccodes::FallibleStreamingIterator;
+//! #
+//! # fn main() -> anyhow::Result<()> {
+//! let file_path = Path::new("./data/iceland.grib");
+//! let product_kind = ProductKind::GRIB;
 //!
-//!let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+//! let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 //!
-//!// Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
-//!// First, filter and collect the messages to get those that we want
-//!let mut level: Vec<KeyedMessage> = handle
-//!    .filter(|msg| {
+//! // Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
+//! // First, filter and collect the messages to get those that we want
+//! while let Some(msg) = handle.next()? {
+//!     if msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
+//!        && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string()) {
+//!        
+//!        // Get the four nearest gridpoints of Reykjavik
+//!        let nearest_gridpoints = msg.codes_nearest()?.find_nearest(64.13, -21.89)?;
 //!
-//!    Ok(msg.read_key("shortName")?.value == Str("msl".to_string())
-//!        && msg.read_key("typeOfLevel")?.value == Str("surface".to_string()))
-//!    })
-//!    .collect()?;
-//!
-//!// Now unwrap and access the first and only element of resulting vector
-//!// Find nearest modifies internal KeyedMessage fields so we need mutable reference
-//!let level = &mut level[0];
-//!
-//!// Get the four nearest gridpoints of Reykjavik
-//!let nearest_gridpoints = level.find_nearest(64.13, -21.89)?;
-//!
-//!// Print value and distance of the nearest gridpoint
-//!println!("value: {}, distance: {}",
-//!    nearest_gridpoints[3].value,
-//!    nearest_gridpoints[3].distance);
-//!# Ok(())
-//!# }
+//!       // Print value and distance of the nearest gridpoint
+//!        println!("value: {}, distance: {}",
+//!           nearest_gridpoints[3].value,
+//!           nearest_gridpoints[3].distance);
+//!     }
+//! }
+//! # Ok(())
+//! # }
 //!```
 //!
 //!### Writing GRIB files
@@ -100,76 +92,69 @@
 //!#### Example
 //!
 //!```rust
-//!# use eccodes::{
-//!#     codes_handle::{
-//!#         CodesHandle, Key,
-//!#         KeyType::{self, FloatArray, Int, Str},
-//!#         KeyedMessage,
-//!#         ProductKind::{self, GRIB},
-//!#     },
-//!#     FallibleIterator,
-//!# };
-//!# use std::{fs::remove_file, path::Path};
-//!# use eccodes::errors::CodesError;
-//!#
-//!# fn main() -> Result<(), CodesError> {
-//!// We are computing the temperature at 850hPa as an average
-//!// of 900hPa and 800hPa and writing it to a new file.
-//!let file_path = Path::new("./data/iceland-levels.grib");
-//!let handle = CodesHandle::new_from_file(file_path, GRIB)?;
-//!
-//!// Get messages with temperature levels
-//!let t_levels: Vec<KeyedMessage> = handle
-//!    .filter(|msg| Ok(msg.read_key("shortName")?.value == Str("t".to_string())))
-//!    .collect()?;
-//!
-//!// Get any message to edit it later
-//!let mut new_msg = t_levels[0].clone();
-//!
-//!// Get temperatures at 800hPa and 900hPa
-//!let mut t800 = vec![];
-//!let mut t900 = vec![];
-//!
-//!for msg in t_levels {
-//!    if msg.read_key("level")?.value == Int(800) {
-//!        if let FloatArray(vals) = msg.read_key("values")?.value {
-//!            t800 = vals;
-//!        }
-//!    }
-//!
-//!    if msg.read_key("level")?.value == Int(900) {
-//!        if let FloatArray(vals) = msg.read_key("values")?.value {
-//!            t900 = vals;
-//!        }
-//!    }
-//!}
-//!
-//!// Compute temperature at 850hPa
-//!let t850: Vec<f64> = t800
-//!    .iter()
-//!    .zip(t900.iter())
-//!    .map(|t| (t.0 + t.1) / 2.0)
-//!    .collect();
-//!
-//!// Edit appropriate keys in the editable message
-//!new_msg
-//!    .write_key(Key {
-//!        name: "level".to_string(),
-//!        value: Int(850),
-//!    })?;
-//!new_msg
-//!    .write_key(Key {
-//!        name: "values".to_string(),
-//!        value: FloatArray(t850),
-//!    })?;
-//!
-//!// Save the message to a new file without appending
-//!new_msg
-//!    .write_to_file(Path::new("iceland-850.grib"), false)?;
-//!#
-//!# remove_file(Path::new("iceland-850.grib")).unwrap();
-//!# Ok(())
-//!# }
+//! use eccodes::FallibleStreamingIterator;
+//! use eccodes::{CodesHandle, Key, KeyType, ProductKind};
+//! # use std::{fs::remove_file, path::Path};
+//! 
+//! # fn main() -> anyhow::Result<()> {
+//!     // We are computing the temperature at 850hPa as an average
+//!     // of 900hPa and 800hPa and writing it to a new file.
+//!     let file_path = Path::new("./data/iceland-levels.grib");
+//!     let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+//! 
+//!     // We need a similar message to edit,
+//!     // in this case we can use temperature at 700hPa
+//!     let mut new_msg = vec![];
+//! 
+//!     // Get temperatures at 800hPa and 900hPa
+//!     let mut t800 = vec![];
+//!     let mut t900 = vec![];
+//! 
+//!     while let Some(msg) = handle.next()? {
+//!         if msg.read_key("shortName")?.value == KeyType::Str("t".to_string()) {
+//!             if msg.read_key("level")?.value == KeyType::Int(700) {
+//!                 new_msg.push(msg.clone());
+//!             }
+//! 
+//!             if msg.read_key("level")?.value == KeyType::Int(800) {
+//!                 if let KeyType::FloatArray(vals) = msg.read_key("values")?.value {
+//!                     t800 = vals;
+//!                 }
+//!             }
+//! 
+//!             if msg.read_key("level")?.value == KeyType::Int(900) {
+//!                 if let KeyType::FloatArray(vals) = msg.read_key("values")?.value {
+//!                     t900 = vals;
+//!                 }
+//!             }
+//!         }
+//!     }
+//! 
+//!     let mut new_msg = new_msg.remove(0);
+//! 
+//!     // Compute temperature at 850hPa
+//!     let t850: Vec<f64> = t800
+//!         .iter()
+//!         .zip(t900.iter())
+//!         .map(|t| (t.0 + t.1) / 2.0)
+//!         .collect();
+//! 
+//!     // Edit appropriate keys in the editable message
+//!     new_msg.write_key(Key {
+//!         name: "level".to_string(),
+//!         value: KeyType::Int(850),
+//!     })?;
+//!     new_msg.write_key(Key {
+//!         name: "values".to_string(),
+//!         value: KeyType::FloatArray(t850),
+//!     })?;
+//! 
+//!     // Save the message to a new file without appending
+//!     new_msg.write_to_file(Path::new("iceland-850.grib"), false)?;
+//! 
+//! #     remove_file(Path::new("iceland-850.grib")).unwrap();
+//! #     Ok(())
+//! # }
 //!```
 //!
 //!### ecCodes installation

@@ -18,18 +18,23 @@ impl KeyedMessage {
     ///## Example
     ///
     ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType::Str};
-    ///# use std::path::Path;
-    ///# use eccodes::FallibleIterator;
-    ///#
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let message = handle.next().unwrap().unwrap();
-    ///let message_short_name = message.read_key("shortName").unwrap();
-    ///
-    ///assert_eq!(message_short_name.value, Str("msl".to_string()));
+    /// use eccodes::{ProductKind, CodesHandle, KeyType};
+    /// # use std::path::Path;
+    /// # use anyhow::Context;
+    /// use eccodes::FallibleStreamingIterator;
+    /// #
+    /// # fn main() -> anyhow::Result<()> {
+    /// let file_path = Path::new("./data/iceland.grib");
+    /// let product_kind = ProductKind::GRIB;
+    /// 
+    /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// let message = handle.next()?.context("no message")?;
+    /// let message_short_name = message.read_key("shortName")?;
+    /// let expected_short_name = KeyType::Str("msl".to_string());
+    /// 
+    /// assert_eq!(message_short_name.value, expected_short_name);
+    /// # Ok(())
+    /// # }
     ///```
     ///
     ///This function will try to retrieve the key of native string type as string even

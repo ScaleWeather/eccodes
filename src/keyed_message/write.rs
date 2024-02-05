@@ -18,29 +18,26 @@ impl KeyedMessage {
     ///## Example
     ///
     ///```
-    ///# use eccodes::{
-    ///#     codes_handle::{CodesHandle, Key, KeyType::Str, ProductKind::GRIB},
-    ///#     errors::CodesError,
-    ///# };
-    ///# use crate::eccodes::FallibleIterator;
-    ///# use std::path::Path;
-    ///# use std::fs::remove_file;
-    ///#
-    ///# fn main() -> Result<(), CodesError> {
-    ///let in_path = Path::new("./data/iceland-levels.grib");
-    ///let out_path  = Path::new("./data/iceland-temperature-levels.grib");
+    /// use eccodes::{CodesHandle, Key, KeyType, ProductKind};
+    /// # use eccodes::errors::CodesError;
+    /// use eccodes::FallibleStreamingIterator;
+    /// # use std::path::Path;
+    /// # use std::fs::remove_file;
+    /// #
+    /// # fn main() -> anyhow::Result<(), CodesError> {
+    /// let in_path = Path::new("./data/iceland-levels.grib");
+    /// let out_path  = Path::new("./data/iceland-800hPa.grib");
     ///
-    ///let handle = CodesHandle::new_from_file(in_path, GRIB)?;
+    /// let mut handle = CodesHandle::new_from_file(in_path, ProductKind::GRIB)?;
     ///
-    ///let mut t_levels =
-    ///    handle.filter(|msg| Ok(msg.read_key("shortName")?.value == Str("t".to_string())));
-    ///
-    ///while let Some(msg) = t_levels.next()? {
-    ///    msg.write_to_file(out_path, true)?;
-    ///}
-    ///# remove_file(out_path).unwrap();
-    ///# Ok(())
-    ///# }
+    /// while let Some(msg) = handle.next()? {
+    ///     if msg.read_key("level")?.value == KeyType::Int(800) {
+    ///         msg.write_to_file(out_path, true)?;
+    ///     }
+    /// }
+    /// # remove_file(out_path)?;
+    /// # Ok(())
+    /// # }
     ///```
     ///
     ///## Errors
@@ -83,23 +80,26 @@ impl KeyedMessage {
     ///## Example
     ///
     ///```
-    ///# use eccodes::{
-    ///#     codes_handle::{CodesHandle, Key, KeyType, ProductKind::GRIB},
-    ///# };
-    ///# use crate::eccodes::FallibleIterator;
-    ///# use std::path::Path;
-    ///#
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, GRIB).unwrap();
-    ///let mut current_message = handle.next().unwrap().unwrap();
-    ///
-    ///let new_key = Key {
-    ///    name: "centre".to_string(),
-    ///    value: KeyType::Str("cnmc".to_string()),
-    ///};
-    ///
-    ///current_message.write_key(new_key).unwrap();
+    /// use eccodes::{CodesHandle, Key, KeyType, ProductKind};
+    /// # use eccodes::errors::CodesError;
+    /// use eccodes::FallibleStreamingIterator;
+    /// # use anyhow::Context;
+    /// # use std::path::Path;
+    /// #
+    /// # fn main() -> anyhow::Result<()> {
+    /// let file_path = Path::new("./data/iceland.grib");
+    /// 
+    /// let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+    /// let mut current_message = handle.next()?.context("no message")?.clone();
+    /// 
+    /// let new_key = Key {
+    ///     name: "centre".to_string(),
+    ///     value: KeyType::Str("cnmc".to_string()),
+    /// };
+    /// 
+    /// current_message.write_key(new_key)?;
+    /// # Ok(())
+    /// # }
     ///```
     ///
     ///## Errors
@@ -134,7 +134,7 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{Context, Ok, Result};
+    use anyhow::{Context, Result};
 
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
