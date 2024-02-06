@@ -157,37 +157,6 @@
 //! # }
 //!```
 //!
-//!### ecCodes installation
-//!
-//!This crate uses [eccodes-sys](https://crates.io/crates/eccodes-sys) with default options to link ecCodes.
-//!Check `eccodes-sys` website for more details on how it links the library.
-//!
-//!The recommended way to install ecCodes on your computer is using your package manager.
-//!For example, on Ubuntu you can use `apt-get`:
-//!
-//!```text
-//!sudo apt-get install libeccodes-dev
-//!```
-//!
-//!or `brew` on MacOS:
-//!
-//!```text
-//!brew install eccodes
-//!```
-//!
-//!Alternatively, you can install the library manually from source in suitable directory
-//!following [this instructions](https://confluence.ecmwf.int/display/ECC/ecCodes+installation).
-//!
-//!Then add the `lib/pkgconfig` directory from your ecCodes installation directory
-//!to the `PKG_CONFIG_PATH` environmental variable. If ecCodes have been compiled
-//!as shared library you will also need to specify `LD_LIBRARY_PATH`.
-//!For example:
-//!
-//!```text
-//!$ export PKG_CONFIG_PATH=<your_eccodes_path>/lib/pkgconfig
-//!$ export LD_LIBRARY_PATH=<your_eccodes_path>/lib
-//!```
-//!
 //!### Features
 //!
 //!- `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation

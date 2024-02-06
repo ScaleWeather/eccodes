@@ -17,6 +17,8 @@ use std::path::Path;
 pub struct CodesIndex {
     pub(crate) pointer: *mut codes_index,
 }
+
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub trait Select<T> {
     fn select(self, key: &str, value: T) -> Result<CodesIndex, CodesError>;
 }
@@ -28,9 +30,6 @@ impl CodesIndex {
 
         let index_handle;
         unsafe {
-            // technically codes_index_new can also select keys
-            // but that would unnecessarily diverge the API
-            // and would be error prone
             index_handle = codes_index_new(&keys)?;
         }
         Ok(CodesIndex {
