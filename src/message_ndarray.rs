@@ -1,8 +1,13 @@
+#![cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+//! Definition of functions to convert a `KeyedMessage` to ndarray
+
 use ndarray::{s, Array2, Array3};
 
 use crate::{errors::MessageNdarrayError, CodesError, KeyType, KeyedMessage};
 
+/// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method
 #[derive(Clone, PartialEq, Debug, Default)]
+#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
 pub struct RustyCodesMessage {
     pub longitudes: Array2<f64>,
     pub latitudes: Array2<f64>,
@@ -10,9 +15,21 @@ pub struct RustyCodesMessage {
 }
 
 impl KeyedMessage {
-    /// Returns [y, x] ([Nj, Ni], [lat, lon]) ndarray from the message,
+    /// Converts the message to a 2D ndarray.
+    /// 
+    /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
+    /// ie. `[lat, lon]`. Index `[0, 0]` is the top-left corner of the grid: 
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
+    /// 
+    /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
+    /// 
+    /// Tested only with simple lat-lon grids.
+    /// 
+    /// # Errors
+    /// 
+    /// - When the required keys are not present or if their values are not of the expected type
+    /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
         let KeyType::Int(ni) = self.read_key("Ni")?.value else {
@@ -40,6 +57,17 @@ impl KeyedMessage {
         Ok(vals)
     }
 
+    /// Same as [`KeyedMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
+    /// Fields are returned as separate arrays in [`RustyCodesMessage`].
+    /// 
+    /// Compared to `to_ndarray` this method has performance overhead as returned arrays may be cloned.
+    /// 
+    /// This method requires the `latLonValues`, `Ni` and Nj` keys to be present in the message.
+    /// 
+    /// # Errors
+    /// 
+    /// - When the required keys are not present or if their values are not of the expected type
+    /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
         let KeyType::Int(ni) = self.read_key("Ni")?.value else {

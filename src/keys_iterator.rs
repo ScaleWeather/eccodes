@@ -1,3 +1,5 @@
+//! Definition of `KeysIterator` used for iterating through keys in `KeyedMessage`
+
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
 use log::warn;

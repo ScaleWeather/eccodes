@@ -1,5 +1,7 @@
-//!Main crate module containing definition of `CodesIndex`
-//!and all associated functions and data structures
+#![cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+//! ⚠️ **EXPERIMENTAL FEATURE - POSSIBLY UNSAFE** ⚠️ \
+//! Definition of `CodesIndex` and associated functions
+//! used for efficient selection of messages from GRIB file
 
 use crate::{
     codes_handle::SpecialDrop,

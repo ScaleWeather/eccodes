@@ -1,3 +1,6 @@
+//! Definition of `KeyedMessage` and its associated functions
+//! used for reading and writing data of given variable from GRIB file
+
 mod read;
 mod write;
 
@@ -5,7 +8,7 @@ use eccodes_sys::codes_handle;
 use log::warn;
 use std::ptr::null_mut;
 
-use crate::intermediate_bindings::{codes_handle_clone, codes_handle_delete};
+use crate::{intermediate_bindings::{codes_handle_clone, codes_handle_delete}, CodesError};
 
 ///Structure used to access keys inside the GRIB file message.
 ///All data (including data values) contained by the file can only be accessed
@@ -46,19 +49,18 @@ pub enum KeyType {
     Bytes(Vec<u8>),
 }
 
-impl Clone for KeyedMessage {
+impl KeyedMessage {
     ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
-    ///During clone iterator flags and namespace are not copied, and the iterator is reset.
     /// 
-    /// # Panics
-    /// This function will panic if ecCodes fails to clone the message.
-    fn clone(&self) -> KeyedMessage {
+    /// # Errors
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
+    pub fn try_clone(&self) -> Result<KeyedMessage, CodesError> {
         let new_handle =
-            unsafe { codes_handle_clone(self.message_handle).expect("Cannot clone the message") };
+            unsafe { codes_handle_clone(self.message_handle)? };
 
-        KeyedMessage {
+        Ok(KeyedMessage {
             message_handle: new_handle,
-        }
+        })
     }
 }
 
@@ -102,7 +104,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
-        let cloned_message = current_message.clone();
+        let cloned_message = current_message.try_clone()?;
 
         assert_ne!(
             current_message.message_handle,
@@ -118,7 +120,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let msg = handle.next()?.context("Message not some")?.clone();
+        let msg = handle.next()?.context("Message not some")?.try_clone()?;
         let _ = handle.next()?;
 
         drop(handle);
@@ -140,7 +142,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?.clone();
+        let current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
         let _kiter = current_message.default_keys_iterator()?;
         let _niter = current_message.codes_nearest()?;

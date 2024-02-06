@@ -90,7 +90,7 @@ impl KeyedMessage {
     /// let file_path = Path::new("./data/iceland.grib");
     /// 
     /// let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
-    /// let mut current_message = handle.next()?.context("no message")?.clone();
+    /// let mut current_message = handle.next()?.context("no message")?.try_clone()?;
     /// 
     /// let new_key = Key {
     ///     name: "centre".to_string(),
@@ -164,7 +164,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?.clone();
+        let current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
         drop(handle);
 
@@ -202,7 +202,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.context("Message not some")?.clone();
+        let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
         let old_key = current_message.read_key("centre")?;
 
@@ -227,7 +227,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.context("Message not some")?.clone();
+        let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
         let old_key = current_message.read_key("centre")?;
 

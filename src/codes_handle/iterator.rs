@@ -77,7 +77,7 @@ use super::GribFile;
 /// let mut handle_collected = vec![];
 /// 
 /// while let Some(msg) = handle.next()? {
-///     handle_collected.push(msg.clone());
+///     handle_collected.push(msg.try_clone()?);
 /// }
 /// # Ok(())
 /// # }
@@ -123,6 +123,7 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
 }
 
 #[cfg(feature = "experimental_index")]
+#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
     type Item = KeyedMessage;
 
@@ -215,7 +216,7 @@ mod tests {
         let mut handle_collected = vec![];
 
         while let Some(msg) = handle.next()? {
-            handle_collected.push(msg.clone());
+            handle_collected.push(msg.try_clone()?);
         }
 
         for msg in handle_collected {
@@ -278,7 +279,7 @@ mod tests {
             if msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
                 && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string())
             {
-                level.push(msg.clone());
+                level.push(msg.try_clone()?);
             }
         }
 

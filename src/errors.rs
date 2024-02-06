@@ -1,28 +1,22 @@
-//!Module containing all error types used by the crate
+//! Definition of errors returned by this crate
 //!
-//!This crate uses [`thiserror`] crate to define its error types.
+//! This crate uses [`thiserror`] crate to define its error types.
 //!
-//!If you encounter an error that you believe is a result of implementation bug
-//!rather then user's mistake post an issue on Github.
+//! If you encounter an error that you believe is a result of implementation bug
+//! rather then user's mistake post an issue on Github.
 
 use errno::Errno;
 use num_derive::FromPrimitive;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
 ///Errors returned by the crate's functions.
 ///These are the only errors that the user may face.
+#[derive(Error, Debug)]
 pub enum CodesError {
     ///Returned when ecCodes library function returns an error code.
     ///Check [`CodesInternal`] for more details.
     #[error("ecCodes function returned a non-zero code {0}")]
     Internal(#[from] CodesInternal),
-
-    #[cfg(feature = "message_ndarray")]
-    /// Returned when function in `message_ndarray` module cannot convert
-    /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
-    #[error("error occured while converting KeyedMessage to ndarray {0}")]
-    NdarrayConvert(#[from] MessageNdarrayError),
 
     ///Returned when one of libc functions returns a non-zero error code.
     ///Check libc documentation for details of the errors.
@@ -71,12 +65,18 @@ pub enum CodesError {
     /// it cannot be guaranteed that the null pointer is not caused by the user's mistake.
     #[error("Null pointer encountered where it should not be")]
     NullPtr,
+
+    /// Returned when function in `message_ndarray` module cannot convert
+    /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
+    #[cfg(feature = "message_ndarray")]
+    #[error("error occured while converting KeyedMessage to ndarray {0}")]
+    NdarrayConvert(#[from] MessageNdarrayError),
 }
 
+/// Errors returned by the `message_ndarray` module.
 #[cfg(feature = "message_ndarray")]
 #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-#[derive(Error, Debug)]
-/// Errors returned by the `message_ndarray` module.
+#[derive(PartialEq, Clone, Error, Debug)]
 pub enum MessageNdarrayError {
     /// Returned when functions converting to ndarray cannot correctly
     /// read key necessary for the conversion.
@@ -99,9 +99,9 @@ pub enum MessageNdarrayError {
     IntCasting(#[from] std::num::TryFromIntError),
 }
 
-#[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
 ///Errors returned by internal ecCodes library functions.
 ///Copied directly from the ecCodes API.
+#[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
 pub enum CodesInternal {
     ///No error
     #[error("No error")]

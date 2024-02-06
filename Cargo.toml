@@ -2,7 +2,7 @@
 name = "eccodes"
 description = "Unofficial high-level Rust bindings of the latest ecCodes release"
 repository = "https://github.com/ScaleWeather/eccodes"
-version = "0.9.0"
+version = "0.10.0"
 readme = "README.md"
 authors = ["Jakub Lewandowski <scaleweather@gmail.com>"]
 keywords = ["eccodes", "grib", "bufr", "meteorology", "weather"]
@@ -16,6 +16,7 @@ categories = [
 license = "Apache-2.0"
 edition = "2021"
 exclude = [".github/*", ".vscode/*", ".idea/*", "data/*"]
+rust-version = "1.70.0"
 
 [dependencies]
 eccodes-sys = { version = "0.5.2", default-features = false }

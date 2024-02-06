@@ -73,7 +73,7 @@ fn collect_index_iterator() -> Result<()> {
     let mut levels = vec![];
 
     while let Some(msg) = handle.next()? {
-        levels.push(msg.clone());
+        levels.push(msg.try_clone()?);
     }
 
     assert_eq!(levels.len(), 5);

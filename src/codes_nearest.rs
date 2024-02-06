@@ -1,3 +1,6 @@
+//! Definition and associated functions of `CodesNearest`
+//! used for finding nearest gridpoints in `KeyedMessage`
+
 use std::ptr::null_mut;
 
 use eccodes_sys::codes_nearest;

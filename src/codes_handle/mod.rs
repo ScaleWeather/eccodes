@@ -1,5 +1,5 @@
-//!Main crate module containing definition of `CodesHandle`
-//!and all associated functions and data structures
+//! Definition and constructors of `CodesHandle`
+//! used for accessing GRIB files
 
 #[cfg(feature = "experimental_index")]
 use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
@@ -20,14 +20,22 @@ use std::{
 mod iterator;
 
 #[derive(Debug)]
-#[doc(hidden)]
 pub struct GribFile {
     pointer: *mut FILE,
 }
 
-///Main structure used to operate on the GRIB file.
-///It takes a full ownership of the accessed file.
-///It can be constructed either using a file or a memory buffer.
+/// Main structure used to operate on the GRIB file, which takes a full ownership of the accessed file.
+///  
+/// It can be constructed either using a file or a memory buffer.
+/// 
+///  - Use [`new_from_file()`](CodesHandle::new_from_file)
+///  to open a file under provided [`path`](`std::path::Path`) using filesystem,
+///  when copying whole file into memory is not desired or not necessary.
+///  
+///  - Alternatively use [`new_from_memory()`](CodesHandle::new_from_memory)
+///  to access a file that is already in memory. For example, when file is downloaded from the internet
+///  and does not need to be saved on hard drive.
+///  The file must be stored in [`bytes::Bytes`](https://docs.rs/bytes/1.1.0/bytes/struct.Bytes.html).
 #[derive(Debug)]
 pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     _data: DataContainer,
