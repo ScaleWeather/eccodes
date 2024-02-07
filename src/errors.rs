@@ -29,11 +29,6 @@ pub enum CodesError {
     #[error("Error occured while opening the file: {0}")]
     FileHandlingInterrupted(#[from] std::io::Error),
 
-    ///Returned when the `CodesHandle` constructor did not find
-    /// any messages of given kind in the file.
-    #[error("No message have been found in the file")]
-    NoMessages,
-
     ///Returned when the string cannot be parsed as valid UTF8 string.
     #[error("Cannot parse string as UTF8: {0}")]
     CstrUTF8(#[from] std::str::Utf8Error),

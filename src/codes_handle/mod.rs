@@ -24,18 +24,16 @@ pub struct GribFile {
     pointer: *mut FILE,
 }
 
-/// Main structure used to operate on the GRIB file, which takes a full ownership of the accessed file.
+/// Structure providing access to the GRIB file which takes a full ownership of the accessed file.
 ///  
-/// It can be constructed either using a file or a memory buffer.
+/// It can be constructed from:
+///
+/// - File path using [`new_from_file()`](CodesHandle::new_from_file)
+/// - From memory buffer using [`new_from_memory()`](CodesHandle::new_from_memory)
+/// - From GRIB index using [`new_from_index()`](CodesHandle::new_from_index) (with `experimental_index` feature enabled)
 /// 
-///  - Use [`new_from_file()`](CodesHandle::new_from_file)
-///  to open a file under provided [`path`](`std::path::Path`) using filesystem,
-///  when copying whole file into memory is not desired or not necessary.
-///  
-///  - Alternatively use [`new_from_memory()`](CodesHandle::new_from_memory)
-///  to access a file that is already in memory. For example, when file is downloaded from the internet
-///  and does not need to be saved on hard drive.
-///  The file must be stored in [`bytes::Bytes`](https://docs.rs/bytes/1.1.0/bytes/struct.Bytes.html).
+/// Destructor for this structure does not panic, but some internal functions may rarely fail
+/// leading to bugs. Errors encountered during the destructor are logged with [`log`].
 #[derive(Debug)]
 pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     _data: DataContainer,
@@ -60,30 +58,31 @@ pub enum ProductKind {
 }
 
 impl CodesHandle<GribFile> {
-    ///The constructor that takes a [`path`](Path) to an existing file and
-    ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
+    ///Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
     ///
     ///```
     ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
     ///# use std::path::Path;
-    ///#
+    ///# fn main() -> anyhow::Result<()> {
     ///let file_path = Path::new("./data/iceland.grib");
     ///let product_kind = ProductKind::GRIB;
     ///
-    ///let handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
+    ///let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// # Ok(())
+    /// # }
     ///```
     ///
-    ///The function opens the file as [`File`] and then utilises
-    ///[`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html) function
-    ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`) from [`File`]
+    ///The function creates [`fs::File`](std::fs::File) from provided path and  utilises
+    ///[`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html)
+    ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`)
     ///with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer.
     ///
-    ///The constructor takes a [`path`](Path) as an argument instead of [`File`]
+    ///The constructor takes as argument a [`path`](Path) instead of [`File`]
     ///to ensure that `fdopen()` uses the same mode as [`File`].
-    ///The file descriptor does not take the ownership of a file, therefore the
-    ///[`File`] is safely closed when it is dropped.
+    ///
+    /// The file stream and [`File`] are safely closed when `CodesHandle` is dropped.
     ///
     ///## Errors
     ///Returns [`CodesError::FileHandlingInterrupted`] with [`io::Error`](std::io::Error)
@@ -94,9 +93,6 @@ impl CodesHandle<GribFile> {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
-    ///
-    ///Returns [`CodesError::NoMessages`] when there is no message of requested type
-    ///in the provided file.
     pub fn new_from_file(file_path: &Path, product_kind: ProductKind) -> Result<Self, CodesError> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
@@ -113,33 +109,31 @@ impl CodesHandle<GribFile> {
         })
     }
 
-    ///The constructor that takes data of file present in memory in [`Bytes`] format and
-    ///a requested [`ProductKind`] and returns the [`CodesHandle`] object.
+    ///Opens data in provided [`Bytes`] buffer as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
     ///
     ///```
-    ///# async fn run() {
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
+    ///# async fn run() -> anyhow::Result<()> {
+    ///# use eccodes::{ProductKind, CodesHandle};
     ///#
     ///let product_kind = ProductKind::GRIB;
     ///let file_data =
     ///    reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
-    ///        .await
-    ///        .unwrap()
+    ///        .await?
     ///        .bytes()
-    ///        .await
-    ///        .unwrap();
+    ///        .await?;
     ///
-    ///let handle = CodesHandle::new_from_memory(file_data, product_kind).unwrap();
+    ///let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
+    /// # Ok(())
     ///# }
     ///```
     ///
-    ///The function associates the data in memory with a stream
+    ///The function associates data in memory with a stream
     ///represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
-    ///using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html) function.
+    ///using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html).
     ///
-    ///The constructor takes a full ownership of the data inside [`Bytes`],
+    ///The constructor takes full ownership of the data inside [`Bytes`],
     ///which is safely dropped during the [`CodesHandle`] drop.
     ///
     ///## Errors
@@ -148,9 +142,6 @@ impl CodesHandle<GribFile> {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
-    ///
-    ///Returns [`CodesError::NoMessages`] when there is no message of requested type
-    ///in the provided file.
     pub fn new_from_memory(
         file_data: Bytes,
         product_kind: ProductKind,
@@ -172,15 +163,43 @@ impl CodesHandle<GribFile> {
 
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+
 impl CodesHandle<CodesIndex> {
+    /// Creates [`CodesHandle`] for provided [`CodesIndex`].
+    /// 
+    /// ## Example
+    /// 
+    /// ```
+    /// # fn run() -> anyhow::Result<()> {
+    /// # use eccodes::{CodesHandle, CodesIndex};
+    /// #
+    /// let index = CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level"])?;
+    /// let handle = CodesHandle::new_from_index(index)?;
+    /// 
+    /// Ok(())
+    /// # }
+    /// ```
+    /// 
+    /// The function takes ownership of the provided [`CodesIndex`] which owns
+    /// the GRIB data. [`CodesHandle`] created from [`CodesIndex`] is of different type
+    /// than the one created from file or memory buffer, because it internally uses
+    /// different functions to access messages. But it can be used in the same way.
+    /// 
+    /// ⚠️ Warning: This function may interfere with other functions in concurrent context,
+    /// due to ecCodes issues with thread-safety for indexes. More information can be found
+    /// in [`codes_index`](crate::codes_index) module documentation.
+    /// 
+    /// ## Errors
+    /// 
+    /// Returns [`CodesError::Internal`] with error code
+    /// when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
     pub fn new_from_index(
         index: CodesIndex,
-        product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
             source: index,
-            product_kind,
+            product_kind: ProductKind::GRIB,
             unsafe_message: KeyedMessage {
                 message_handle: null_mut(),
             },
@@ -224,14 +243,15 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
-/// This trait is neccessary because (1) drop in GribFile/IndexFile cannot
-/// be called directly as source cannot be moved out of shared reference
-/// and (2) Drop drops fields in arbitrary order leading to fclose() failing
+// This trait is neccessary because (1) drop in GribFile/IndexFile cannot
+// be called directly as source cannot be moved out of shared reference
+// and (2) Drop drops fields in arbitrary order leading to fclose() failing
 #[doc(hidden)]
 pub trait SpecialDrop {
     fn spec_drop(&mut self);
 }
 
+#[doc(hidden)]
 impl SpecialDrop for GribFile {
     fn spec_drop(&mut self) {
         //fclose() can fail in several different cases, however there is not much
@@ -257,6 +277,7 @@ impl SpecialDrop for GribFile {
     }
 }
 
+#[doc(hidden)]
 #[cfg(feature = "experimental_index")]
 impl SpecialDrop for CodesIndex {
     fn spec_drop(&mut self) {
@@ -268,17 +289,17 @@ impl SpecialDrop for CodesIndex {
     }
 }
 
+#[doc(hidden)]
 impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
-    ///Executes the destructor for this type.
-    ///This method calls `fclose()` from libc for graceful cleanup.
-    ///
-    ///Currently it is assumed that under normal circumstances this destructor never fails.
-    ///However in some edge cases fclose can return non-zero code.
-    ///In such case all pointers and file descriptors are safely deleted.
-    ///However memory leaks can still occur.
-    ///
-    ///If any function called in the destructor returns an error warning will appear in log.
-    ///If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
+    /// Executes the destructor for this type.
+    /// 
+    /// Currently it is assumed that under normal circumstances this destructor never fails.
+    /// However in some edge cases fclose can return non-zero code.
+    /// In such case all pointers and file descriptors are safely deleted.
+    /// However memory leaks can still occur.
+    /// 
+    /// If any function called in the destructor returns an error warning will appear in log.
+    /// If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
         self.source.spec_drop();
     }
@@ -351,7 +372,7 @@ mod tests {
 
         let i_ptr = index.pointer.clone();
 
-        let handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+        let handle = CodesHandle::new_from_index(index)?;
 
         assert_eq!(handle.source.pointer, i_ptr);
         assert!(handle.unsafe_message.message_handle.is_null());
@@ -395,6 +416,26 @@ mod tests {
                 }
             });
         }
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "experimental_index")]
+    fn empty_index_constructor() -> Result<()> {
+        use fallible_streaming_iterator::FallibleStreamingIterator;
+
+        let index =
+            CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level", "stepType"])?;
+
+        let mut handle = CodesHandle::new_from_index(index)?;
+
+        assert!(!handle.source.pointer.is_null());
+        assert!(handle.unsafe_message.message_handle.is_null());
+
+        let msg = handle.next()?;
+
+        assert!(!msg.is_some());
 
         Ok(())
     }

@@ -100,6 +100,7 @@ impl Select<&str> for CodesIndex {
     }
 }
 
+#[doc(hidden)]
 impl Drop for CodesIndex {
     fn drop(&mut self) {
         self.spec_drop();

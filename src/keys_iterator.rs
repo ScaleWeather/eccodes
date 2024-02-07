@@ -189,6 +189,7 @@ impl FallibleIterator for KeysIterator<'_> {
     }
 }
 
+#[doc(hidden)]
 impl Drop for KeysIterator<'_> {
     fn drop(&mut self) {
         unsafe {

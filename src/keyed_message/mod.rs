@@ -10,17 +10,17 @@ use std::ptr::null_mut;
 
 use crate::{intermediate_bindings::{codes_handle_clone, codes_handle_delete}, CodesError};
 
-///Structure used to access keys inside the GRIB file message.
-///All data (including data values) contained by the file can only be accessed
-///through the message and keys.
-///
-///The structure implements `Clone` trait which comes with a memory overhead.
-///You should take care that your system has enough memory before cloning `KeyedMessage`.
-///
-///Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
-///function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
-///The function [`find_nearest()`](crate::codes_nearest::CodesNearest::find_nearest()) allows to get the values of four nearest gridpoints
-///to requested coordinates.
+/// Structure used to access keys inside the GRIB file message.
+/// All data (including data values) contained by the file can only be accessed
+/// through the message and keys.
+/// 
+/// The structure implements `Clone` trait which comes with a memory overhead.
+/// You should take care that your system has enough memory before cloning `KeyedMessage`.
+/// 
+/// Keys inside the message can be accessed directly with [`read_key()`](KeyedMessage::read_key())
+/// function or using [`FallibleIterator`](KeyedMessage#impl-FallibleIterator).
+/// The function [`find_nearest()`](crate::codes_nearest::CodesNearest::find_nearest()) allows to get the values of four nearest gridpoints
+/// to requested coordinates.
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     pub(crate) message_handle: *mut codes_handle,
@@ -50,7 +50,7 @@ pub enum KeyType {
 }
 
 impl KeyedMessage {
-    ///Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
+    /// Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
     /// 
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
@@ -64,6 +64,7 @@ impl KeyedMessage {
     }
 }
 
+#[doc(hidden)]
 impl Drop for KeyedMessage {
     ///Executes the destructor for this type.
     ///This method calls destructor functions from ecCodes library.

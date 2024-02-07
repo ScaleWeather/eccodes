@@ -18,7 +18,7 @@ fn iterate_handle_from_index() -> Result<()> {
         .select("level", 0)?
         .select("stepType", "instant")?;
 
-    let handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let handle = CodesHandle::new_from_index(index)?;
 
     let counter = handle.count()?;
 
@@ -36,7 +36,7 @@ fn read_index_messages() -> Result<()> {
         .select("level", 0)?
         .select("stepType", "instant")?;
 
-    let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let mut handle = CodesHandle::new_from_index(index)?;
     let current_message = handle.next()?.context("Message not some")?;
 
     {
@@ -68,7 +68,7 @@ fn collect_index_iterator() -> Result<()> {
         .select("typeOfLevel", "isobaricInhPa")?
         .select("level", 700)?;
 
-    let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let mut handle = CodesHandle::new_from_index(index)?;
 
     let mut levels = vec![];
 
@@ -241,7 +241,7 @@ fn index_handle_interference() -> Result<()> {
         let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
 
         let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path)?;
-        let i_handle = CodesHandle::new_from_index(index, ProductKind::GRIB);
+        let i_handle = CodesHandle::new_from_index(index);
 
         assert!(i_handle.is_ok());
 
