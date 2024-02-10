@@ -434,7 +434,7 @@ mod tests {
     fn index_constructor_and_destructor() -> Result<()> {
         use anyhow::Ok;
 
-        let file_path = Path::new("./data/iceland-surface.idx");
+        let file_path = Path::new("./data/iceland-surface.grib.idx");
         let index = CodesIndex::read_from_file(file_path)?
             .select("shortName", "2t")?
             .select("typeOfLevel", "surface")?

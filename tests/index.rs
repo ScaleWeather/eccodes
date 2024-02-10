@@ -11,7 +11,7 @@ use rand::Rng;
 
 #[test]
 fn iterate_handle_from_index() -> Result<()> {
-    let file_path = Path::new("./data/iceland-surface.idx");
+    let file_path = Path::new("./data/iceland-surface.grib.idx");
     let index = CodesIndex::read_from_file(file_path)?
         .select("shortName", "2t")?
         .select("typeOfLevel", "surface")?
@@ -29,7 +29,7 @@ fn iterate_handle_from_index() -> Result<()> {
 
 #[test]
 fn read_index_messages() -> Result<()> {
-    let file_path = Path::new("./data/iceland-surface.idx");
+    let file_path = Path::new("./data/iceland-surface.grib.idx");
     let index = CodesIndex::read_from_file(file_path)?
         .select("shortName", "2t")?
         .select("typeOfLevel", "surface")?
@@ -133,7 +133,7 @@ fn index_panic() -> Result<()> {
 #[ignore = "for releases, indexing is experimental"]
 fn add_file_while_index_open() -> Result<()> {
     thread::spawn(|| -> Result<()> {
-        let file_path = Path::new("./data/iceland-surface.idx");
+        let file_path = Path::new("./data/iceland-surface.grib.idx");
         let mut index_op = CodesIndex::read_from_file(file_path)?;
 
         loop {
@@ -156,7 +156,7 @@ fn add_file_while_index_open() -> Result<()> {
 
 #[test]
 fn add_file_to_read_index() -> Result<()> {
-    let file_path = Path::new("./data/iceland-surface.idx");
+    let file_path = Path::new("./data/iceland-surface.grib.idx");
     let grib_path = Path::new("./data/iceland-surface.grib");
 
     let _index = CodesIndex::read_from_file(file_path)?
@@ -174,7 +174,7 @@ fn add_file_to_read_index() -> Result<()> {
 fn simulatenous_index_destructors() -> Result<()> {
     let h1 = thread::spawn(|| -> anyhow::Result<(), CodesError> {
         let mut rng = rand::thread_rng();
-        let file_path = Path::new("./data/iceland-surface.idx");
+        let file_path = Path::new("./data/iceland-surface.grib.idx");
 
         for _ in 0..10 {
             let sleep_time = rng.gen_range(1..30); // randomizing sleep time to hopefully catch segfaults
