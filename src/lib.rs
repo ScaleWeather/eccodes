@@ -20,7 +20,7 @@
 //! rather thick wrapper to make this crate safe and convenient to use.
 //! 
 //! This crate officially supports mainly Linux platforms same as the ecCodes library.
-//! But it is possible to install ecCodes on MacOS and this crate successfully compiles and all tests pass.
+//! But it is possible to install ecCodes on `MacOS` and this crate successfully compiles and all tests pass.
 //! 
 //! If you want to see more features released quicker do not hesitate
 //! to contribute and check out [Github repository](https://github.com/ScaleWeather/eccodes).

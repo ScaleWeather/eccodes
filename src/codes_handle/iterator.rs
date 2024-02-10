@@ -12,83 +12,10 @@ use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};
 
 use super::GribFile;
 
-///`FallibleIterator` implementation for `CodesHandle` to access GRIB messages inside file.
+/// # Errors
 ///
-///To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
-///It digests the `FILE *` multiple times each time returning the `codes_handle` raw pointer
-///to a message inside the file. This method would be unsafe to expose directly.
-///Therefore this crate utilizes the `Iterator` to provide the access to GRIB messages in
-///a safe and convienient way.
-///
-///[`FallibleIterator`] is used instead of classic `Iterator`
-///because internal ecCodes functions can return error codes when the GRIB file
-///is corrupted and for some other reasons. The usage of `FallibleIterator` is sligthly different
-///than usage of `Iterator`, check its documentation for more details.
-///
-///For a true memory safety and to provide a ful Rust Iterator functionality,
-///this iterator clones each message to a new buffer.Although internal ecCodes
-///message copy implementation makes this operation quite cheap, using this iterator
-///(and in effect this crate) comes with memory overhead, but is
-///a necessity for memory safety.
-///
-///Using the `FallibleIterator` is the only way to read `KeyedMessage`s from the file.
-///Its basic usage is simply with while let statement (similar to for loop for classic `Iterator`):
-///
-///```
-/// use eccodes::{ProductKind, CodesHandle, KeyType};
-/// # use std::path::Path;
-/// use eccodes::FallibleStreamingIterator;
-/// #
-/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
-/// let file_path = Path::new("./data/iceland-surface.grib");
-/// let product_kind = ProductKind::GRIB;
-/// 
-/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-/// 
-/// // Print names of messages in the file
-/// while let Some(message) = handle.next()? {
-/// // The message must be unwraped as internal Iterator methods can fail
-///     let key = message.read_key("name")?;
-/// 
-///     if let KeyType::Str(name) = key.value {
-///         println!("{:?}", name);    
-///     }
-/// }
-/// # Ok(())
-/// # }
-///```
-///
-///The `FallibleIterator` can be collected to convert the handle into a
-///`Vector` of `KeyedMessage`s.
-///For example:
-///
-///```
-/// use eccodes::{ProductKind, CodesHandle, KeyedMessage};
-/// # use eccodes::errors::CodesError;
-/// # use std::path::Path;
-/// use eccodes::FallibleStreamingIterator;
-/// #
-/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
-/// let file_path = Path::new("./data/iceland-surface.grib");
-/// let product_kind = ProductKind::GRIB;
-/// 
-/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-/// 
-/// let mut handle_collected = vec![];
-/// 
-/// while let Some(msg) = handle.next()? {
-///     handle_collected.push(msg.try_clone()?);
-/// }
-/// # Ok(())
-/// # }
-///```
-///
-///Use of `filter()`, `map()` and other methods provided with `Iterator` allow for
-///more advanced extracting of GRIB messages from the file.
-///
-///## Errors
-///The `next()` method will return [`CodesInternal`](crate::errors::CodesInternal)
-///when internal ecCodes function returns non-zero code.
+/// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
+/// when internal ecCodes function returns non-zero code.
 impl FallibleStreamingIterator for CodesHandle<GribFile> {
     type Item = KeyedMessage;
 
@@ -124,6 +51,10 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
 
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+/// # Errors
+///
+/// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
+/// when internal ecCodes function returns non-zero code.
 impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
     type Item = KeyedMessage;
 

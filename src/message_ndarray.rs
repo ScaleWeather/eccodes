@@ -62,7 +62,7 @@ impl KeyedMessage {
     /// 
     /// Compared to `to_ndarray` this method has performance overhead as returned arrays may be cloned.
     /// 
-    /// This method requires the `latLonValues`, `Ni` and Nj` keys to be present in the message.
+    /// This method requires the `latLonValues`, `Ni` and `Nj` keys to be present in the message.
     /// 
     /// # Errors
     /// 

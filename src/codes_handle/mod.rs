@@ -19,6 +19,9 @@ use std::{
 
 mod iterator;
 
+/// This is an internal structure used to access provided file by `CodesHandle`.
+/// It also allows to differentiate between `CodesHandle` created from file and from index.
+/// It is not intended to be used directly by the user.
 #[derive(Debug)]
 pub struct GribFile {
     pointer: *mut FILE,
@@ -34,6 +37,74 @@ pub struct GribFile {
 /// 
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered during the destructor are logged with [`log`].
+/// 
+/// # `FallibleStreamingIterator`
+/// 
+/// This structure implements [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait which allows to access GRIB messages.
+/// 
+/// To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
+/// It digests the `* FILE` multiple times, each time returning the `*mut codes_handle`
+/// to a message inside the file. The behavior of previous `*mut codes_handle` after next one is generated is undefined
+/// and we assume here that it is unsafe to use "old" `*mut codes_handle`.
+/// 
+/// In Rust, such pattern is best represented by a streaming iterator which returns a reference to the message,
+/// that is valid only until the next iteration. If you need to prolong the lifetime of the message, you can clone it.
+/// Internal ecCodes functions can fail, necessitating the streaming iterator to be implemented with 
+/// [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
+/// 
+/// As of `0.10` release, none of the available streaming iterator crates utilises already stabilized GATs.
+/// This unfortunately significantly limits the number of methods available for `CodesHandle` iterator.
+/// Therefore the probably most versatile way to iterate over the messages is to use `while let` loop.
+/// 
+/// ```
+/// use eccodes::{ProductKind, CodesHandle, KeyType};
+/// # use std::path::Path;
+/// // FallibleStreamingIterator must be in scope to use it 
+/// use eccodes::FallibleStreamingIterator;
+/// #
+/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
+/// let file_path = Path::new("./data/iceland-surface.grib");
+/// let product_kind = ProductKind::GRIB;
+/// 
+/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+/// 
+/// // Print names of messages in the file
+/// while let Some(message) = handle.next()? {
+///     // The message must be unwraped as internal next() can fail
+///     let key = message.read_key("name")?;
+/// 
+///     if let KeyType::Str(name) = key.value {
+///         println!("{:?}", name);    
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
+/// 
+/// You can also manually collect the messages into a vector to use them later.
+/// 
+/// ```
+/// use eccodes::{ProductKind, CodesHandle, KeyedMessage};
+/// # use eccodes::errors::CodesError;
+/// # use std::path::Path;
+/// use eccodes::FallibleStreamingIterator;
+/// #
+/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
+/// let file_path = Path::new("./data/iceland-surface.grib");
+/// let product_kind = ProductKind::GRIB;
+/// 
+/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+/// 
+/// let mut handle_collected = vec![];
+/// 
+/// while let Some(msg) = handle.next()? {
+///     handle_collected.push(msg.try_clone()?);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+/// 
+/// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
 pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
     _data: DataContainer,
