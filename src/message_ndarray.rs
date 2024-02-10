@@ -5,12 +5,16 @@ use ndarray::{s, Array2, Array3};
 
 use crate::{errors::MessageNdarrayError, CodesError, KeyType, KeyedMessage};
 
-/// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method
+/// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
+/// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
 #[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
 pub struct RustyCodesMessage {
+    /// Longitudes in degrees
     pub longitudes: Array2<f64>,
+    /// Latitudes in degrees
     pub latitudes: Array2<f64>,
+    /// Values in native GRIB units
     pub values: Array2<f64>,
 }
 

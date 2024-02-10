@@ -38,7 +38,13 @@ pub struct NearestGridpoint {
 
 impl KeyedMessage {
     /// Creates a new instance of [`CodesNearest`] for the `KeyedMessage`.
-    /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`.
+    /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`
+    /// by calling [`find_nearest()`](crate::CodesNearest::find_nearest).
+    /// 
+    /// # Errors
+    /// 
+    /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
+    /// internal nearest handle cannot be created.
     pub fn codes_nearest(&self) -> Result<CodesNearest, CodesError> {
         let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
 

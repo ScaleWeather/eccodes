@@ -36,7 +36,7 @@ pub struct GribFile {
 /// - From GRIB index using [`new_from_index()`](CodesHandle::new_from_index) (with `experimental_index` feature enabled)
 /// 
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
-/// leading to bugs. Errors encountered during the destructor are logged with [`log`].
+/// leading to bugs. Errors encountered in the destructor are logged with [`log`].
 /// 
 /// # `FallibleStreamingIterator`
 /// 
@@ -125,6 +125,7 @@ enum DataContainer {
 ///Used to indicate to ecCodes how it should decode/encode messages.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
+    #[allow(missing_docs)]
     GRIB = ProductKind_PRODUCT_GRIB as isize,
 }
 

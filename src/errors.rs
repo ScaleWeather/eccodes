@@ -43,6 +43,11 @@ pub enum CodesError {
     #[error("The key is missing in present message")]
     MissingKey,
 
+    /// Returned when the size of requested key is lower than 1.
+    /// This indicates corrupted data file, bug in the crate or bug in the ecCodes library.
+    #[error("Incorrect key size")]
+    IncorrectKeySize,
+
     /// Returned when codes_handle_clone returns null pointer
     /// indicating issues with cloning the message.
     #[error("Cannot clone the message")]
