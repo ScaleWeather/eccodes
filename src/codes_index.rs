@@ -2,6 +2,35 @@
 //! ⚠️ **EXPERIMENTAL FEATURE - POSSIBLY UNSAFE** ⚠️ \
 //! Definition of `CodesIndex` and associated functions
 //! used for efficient selection of messages from GRIB file
+//!
+//! # Safety Issues
+//!
+//! To understand the issue it's best to compare how `CodesIndex` and `CodesHandle` are created.
+//!
+//! Low-level [`*codes_handle`](eccodes_sys::codes_handle) in ecCodes is created from [`*FILE`](libc::FILE).
+//! This crate utilises that by opening a file as [`fs::File`](std::fs::File) (which is memory and thread safe)
+//! and passing to the ecCodes library [`RawFd`](std::os::fd::RawFd) which has the same safety guarantees
+//! as `fs::File` as long as the file is in the scope. Therefore internal ecCodes file operations
+//! in `CodesHandle` are safe-guarded by Rust filesystem API.
+//!
+//! In contrast, low-level ecCodes functions creating and manipulating [`*codes_index`](eccodes_sys::codes_index)
+//! that perform IO operations take file paths as arguments instead of `*FILE` and no Rust IO safe guards
+//! can be provided for `CodesIndex`. Therefore in concurrent contexts, when two ecCodes functions operate
+//! on the same file (index or grib) on or both fail in an unpredictable way, leading to non-zero return codes
+//! at best and segfaults at worst.
+//!
+//! This problem affects all functions in this module, and in other modules (eg. `CodesHandle::new_from_index`) if used
+//! simulatenously with one of `codes_index` functions.
+//!
+//! The issues have been partially mitigated by implementing global mutex for `codes_index` operations.
+//! Please not that mutex is used only for `codes_index` functions to not affect performance of other not-problematic functions in this crate.
+//! This solution, eliminated tsegfaults in tests, but occasional non-zero return codes still appear. However, this is
+//! not a guarantee and possbility of safety issues is non-zero!
+//!
+//! To avoid the memory issues altogether, do not use this feature at all. If you want to use it, take care to use `CodesIndex` in entirely
+//! non-concurrent environment.
+//!
+//! If you have any suggestions or ideas how to improve the safety of this feature, please open an issue or a pull request.
 
 use crate::{
     codes_handle::SpecialDrop,
@@ -29,13 +58,14 @@ use std::path::Path;
 /// location of a message and receive handles. Loading GRIB files by reading an index file is required
 /// for performance in certain situations.
 ///
-/// Typical workflow for using `CodesIndex` involves
+/// Typical workflow for using `CodesIndex` involves:
 /// - creating an index by reading file or constructing an empty one using [`new_from_keys`](CodesIndex::new_from_keys) or [`read_from_file`](CodesIndex::read_from_file)
-/// - adding GRIB files to the index using [`add_grib_file`](CodesIndex::add_grib_file) (not required if the index is read from a file)
+/// - adding GRIB files to the index using [`add_grib_file`](CodesIndex::add_grib_file) (not required if the index is read from file)
 /// - selecting messages by key-value pairs using [`select`](Select::select)
-/// - reading the messages from the GRIB file using `CodesHandle` using [`codes_handle_from_index`](crate::CodesHandle::new_from_index)
+/// - reading the messages from the GRIB file by creating `CodesHandle` using [`CodesHandle::new_from_index`](crate::CodesHandle::new_from_index)
 ///
 /// # Example
+///
 /// ```
 /// # use std::path::Path;
 /// # use eccodes::codes_index::{CodesIndex, Select};
