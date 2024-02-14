@@ -1,7 +1,10 @@
 name: cargo
 
-on:
+on: 
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -9,9 +12,26 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  pre_job:
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          # All of these options are optional, so you can remove them if you are happy with the defaults
+          concurrent_skipping: 'same_content_newer'
+          skip_after_successful_duplicate: 'true'
+          paths_ignore: '["**/README.md""]'
+          do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
+
   build:
 
     name: Build on Ubuntu
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -41,6 +61,8 @@ jobs:
   build-macos:
 
     name: Build on MacOS
+    needs: pre_job
+    if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: macos-latest
 
     steps:
