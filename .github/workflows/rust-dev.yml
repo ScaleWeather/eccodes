@@ -69,12 +69,13 @@ jobs:
         brew install eccodes
         rustup update stable
         cargo clean
-    - name: Test with cargo
-      run: |
-        RUST_BACKTRACE=full cargo test --features "experimental_index, message_ndarray" -- --include-ignored
     - name: Check with clippy
       run: |
         cargo clippy --features "experimental_index, message_ndarray"
     - name: Build release
       run: |
         cargo build --release --features "experimental_index, message_ndarray"
+    - name: Test with cargo
+      run: |
+        cargo clean
+        RUST_BACKTRACE=full cargo test --features "experimental_index, message_ndarray" -- --include-ignored
