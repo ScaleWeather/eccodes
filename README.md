@@ -148,7 +148,7 @@ This feature is enabled by default. It is currently tested only with simple lat-
 
 - `experimental_index` - enables support for creating and using index files for GRIB files.
 This feature experimental and disabled by default. If you want to use it, please read
-the information provided in [`codes_index`] documentation.
+the information provided in `codes_index` documentation.
 
 - `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
 on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
