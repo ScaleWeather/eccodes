@@ -1,29 +1,29 @@
 # eccodes
 
-[![License](https://img.shields.io/github/license/ScaleWeather/eccodes)](https://choosealicense.com/licenses/apache-2.0/)
-[![Crates.io](https://img.shields.io/crates/v/eccodes)](https://crates.io/crates/eccodes)
-[![dependency status](https://deps.rs/repo/github/ScaleWeather/eccodes/status.svg)](https://deps.rs/repo/github/ScaleWeather/eccodes)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/ScaleWeather/eccodes/rust.yml?branch=main&label=cargo%20build)](https://github.com/ScaleWeather/eccodes/actions)
-[![docs.rs](https://img.shields.io/docsrs/eccodes)](https://docs.rs/eccodes)
+[![Github Repository](https://img.shields.io/badge/Github-Repository-blue?style=flat-square&logo=github&color=blue)](https://github.com/ScaleWeather/eccodes)
+[![Crates.io](https://img.shields.io/crates/v/eccodes?style=flat-square)](https://crates.io/crates/eccodes)
+[![License](https://img.shields.io/github/license/ScaleWeather/eccodes?style=flat-square)](https://choosealicense.com/licenses/apache-2.0/)
+[![dependency status](https://deps.rs/repo/github/ScaleWeather/eccodes/status.svg?style=flat-square)](https://deps.rs/repo/github/ScaleWeather/eccodes)
+![Crates.io MSRV](https://img.shields.io/crates/msrv/eccodes?style=flat-square)
+![ecCodes version](https://img.shields.io/badge/ecCodes-%E2%89%A52.24.0-blue?style=flat-square&color=blue)
 
-This crate contains safe high-level bindings for ecCodes library.
+This crate contains (mostly) safe high-level bindings for ecCodes library.
 Bindings can be considered safe mainly because all crate structures
-take ownership of the data in memory before passing the raw pointer to ecCodes.
+will take ownership of the data in memory before passing the raw pointer to ecCodes.
 
 **Currently only reading of GRIB files is supported.**
 
-As the API of this crate differs significantly from the API of ecCodes library
-make sure to read its [documentation](https://docs.rs/eccodes).
-Read [this section](#crate-safety) to learn more about design decisions of this crate.
+Because of the ecCodes library API characteristics theses bindings are
+rather thick wrapper to make this crate safe and convenient to use.
 
-**If you want to see more features released quicker do not hesitate to contribute and check out Github repository.** All submitted issues and pull requests are welcome.
-
-[ecCodes](https://confluence.ecmwf.int/display/ECC/ecCodes+Home) is an
-open-source library for reading and writing GRIB and BUFR files
-developed by [European Centre for Medium-Range Weather Forecasts](https://www.ecmwf.int/).
-
-This crate officially supports mainly Linux platforms as the ecCodes library supports them.
+This crate officially supports mainly Linux platforms same as the ecCodes library.
 But it is possible to install ecCodes on MacOS and this crate successfully compiles and all tests pass.
+
+**If you want to see more features released quicker do not hesitate
+to contribute and check out [Github repository](https://github.com/ScaleWeather/eccodes).**
+
+[ecCodes](https://confluence.ecmwf.int/display/ECC/ecCodes+Home) is an open-source library
+for reading and writing GRIB and BUFR files developed by [European Centre for Medium-Range Weather Forecasts](https://www.ecmwf.int/).
 
 ## Usage
 
@@ -58,63 +58,55 @@ export PKG_CONFIG_PATH=<your_eccodes_path>/lib/pkgconfig
 export LD_LIBRARY_PATH=<your_eccodes_path>/lib
 ```
 
-### Accessing GRIB files
+### Working with GRIB files
 
-This crate provides an access to GRIB file by creating a
-`CodesHandle` and reading with it messages from the file.
+To access a GRIB file you need to create `CodesHandle` with one of provided constructors.
 
-The `CodesHandle` can be constructed in two ways:
+GRIB files consist of messages which represent data fields at specific time and level.
+Messages are represented by the `KeyedMessage` structure.
 
-- The main option is to use `new_from_file()` function
-to open a file under provided `path` with filesystem,
-when copying whole file into memory is not desired or not necessary.
+`CodesHandle` implements `FallibleStreamingIterator`
+which allows you to iterate over messages in the file. The iterator returns `&KeyedMessage` which valid until next iteration.
+`KeyedMessage` implements several methods to access the data as needed, most of those can be called directly on `&KeyedMessage`.
+You can also use `try_clone()` to clone the message and prolong its lifetime.
 
-- Alternatively `new_from_memory()` function can be used
-to access a file that is already in memory. For example, when file is downloaded from the internet
-and does not need to be saved on hard drive.
-The file must be stored in `bytes::Bytes`.
+Data defining and contained by `KeyedMessage` is represented by `Key`s.
+You can read them directly with `read_key()`, use `KeysIterator`
+to iterate over them or use `CodesNearest` to get the values of four nearest gridpoints for given coordinates.
 
-Data (messages) inside the GRIB file can be accessed using the `FallibleIterator`
-by iterating over the `CodesHandle`.
-
-The `FallibleIterator` returns a `KeyedMessage` structure which implements some
-methods to access data values. The data inside `KeyedMessage` is provided directly as `Key`
-or as more specific data type.
+You can also modify the message with `write_key()` and write it to a new file with `write_to_file()`.
 
 #### Example
 
 ```rust
 // We are reading the mean sea level pressure for 4 gridpoints
-// nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC 
+// nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC
 // from ERA5 Climate Reanalysis
+
+use eccodes::{ProductKind, CodesHandle, KeyType};
+use eccodes::FallibleStreamingIterator;
 
 // Open the GRIB file and create the CodesHandle
 let file_path = Path::new("./data/iceland.grib");
 let product_kind = ProductKind::GRIB;
+let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-let handle = CodesHandle::new_from_file(file_path, product_kind)?;
-
-// Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
-// First, filter and collect the messages to get those that we want
-let mut level: Vec<KeyedMessage> = handle
-    .filter(|msg| {
-
-    Ok(msg.read_key("shortName")?.value == Str("msl".to_string())
-        && msg.read_key("typeOfLevel")?.value == Str("surface".to_string()))
-    })
-    .collect()?;
-
-// Now unwrap and access the first and only element of resulting vector
-// Find nearest modifies internal KeyedMessage fields so we need mutable reference
-let level = &mut level[0];
-
-// Get the four nearest gridpoints of Reykjavik
-let nearest_gridpoints = level.find_nearest(64.13, -21.89)?;
-
-// Print value and distance of the nearest gridpoint
-println!("value: {}, distance: {}", 
-    nearest_gridpoints[3].value, 
-    nearest_gridpoints[3].distance);
+// Use iterator to find a message with shortName "msl" and typeOfLevel "surface"
+// We can use while let or for_each() to iterate over the messages
+while let Some(msg) = handle.next()? {
+    if msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
+        && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string()) {
+       
+        // Create CodesNearest for given message
+        let nearest_gridpoints = msg.codes_nearest()?
+            // Find the nearest gridpoints to Reykjavik
+            .find_nearest(64.13, -21.89)?;
+        // Print value and distance of the nearest gridpoint
+        println!("value: {}, distance: {}",
+            nearest_gridpoints[3].value,
+            nearest_gridpoints[3].distance);
+    }
+}
 ```
 
 ### Writing GRIB files
@@ -127,34 +119,46 @@ modify the keys and write to new file.
 You can find a detailed example of setting keys and writing message to file
 in the documentation.
 
-### Features
+## Errors and panics
 
-- `docs` - builds the create without linking ecCodes, particularly useful when building the documentation
+This crate aims to return error whenever possible, even if the error is caused by implementation bug.
+As ecCodes is often used in scientific applications with long and extensive jobs,
+this allows the user to handle the error in the way that suits them best and not risk crashes.
+
+All error descriptions are provided in the `errors` module.
+Destructors, which cannot panic, report errors through the `log` crate.
+
+None of the functions in this crate explicitly panics.
+However, users should not that dependencies might panic in some edge cases.
+
+## Safety
+
+This crate aims to be as safe as possible and a lot of effort has been put into testing its safety.
+Moreover, pointers are always checked for null before being dereferenced.
+
+That said, neither main developer nor contributors have expertise in unsafe Rust and bugs might have
+slipped through. We are also not responsible for bugs in the ecCodes library.
+
+If you find a bug or have a suggestion, feel free to discuss it on Github.
+
+## Features
+
+- `message_ndarray` - enables support for converting `KeyedMessage` to `ndarray::Array`.
+This feature is enabled by default. It is currently tested only with simple lat-lon grids.
+
+- `experimental_index` - enables support for creating and using index files for GRIB files.
+This feature experimental and disabled by default. If you want to use it, please read
+the information provided in [`codes_index`] documentation.
+
+- `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
 on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
 
 To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
 
-```toml
+```text
 [package.metadata.docs.rs]
 features = ["eccodes/docs"]
 ```
-
-## Crate safety
-
-Because the ecCodes library API heavily relies on raw pointers simply making ecCodes functions callable without `unsafe` block would still allow for creation of dangling pointers and use-after-free, and the crate would not be truly safe. Therefore these bindings are rather thick wrapper as they need to take full ownership of accessed data to make the code safe. Having the data and pointers contained in dedicated data structures is also an occasion to make this crate API more convenient to use than the original ecCodes API (which is not really user-friendly).
-
-## Roadmap
-
-_(Functions from ecCodes API wrapped at given stage are marked in parentheses)_
-
-- [x] Reading GRIB files
-  - [x] Creating CodesHandle from file and from memory (`codes_handle_new_from_file`, `codes_handle_delete`)
-  - [x] Iterating over GRIB messages with `Iterator` (`codes_get_message`, `codes_get_message_copy`, `codes_handle_new_from_message`, `codes_handle_new_from_message_copy`)
-  - [x] Reading keys from messages (`codes_get_double`, `codes_get_long`, `codes_get_string`, `codes_get_double_array`, `codes_get_long_array`, `codes_get_size`, `codes_get_length`, `codes_get_native_type`)
-  - [x] Iterating over key names with `Iterator` (`codes_grib_iterator_new`, `codes_grib_iterator_next`, `codes_keys_iterator_get_name`, `codes_keys_iterator_rewind`, `codes_grib_iterator_delete`)
-  - [x] Finding nearest data points for given coordinates (`codes_grib_nearest_new`, `codes_grib_nearest_find`, `codes_grib_nearest_delete`)
-- [x] Writing GRIB files (`codes_set_double`, `codes_set_long`, `codes_set_string`, `codes_set_double_array`, `codes_set_long_array`,`codes_set_length`)
-- [ ] Reading and writing BUFR files
 
 ## License
 

@@ -1,4 +1,4 @@
-use eccodes::FallibleIterator;
+use eccodes::FallibleStreamingIterator;
 use std::path::Path;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -41,9 +41,10 @@ pub fn key_reading(c: &mut Criterion) {
     });
 
     c.bench_function("problematic key reading", |b| {
-        b.iter(|| msg.read_key(black_box("zero")).unwrap_or_else(|_|{
-            msg.read_key(black_box("zeros")).unwrap()
-        }))
+        b.iter(|| {
+            msg.read_key(black_box("zero"))
+                .unwrap_or_else(|_| msg.read_key(black_box("zeros")).unwrap())
+        })
     });
 }
 

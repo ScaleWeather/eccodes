@@ -1,17 +1,16 @@
-//!Module containing all error types used by the crate
+//! Definition of errors returned by this crate
 //!
-//!This crate uses [`thiserror`] crate to define its error types.
+//! This crate uses [`thiserror`] to define its error types.
 //!
-//!If you encounter an error that you believe is a result of implementation bug
-//!rather then user's mistake post an issue on Github.
+//! If you encounter an error that you believe is a result of implementation bug
+//! rather then user mistake post an issue on Github.
 
 use errno::Errno;
 use num_derive::FromPrimitive;
 use thiserror::Error;
 
+/// Errors returned by the all functions in the crate.
 #[derive(Error, Debug)]
-///Errors returned by the crate's functions.
-///These are the only errors that the user may face.
 pub enum CodesError {
     ///Returned when ecCodes library function returns an error code.
     ///Check [`CodesInternal`] for more details.
@@ -30,10 +29,6 @@ pub enum CodesError {
     #[error("Error occured while opening the file: {0}")]
     FileHandlingInterrupted(#[from] std::io::Error),
 
-    ///Returned when the constructor did not find any message of requested kind
-    #[error("No message have been found in the file")]
-    NoMessages,
-
     ///Returned when the string cannot be parsed as valid UTF8 string.
     #[error("Cannot parse string as UTF8: {0}")]
     CstrUTF8(#[from] std::str::Utf8Error),
@@ -47,11 +42,64 @@ pub enum CodesError {
     ///Similar to [`CodesInternal::CodesNotFound`] and [`CodesInternal::CodesMissingKey`].
     #[error("The key is missing in present message")]
     MissingKey,
+
+    /// Returned when the size of requested key is lower than 1.
+    /// This indicates corrupted data file, bug in the crate or bug in the ecCodes library.
+    #[error("Incorrect key size")]
+    IncorrectKeySize,
+
+    /// Returned when codes_handle_clone returns null pointer
+    /// indicating issues with cloning the message.
+    #[error("Cannot clone the message")]
+    CloneFailed,
+
+    /// Returned when codes_keys_iterator_new returns null pointer
+    #[error("Cannot create or manipulate keys iterator")]
+    KeysIteratorFailed,
+
+    /// This error can be returned by almost any function in the crate.
+    /// It is returned when null pointer was passed to ecCodes function
+    /// that cannot handle null pointers. This error may indicate both
+    /// bug in the implementation or incorrect usage of the crate.
+    #[error("Null pointer encountered where it should not be")]
+    NullPtr,
+
+    /// Returned when function in `message_ndarray` module cannot convert
+    /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
+    #[cfg(feature = "message_ndarray")]
+    #[error("error occured while converting KeyedMessage to ndarray {0}")]
+    NdarrayConvert(#[from] MessageNdarrayError),
 }
 
-#[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
+/// Errors returned by the `message_ndarray` module.
+#[cfg(feature = "message_ndarray")]
+#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[derive(PartialEq, Clone, Error, Debug)]
+pub enum MessageNdarrayError {
+    /// Returned when functions converting to ndarray cannot correctly
+    /// read key necessary for the conversion.
+    #[error("Requested key {0} has a different type than expected")]
+    UnexpectedKeyType(String),
+
+    /// Returned when length of values array is not equal to
+    /// product of Ni and Nj keys.
+    #[error("The length of the values array ({0}) is different than expected ({1})")]
+    UnexpectedValuesLength(usize, usize),
+
+    /// Returned when ndarray cannot create an array with the shape
+    /// defined by Ni and Nj keys.
+    #[error("Error occured while converting to ndarray: {0}")]
+    InvalidShape(#[from] ndarray::ShapeError),
+
+    /// This error can occur when casting types of shape fails
+    /// on 32-bit systems or for very large arrays.
+    #[error(transparent)]
+    IntCasting(#[from] std::num::TryFromIntError),
+}
+
 ///Errors returned by internal ecCodes library functions.
 ///Copied directly from the ecCodes API.
+#[derive(Copy, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, Error, Debug, FromPrimitive)]
 pub enum CodesInternal {
     ///No error
     #[error("No error")]
