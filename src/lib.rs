@@ -1,6 +1,7 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::cast_possible_wrap)]
 #![warn(missing_docs)]
+#![warn(clippy::cargo)]
 
 //! # Unofficial high-level safe Rust bindings to ecCodes library
 //! 

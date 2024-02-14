@@ -44,12 +44,12 @@ jobs:
         sudo apt-get install libeccodes-dev
         rustup update stable
         cargo clean
-    - name: Check with clippy
-      run: |
-        cargo clippy --features "experimental_index, message_ndarray"
     - name: Build release
       run: |
         cargo build --release --features "experimental_index, message_ndarray"
+    - name: Check with clippy
+      run: |
+        cargo clippy --features "experimental_index, message_ndarray" -- -D warnings
     - name: Test with cargo
       run: |
         cargo clean
@@ -69,12 +69,12 @@ jobs:
         brew install eccodes
         rustup update stable
         cargo clean
-    - name: Check with clippy
-      run: |
-        cargo clippy --features "experimental_index, message_ndarray"
     - name: Build release
       run: |
         cargo build --release --features "experimental_index, message_ndarray"
+    - name: Check with clippy
+      run: |
+        cargo clippy --features "experimental_index, message_ndarray" -- -D warnings
     - name: Test with cargo
       run: |
         cargo clean

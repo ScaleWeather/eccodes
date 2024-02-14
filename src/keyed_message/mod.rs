@@ -84,10 +84,10 @@ impl KeyedMessage {
     ///
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
-    pub fn try_clone(&self) -> Result<KeyedMessage, CodesError> {
+    pub fn try_clone(&self) -> Result<Self, CodesError> {
         let new_handle = unsafe { codes_handle_clone(self.message_handle)? };
 
-        Ok(KeyedMessage {
+        Ok(Self {
             message_handle: new_handle,
         })
     }

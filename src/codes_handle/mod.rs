@@ -169,7 +169,7 @@ impl CodesHandle<GribFile> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
 
-        Ok(CodesHandle {
+        Ok(Self {
             _data: (DataContainer::FileBuffer(file)),
             source: GribFile {
                 pointer: file_pointer,
@@ -220,7 +220,7 @@ impl CodesHandle<GribFile> {
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
-        Ok(CodesHandle {
+        Ok(Self {
             _data: (DataContainer::FileBytes(file_data)),
             source: GribFile {
                 pointer: file_pointer,
@@ -235,7 +235,6 @@ impl CodesHandle<GribFile> {
 
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-
 impl CodesHandle<CodesIndex> {
     /// Creates [`CodesHandle`] for provided [`CodesIndex`].
     /// 
