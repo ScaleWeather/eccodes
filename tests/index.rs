@@ -11,14 +11,14 @@ use rand::Rng;
 
 #[test]
 fn iterate_handle_from_index() -> Result<()> {
-    let file_path = Path::new("./data/iceland-surface.idx");
+    let file_path = Path::new("./data/iceland-surface.grib.idx");
     let index = CodesIndex::read_from_file(file_path)?
         .select("shortName", "2t")?
         .select("typeOfLevel", "surface")?
         .select("level", 0)?
         .select("stepType", "instant")?;
 
-    let handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let handle = CodesHandle::new_from_index(index)?;
 
     let counter = handle.count()?;
 
@@ -29,14 +29,14 @@ fn iterate_handle_from_index() -> Result<()> {
 
 #[test]
 fn read_index_messages() -> Result<()> {
-    let file_path = Path::new("./data/iceland-surface.idx");
+    let file_path = Path::new("./data/iceland-surface.grib.idx");
     let index = CodesIndex::read_from_file(file_path)?
         .select("shortName", "2t")?
         .select("typeOfLevel", "surface")?
         .select("level", 0)?
         .select("stepType", "instant")?;
 
-    let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let mut handle = CodesHandle::new_from_index(index)?;
     let current_message = handle.next()?.context("Message not some")?;
 
     {
@@ -68,12 +68,12 @@ fn collect_index_iterator() -> Result<()> {
         .select("typeOfLevel", "isobaricInhPa")?
         .select("level", 700)?;
 
-    let mut handle = CodesHandle::new_from_index(index, ProductKind::GRIB)?;
+    let mut handle = CodesHandle::new_from_index(index)?;
 
     let mut levels = vec![];
 
     while let Some(msg) = handle.next()? {
-        levels.push(msg.clone());
+        levels.push(msg.try_clone()?);
     }
 
     assert_eq!(levels.len(), 5);
@@ -133,7 +133,7 @@ fn index_panic() -> Result<()> {
 #[ignore = "for releases, indexing is experimental"]
 fn add_file_while_index_open() -> Result<()> {
     thread::spawn(|| -> Result<()> {
-        let file_path = Path::new("./data/iceland-surface.idx");
+        let file_path = Path::new("./data/iceland-surface.grib.idx");
         let mut index_op = CodesIndex::read_from_file(file_path)?;
 
         loop {
@@ -156,7 +156,7 @@ fn add_file_while_index_open() -> Result<()> {
 
 #[test]
 fn add_file_to_read_index() -> Result<()> {
-    let file_path = Path::new("./data/iceland-surface.idx");
+    let file_path = Path::new("./data/iceland-surface.grib.idx");
     let grib_path = Path::new("./data/iceland-surface.grib");
 
     let _index = CodesIndex::read_from_file(file_path)?
@@ -174,7 +174,7 @@ fn add_file_to_read_index() -> Result<()> {
 fn simulatenous_index_destructors() -> Result<()> {
     let h1 = thread::spawn(|| -> anyhow::Result<(), CodesError> {
         let mut rng = rand::thread_rng();
-        let file_path = Path::new("./data/iceland-surface.idx");
+        let file_path = Path::new("./data/iceland-surface.grib.idx");
 
         for _ in 0..10 {
             let sleep_time = rng.gen_range(1..30); // randomizing sleep time to hopefully catch segfaults
@@ -241,7 +241,7 @@ fn index_handle_interference() -> Result<()> {
         let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
 
         let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path)?;
-        let i_handle = CodesHandle::new_from_index(index, ProductKind::GRIB);
+        let i_handle = CodesHandle::new_from_index(index);
 
         assert!(i_handle.is_ok());
 

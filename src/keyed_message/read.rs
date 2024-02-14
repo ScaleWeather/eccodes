@@ -9,52 +9,54 @@ use crate::{
 };
 
 impl KeyedMessage {
-    ///Method to get a [`Key`] with provided name from the `KeyedMessage`.
-    ///
-    ///This function takes a key name and returns the key value as [`Key`]
-    ///if requested key exists. Check the [`Key`] documentation for details
-    ///of possible key types.
-    ///
-    ///## Example
-    ///
-    ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyType::Str};
-    ///# use std::path::Path;
-    ///# use eccodes::FallibleIterator;
-    ///#
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let message = handle.next().unwrap().unwrap();
-    ///let message_short_name = message.read_key("shortName").unwrap();
-    ///
-    ///assert_eq!(message_short_name.value, Str("msl".to_string()));
-    ///```
-    ///
-    ///This function will try to retrieve the key of native string type as string even
-    ///when the nul byte is not positioned at the end of key value.
-    ///
-    ///If retrieving the key value in native type fails this function will try to read
-    ///the requested key as bytes.
-    ///
-    ///## Errors
-    ///
-    ///Returns [`CodesInternal::CodesNotFound`](crate::errors::CodesInternal::CodesNotFound)
-    ///wrapped in [`CodesError::Internal`] when a key of given name has not been found in the message.
-    ///
-    ///Returns [`CodesError::MissingKey`] when a given key has a missing type.
-    ///
-    ///Returns [`CodesError::Internal`] when one of internal ecCodes functions to read the key fails.
-    ///
-    ///Returns [`CodesError::CstrUTF8`] and [`CodesError::NulChar`] when the string returned by ecCodes
-    ///library cannot be parsed as valid UTF8 Rust string.
-    ///
-    ///## Panics
-    ///
-    ///Panics when the size of given key is lower than 1. This indicates corrupted data file,
-    ///bug in the crate or bug in the ecCodes library. If you encounter this panic please check
-    ///if your file is correct and report it on Github.
+    /// Method to get a [`Key`] with provided name from the `KeyedMessage`, if it exists.
+    /// 
+    /// This function check the type of requested key and tries to read it as the native type.
+    /// That flow adds performance overhead, but makes the function highly unlikely to fail.
+    /// 
+    /// This function will try to retrieve the key of native string type as string even
+    /// when the nul byte is not positioned at the end of key value.
+    /// 
+    /// If retrieving the key value in native type fails this function will try to read
+    /// the requested key as bytes.
+    /// 
+    /// # Example
+    /// 
+    /// ```
+    ///  use eccodes::{ProductKind, CodesHandle, KeyType};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  let file_path = Path::new("./data/iceland.grib");
+    ///  let product_kind = ProductKind::GRIB;
+    ///  
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///  let message = handle.next()?.context("no message")?;
+    ///  let message_short_name = message.read_key("shortName")?;
+    ///  let expected_short_name = KeyType::Str("msl".to_string());
+    ///  
+    ///  assert_eq!(message_short_name.value, expected_short_name);
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    /// 
+    /// # Errors
+    /// 
+    /// Returns [`CodesNotFound`](crate::errors::CodesInternal::CodesNotFound)
+    /// when a key of given name has not been found in the message.
+    /// 
+    /// Returns [`CodesError::MissingKey`] when a given key does not have a specified type.
+    /// 
+    /// Returns [`CodesError::Internal`] when one of internal ecCodes functions to read the key fails.
+    /// 
+    /// Returns [`CodesError::CstrUTF8`] and [`CodesError::NulChar`] when the string returned by ecCodes
+    /// library cannot be parsed as valid UTF8 Rust string.
+    /// 
+    /// Returns [`CodesError::IncorrectKeySize`] when the size of given key is lower than 1. This indicates corrupted data file,
+    /// bug in the crate or bug in the ecCodes library. If you encounter this error please check
+    /// if your file is correct and report it on Github.
     pub fn read_key(&self, key_name: &str) -> Result<Key, CodesError> {
         let key_type;
 
@@ -88,7 +90,7 @@ impl KeyedMessage {
                         Err(err) => Err(err),
                     }
                 } else {
-                    panic!("Incorrect key size!");
+                    return Err(CodesError::IncorrectKeySize)
                 }
             }
             NativeKeyType::Double => {
@@ -116,7 +118,7 @@ impl KeyedMessage {
                         Err(err) => Err(err),
                     }
                 } else {
-                    panic!("Incorrect key size!");
+                    return Err(CodesError::IncorrectKeySize)
                 }
             }
             NativeKeyType::Bytes => {

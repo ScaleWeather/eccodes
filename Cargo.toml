@@ -2,7 +2,7 @@
 name = "eccodes"
 description = "Unofficial high-level Rust bindings of the latest ecCodes release"
 repository = "https://github.com/ScaleWeather/eccodes"
-version = "0.9.0"
+version = "0.10.0"
 readme = "README.md"
 authors = ["Jakub Lewandowski <scaleweather@gmail.com>"]
 keywords = ["eccodes", "grib", "bufr", "meteorology", "weather"]
@@ -16,19 +16,22 @@ categories = [
 license = "Apache-2.0"
 edition = "2021"
 exclude = [".github/*", ".vscode/*", ".idea/*", "data/*"]
+rust-version = "1.70.0"
 
 [dependencies]
-eccodes-sys = { version = "0.5.2", default-features = false}
-libc = { version = "0.2", default-features = false}
-thiserror = { version = "1.0", default-features = false}
-bytes = { version = "1.5", default-features = false}
-log = { version = "0.4", default-features = false}
-errno = { version = "0.3", default-features = false}
-num-derive = { version = "0.4.1", default-features = false}
-num-traits = { version = "0.2", default-features = false}
-fallible-iterator = { version = "0.3", default-features = false}
-fallible-streaming-iterator = { version = "0.1.9", default-features = false}
-ndarray = { version = "0.15", default-features = false, optional = true, features = ["std"]}
+eccodes-sys = { version = "0.5.2", default-features = false }
+libc = { version = "0.2", default-features = false }
+thiserror = { version = "1.0", default-features = false }
+bytes = { version = "1.5", default-features = false }
+log = { version = "0.4", default-features = false }
+errno = { version = "0.3", default-features = false }
+num-derive = { version = "0.4.1", default-features = false }
+num-traits = { version = "0.2", default-features = false }
+fallible-iterator = { version = "0.3", default-features = false }
+fallible-streaming-iterator = { version = "0.1.9", default-features = false }
+ndarray = { version = "0.15", default-features = false, optional = true, features = [
+    "std",
+] }
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["rustls-tls"] }
@@ -36,7 +39,7 @@ tokio = { version = "1.35", features = ["macros", "rt"] }
 criterion = "0.5"
 testing_logger = "0.1"
 rand = "0.8"
-anyhow = "1.0"
+anyhow = { version = "1.0", features = ["backtrace"] }
 float-cmp = "0.9"
 
 [features]
@@ -46,11 +49,8 @@ experimental_index = []
 message_ndarray = ["ndarray"]
 
 [package.metadata.docs.rs]
-features = ["docs", "experimental_index"]
+features = ["docs", "experimental_index", "message_ndarray"]
 
 [[bench]]
 name = "main"
 harness = false
-
-[lib]
-doctest = false

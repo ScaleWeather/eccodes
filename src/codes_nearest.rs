@@ -1,3 +1,6 @@
+//! Definition and associated functions of `CodesNearest`
+//! used for finding nearest gridpoints in `KeyedMessage`
+
 use std::ptr::null_mut;
 
 use eccodes_sys::codes_nearest;
@@ -10,29 +13,38 @@ use crate::{
     CodesError, KeyedMessage,
 };
 
+/// The structure used to find nearest gridpoints in `KeyedMessage`.
 #[derive(Debug)]
 pub struct CodesNearest<'a> {
     nearest_handle: *mut codes_nearest,
     parent_message: &'a KeyedMessage,
 }
 
-///The structure returned by [`KeyedMessage::find_nearest()`].
-///Should always be analysed in relation to the coordinates request in `find_nearest()`.
+/// The structure returned by [`CodesNearest::find_nearest()`].
+/// Should always be analysed in relation to the coordinates requested in `find_nearest()`.
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct NearestGridpoint {
-    ///Index of gridpoint
+    ///Index of this gridpoint
     pub index: i32,
-    ///Latitude in degrees north
+    ///Latitude of this gridpoint in degrees north
     pub lat: f64,
-    ///Longitude in degrees east
+    ///Longitude of this gridpoint in degrees east
     pub lon: f64,
-    ///Distance from coordinates requested in `find_nearest()`
+    /// Distance between requested point and this gridpoint in kilometers
     pub distance: f64,
-    ///Value of the filed at given coordinate
+    ///Value of parameter at this gridpoint contained by `KeyedMessage` in corresponding units
     pub value: f64,
 }
 
 impl KeyedMessage {
+    /// Creates a new instance of [`CodesNearest`] for the `KeyedMessage`.
+    /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`
+    /// by calling [`find_nearest()`](crate::CodesNearest::find_nearest).
+    /// 
+    /// # Errors
+    /// 
+    /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
+    /// internal nearest handle cannot be created.
     pub fn codes_nearest(&self) -> Result<CodesNearest, CodesError> {
         let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
 
@@ -49,26 +61,24 @@ impl CodesNearest<'_> {
     ///The inputs are latitude and longitude of requested point in respectively degrees north and
     ///degreed east.
     ///
-    ///In the output gridpoints, the value field  refers to parameter held by the `KeyedMessage`
-    ///for which the function is called in adequate units,
-    ///coordinates are in degrees north/east,
-    ///and distance field represents the distance between requested point and output point in kilometers.
-    ///
     ///### Example
     ///
     ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-    ///# use std::path::Path;
-    ///# use eccodes::codes_handle::KeyType::Str;
-    ///# use eccodes::FallibleIterator;
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
+    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
+    /// # use std::path::Path;
+    /// use eccodes::FallibleStreamingIterator;
+    /// # use anyhow::Context;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let file_path = Path::new("./data/iceland.grib");
+    /// let product_kind = ProductKind::GRIB;
     ///
-    ///let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
-    ///let mut msg = handle.next().unwrap().unwrap();
+    /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// let msg = handle.next()?.context("no message")?;
     ///
-    ///
-    ///let out = msg.find_nearest(64.13, -21.89).unwrap();
+    /// let c_nearest = msg.codes_nearest()?;
+    /// let out = c_nearest.find_nearest(64.13, -21.89)?;
+    /// # Ok(())
+    /// # }
     ///```
     ///
     ///### Errors
@@ -91,6 +101,7 @@ impl CodesNearest<'_> {
     }
 }
 
+#[doc(hidden)]
 impl Drop for CodesNearest<'_> {
     fn drop(&mut self) {
         unsafe {
