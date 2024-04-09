@@ -115,7 +115,9 @@ pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
 
 #[derive(Debug)]
 enum DataContainer {
+    #[allow(unused)]
     FileBytes(Bytes),
+    #[allow(unused)]
     FileBuffer(File),
     #[cfg(feature = "experimental_index")]
     Empty(),
