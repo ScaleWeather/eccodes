@@ -22,9 +22,15 @@ impl KeyedMessage {
     /// Converts the message to a 2D ndarray.
     ///
     /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
-    /// ie. `[lat, lon]`. Index `[0, 0]` is the top-left corner of the grid:
+    /// ie. `[lat, lon]`. 
+    /// 
+    /// Common convention for grib files on regular lon-lat grid assumes that: 
+    /// index `[0, 0]` is the top-left corner of the grid:
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
+    /// 
+    /// This convention can be checked with `iScansNegatively` and `jScansPositively` keys - 
+    /// if both are false, the above convention is used.
     ///
     /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
     ///
