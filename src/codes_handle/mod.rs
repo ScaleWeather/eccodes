@@ -34,45 +34,45 @@ pub struct GribFile {
 /// - File path using [`new_from_file()`](CodesHandle::new_from_file)
 /// - From memory buffer using [`new_from_memory()`](CodesHandle::new_from_memory)
 /// - From GRIB index using [`new_from_index()`](CodesHandle::new_from_index) (with `experimental_index` feature enabled)
-/// 
+///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered in the destructor are logged with [`log`].
-/// 
+///
 /// # `FallibleStreamingIterator`
-/// 
+///
 /// This structure implements [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait which allows to access GRIB messages.
-/// 
+///
 /// To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
 /// It digests the `* FILE` multiple times, each time returning the `*mut codes_handle`
 /// to a message inside the file. The behavior of previous `*mut codes_handle` after next one is generated is undefined
 /// and we assume here that it is unsafe to use "old" `*mut codes_handle`.
-/// 
+///
 /// In Rust, such pattern is best represented by a streaming iterator which returns a reference to the message,
 /// that is valid only until the next iteration. If you need to prolong the lifetime of the message, you can clone it.
-/// Internal ecCodes functions can fail, necessitating the streaming iterator to be implemented with 
+/// Internal ecCodes functions can fail, necessitating the streaming iterator to be implemented with
 /// [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
-/// 
+///
 /// As of `0.10` release, none of the available streaming iterator crates utilises already stabilized GATs.
 /// This unfortunately significantly limits the number of methods available for `CodesHandle` iterator.
 /// Therefore the probably most versatile way to iterate over the messages is to use `while let` loop.
-/// 
+///
 /// ```
 /// use eccodes::{ProductKind, CodesHandle, KeyType};
 /// # use std::path::Path;
-/// // FallibleStreamingIterator must be in scope to use it 
+/// // FallibleStreamingIterator must be in scope to use it
 /// use eccodes::FallibleStreamingIterator;
 /// #
 /// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
 /// let file_path = Path::new("./data/iceland-surface.grib");
 /// let product_kind = ProductKind::GRIB;
-/// 
+///
 /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-/// 
+///
 /// // Print names of messages in the file
 /// while let Some(message) = handle.next()? {
 ///     // The message must be unwraped as internal next() can fail
 ///     let key = message.read_key("name")?;
-/// 
+///
 ///     if let KeyType::Str(name) = key.value {
 ///         println!("{:?}", name);    
 ///     }
@@ -80,9 +80,9 @@ pub struct GribFile {
 /// # Ok(())
 /// # }
 /// ```
-/// 
+///
 /// You can also manually collect the messages into a vector to use them later.
-/// 
+///
 /// ```
 /// use eccodes::{ProductKind, CodesHandle, KeyedMessage};
 /// # use eccodes::errors::CodesError;
@@ -92,18 +92,18 @@ pub struct GribFile {
 /// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
 /// let file_path = Path::new("./data/iceland-surface.grib");
 /// let product_kind = ProductKind::GRIB;
-/// 
+///
 /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-/// 
+///
 /// let mut handle_collected = vec![];
-/// 
+///
 /// while let Some(msg) = handle.next()? {
 ///     handle_collected.push(msg.try_clone()?);
 /// }
 /// # Ok(())
 /// # }
 /// ```
-/// 
+///
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
 pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
@@ -237,36 +237,34 @@ impl CodesHandle<GribFile> {
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 impl CodesHandle<CodesIndex> {
     /// Creates [`CodesHandle`] for provided [`CodesIndex`].
-    /// 
+    ///
     /// ## Example
-    /// 
+    ///
     /// ```
     /// # fn run() -> anyhow::Result<()> {
     /// # use eccodes::{CodesHandle, CodesIndex};
     /// #
     /// let index = CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level"])?;
     /// let handle = CodesHandle::new_from_index(index)?;
-    /// 
+    ///
     /// Ok(())
     /// # }
     /// ```
-    /// 
+    ///
     /// The function takes ownership of the provided [`CodesIndex`] which owns
     /// the GRIB data. [`CodesHandle`] created from [`CodesIndex`] is of different type
     /// than the one created from file or memory buffer, because it internally uses
     /// different functions to access messages. But it can be used in the same way.
-    /// 
+    ///
     /// ⚠️ Warning: This function may interfere with other functions in concurrent context,
     /// due to ecCodes issues with thread-safety for indexes. More information can be found
     /// in [`codes_index`](crate::codes_index) module documentation.
-    /// 
+    ///
     /// ## Errors
-    /// 
+    ///
     /// Returns [`CodesError::Internal`] with error code
     /// when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
-    pub fn new_from_index(
-        index: CodesIndex,
-    ) -> Result<Self, CodesError> {
+    pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
         let new_handle = CodesHandle {
             _data: DataContainer::Empty(), //unused, index owns data
             source: index,
@@ -363,12 +361,12 @@ impl SpecialDrop for CodesIndex {
 #[doc(hidden)]
 impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
     /// Executes the destructor for this type.
-    /// 
+    ///
     /// Currently it is assumed that under normal circumstances this destructor never fails.
     /// However in some edge cases fclose can return non-zero code.
     /// In such case all pointers and file descriptors are safely deleted.
     /// However memory leaks can still occur.
-    /// 
+    ///
     /// If any function called in the destructor returns an error warning will appear in log.
     /// If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     fn drop(&mut self) {
@@ -379,13 +377,14 @@ impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
+    use bytes::Bytes;
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
 
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use log::Level;
-    use std::path::Path;
+    use std::{fs::File, io::Read, path::Path};
 
     #[test]
     fn file_constructor() -> Result<()> {
@@ -406,15 +405,14 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn memory_constructor() -> Result<()> {
+    #[test]
+    fn memory_constructor() -> Result<()> {
         let product_kind = ProductKind::GRIB;
-        let file_data = reqwest::get(
-            "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
-        )
-        .await?
-        .bytes()
-        .await?;
+
+        let mut f = File::open(Path::new("./data/iceland.grib"))?;
+        let mut buf = Vec::new();
+        f.read_to_end(&mut buf)?;
+        let file_data = Bytes::from(buf);
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
         assert!(!handle.source.pointer.is_null());
@@ -451,8 +449,8 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn codes_handle_drop() -> Result<()> {
+    #[test]
+    fn codes_handle_drop() -> Result<()> {
         testing_logger::setup();
 
         {
@@ -469,12 +467,11 @@ mod tests {
 
         {
             let product_kind = ProductKind::GRIB;
-            let file_data = reqwest::get(
-                "https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true",
-            )
-            .await?
-            .bytes()
-            .await?;
+
+            let mut f = File::open(Path::new("./data/iceland.grib"))?;
+            let mut buf = Vec::new();
+            f.read_to_end(&mut buf)?;
+            let file_data = Bytes::from(buf);
 
             let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
             drop(handle);
