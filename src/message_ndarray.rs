@@ -20,18 +20,18 @@ pub struct RustyCodesMessage {
 
 impl KeyedMessage {
     /// Converts the message to a 2D ndarray.
-    /// 
+    ///
     /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
-    /// ie. `[lat, lon]`. Index `[0, 0]` is the top-left corner of the grid: 
+    /// ie. `[lat, lon]`. Index `[0, 0]` is the top-left corner of the grid:
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
-    /// 
+    ///
     /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
-    /// 
+    ///
     /// Tested only with simple lat-lon grids.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
@@ -39,37 +39,55 @@ impl KeyedMessage {
         let KeyType::Int(ni) = self.read_key("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
         };
+        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
         let KeyType::Int(nj) = self.read_key("Nj")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
         };
+        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
         let KeyType::FloatArray(vals) = self.read_key("values")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("values".to_owned()).into());
         };
 
-        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
-        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
-
         if vals.len() != (ni * nj) {
             return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
         }
 
-        let shape = (nj, ni);
+        let KeyType::Int(j_scanning) = self.read_key("jPointsAreConsecutive")?.value else {
+            return Err(
+                MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
+            );
+        };
+
+        if ![0, 1].contains(&j_scanning) {
+            return Err(MessageNdarrayError::UnexpectedKeyValue(
+                "jPointsAreConsecutive".to_owned(),
+            )
+            .into());
+        }
+
+        let j_scanning = j_scanning != 0;
+
+        let shape = if j_scanning { (ni, nj) } else { (nj, ni) };
         let vals = Array2::from_shape_vec(shape, vals).map_err(MessageNdarrayError::from)?;
 
-        Ok(vals)
+        if j_scanning {
+            Ok(vals.reversed_axes())
+        } else {
+            Ok(vals)
+        }
     }
 
     /// Same as [`KeyedMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
     /// Fields are returned as separate arrays in [`RustyCodesMessage`].
-    /// 
+    ///
     /// Compared to `to_ndarray` this method has performance overhead as returned arrays may be cloned.
-    /// 
+    ///
     /// This method requires the `latLonValues`, `Ni` and `Nj` keys to be present in the message.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
@@ -77,17 +95,16 @@ impl KeyedMessage {
         let KeyType::Int(ni) = self.read_key("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
         };
+        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
         let KeyType::Int(nj) = self.read_key("Nj")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
         };
+        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
         let KeyType::FloatArray(latlonvals) = self.read_key("latLonValues")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("latLonValues".to_owned()).into());
         };
-
-        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
-        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
         if latlonvals.len() != (ni * nj * 3) {
             return Err(
@@ -95,9 +112,34 @@ impl KeyedMessage {
             );
         }
 
-        let shape = (nj, ni, 3_usize);
+        let KeyType::Int(j_scanning) = self.read_key("jPointsAreConsecutive")?.value else {
+            return Err(
+                MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
+            );
+        };
+
+        if ![0, 1].contains(&j_scanning) {
+            return Err(MessageNdarrayError::UnexpectedKeyValue(
+                "jPointsAreConsecutive".to_owned(),
+            )
+            .into());
+        }
+
+        let j_scanning = j_scanning != 0;
+
+        let shape = if j_scanning {
+            (ni, nj, 3_usize)
+        } else {
+            (nj, ni, 3_usize)
+        };
+
         let mut latlonvals =
             Array3::from_shape_vec(shape, latlonvals).map_err(MessageNdarrayError::from)?;
+
+        if j_scanning {
+            latlonvals.swap_axes(0, 1);
+        }
+
         let (lats, lons, vals) =
             latlonvals
                 .view_mut()
