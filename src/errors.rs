@@ -86,6 +86,11 @@ pub enum MessageNdarrayError {
     #[error("The length of the values array ({0}) is different than expected ({1})")]
     UnexpectedValuesLength(usize, usize),
 
+    /// Returned when functions converting to ndarray cannot correctly
+    /// parse key necessary for the conversion.
+    #[error("Requested key {0} has a value out of expected range")]
+    UnexpectedKeyValue(String),
+
     /// Returned when ndarray cannot create an array with the shape
     /// defined by Ni and Nj keys.
     #[error("Error occured while converting to ndarray: {0}")]
