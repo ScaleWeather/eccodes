@@ -2,7 +2,7 @@
 name = "eccodes"
 description = "Unofficial high-level Rust bindings of the latest ecCodes release"
 repository = "https://github.com/ScaleWeather/eccodes"
-version = "0.10.2"
+version = "0.10.3"
 readme = "README.md"
 authors = ["Jakub Lewandowski <scaleweather@gmail.com>"]
 keywords = ["eccodes", "grib", "bufr", "meteorology", "weather"]
@@ -22,10 +22,10 @@ rust-version = "1.70.0"
 eccodes-sys = { version = "0.5.2", default-features = false }
 libc = { version = "0.2", default-features = false }
 thiserror = { version = "1.0", default-features = false }
-bytes = { version = "1.5", default-features = false }
+bytes = { version = "1.6", default-features = false }
 log = { version = "0.4", default-features = false }
 errno = { version = "0.3", default-features = false }
-num-derive = { version = "0.4.1", default-features = false }
+num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 fallible-iterator = { version = "0.3", default-features = false }
 fallible-streaming-iterator = { version = "0.1.9", default-features = false }
@@ -45,7 +45,7 @@ float-cmp = "0.9"
 default = ["message_ndarray"]
 docs = ["eccodes-sys/docs"]
 experimental_index = []
-message_ndarray = ["ndarray"]
+message_ndarray = ["dep:ndarray"]
 
 [package.metadata.docs.rs]
 features = ["docs", "experimental_index", "message_ndarray"]
