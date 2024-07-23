@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub unsafe fn codes_grib_nearest_new(
-    handle: *mut codes_handle,
+    handle: *const codes_handle,
 ) -> Result<*mut codes_nearest, CodesError> {
     pointer_guard::non_null!(handle);
 
@@ -45,7 +45,7 @@ pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(
 }
 
 pub unsafe fn codes_grib_nearest_find(
-    handle: *mut codes_handle,
+    handle: *const codes_handle,
     nearest: *mut codes_nearest,
     lat: f64,
     lon: f64,

@@ -86,7 +86,7 @@ pub unsafe fn codes_handle_new_from_index(
 }
 
 pub unsafe fn codes_handle_clone(
-    source_handle: *mut codes_handle,
+    source_handle: *const codes_handle,
 ) -> Result<*mut codes_handle, CodesError> {
     pointer_guard::non_null!(source_handle);
 
