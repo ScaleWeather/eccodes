@@ -6,7 +6,7 @@ use crate::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
         codes_set_long, codes_set_long_array, codes_set_string,
     },
-    Key, KeyType, KeyedMessage,
+    DynamicKey, DynamicKeyType, KeyedMessage,
 };
 
 impl KeyedMessage {
@@ -106,24 +106,24 @@ impl KeyedMessage {
     /// 
     /// This method will return [`CodesInternal`](crate::errors::CodesInternal)
     /// when internal ecCodes function returns non-zero code.
-    pub fn write_key(&mut self, key: Key) -> Result<(), CodesError> {
+    pub fn write_key_dynamic(&mut self, key: DynamicKey) -> Result<(), CodesError> {
         match key.value {
-            KeyType::Float(val) => unsafe {
+            DynamicKeyType::Float(val) => unsafe {
                 codes_set_double(self.message_handle, &key.name, val)?;
             },
-            KeyType::Int(val) => unsafe {
+            DynamicKeyType::Int(val) => unsafe {
                 codes_set_long(self.message_handle, &key.name, val)?;
             },
-            KeyType::FloatArray(val) => unsafe {
+            DynamicKeyType::FloatArray(val) => unsafe {
                 codes_set_double_array(self.message_handle, &key.name, &val)?;
             },
-            KeyType::IntArray(val) => unsafe {
+            DynamicKeyType::IntArray(val) => unsafe {
                 codes_set_long_array(self.message_handle, &key.name, &val)?;
             },
-            KeyType::Str(val) => unsafe {
+            DynamicKeyType::Str(val) => unsafe {
                 codes_set_string(self.message_handle, &key.name, &val)?;
             },
-            KeyType::Bytes(val) => unsafe {
+            DynamicKeyType::Bytes(val) => unsafe {
                 codes_set_bytes(self.message_handle, &key.name, &val)?;
             },
         }
@@ -138,7 +138,7 @@ mod tests {
 
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
-        FallibleStreamingIterator, Key, KeyType,
+        FallibleStreamingIterator, DynamicKey, DynamicKeyType,
     };
     use std::{fs::remove_file, path::Path};
 
@@ -204,16 +204,16 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
-        let old_key = current_message.read_key("centre")?;
+        let old_key = current_message.read_key_dynamic("centre")?;
 
-        let new_key = Key {
+        let new_key = DynamicKey {
             name: "centre".to_string(),
-            value: KeyType::Str("cnmc".to_string()),
+            value: DynamicKeyType::Str("cnmc".to_string()),
         };
 
-        current_message.write_key(new_key.clone())?;
+        current_message.write_key_dynamic(new_key.clone())?;
 
-        let read_key = current_message.read_key("centre")?;
+        let read_key = current_message.read_key_dynamic("centre")?;
 
         assert_eq!(new_key, read_key);
         assert_ne!(old_key, read_key);
@@ -229,14 +229,14 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
-        let old_key = current_message.read_key("centre")?;
+        let old_key = current_message.read_key_dynamic("centre")?;
 
-        let new_key = Key {
+        let new_key = DynamicKey {
             name: "centre".to_string(),
-            value: KeyType::Str("cnmc".to_string()),
+            value: DynamicKeyType::Str("cnmc".to_string()),
         };
 
-        current_message.write_key(new_key.clone())?;
+        current_message.write_key_dynamic(new_key.clone())?;
 
         current_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
 
@@ -245,7 +245,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let read_key = current_message.read_key("centre")?;
+        let read_key = current_message.read_key_dynamic("centre")?;
 
         assert_eq!(new_key, read_key);
         assert_ne!(old_key, read_key);

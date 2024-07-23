@@ -11,7 +11,7 @@ use crate::{
         codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
         codes_keys_iterator_next,
     },
-    Key, KeyedMessage,
+    DynamicKey, KeyedMessage,
 };
 
 /// Structure to iterate through keys in [`KeyedMessage`].
@@ -175,7 +175,7 @@ impl KeyedMessage {
 }
 
 impl FallibleIterator for KeysIterator<'_> {
-    type Item = Key;
+    type Item = DynamicKey;
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
@@ -188,7 +188,7 @@ impl FallibleIterator for KeysIterator<'_> {
                 next_item_exists = codes_keys_iterator_next(self.iterator_handle)?;
             }
 
-            let key = KeyedMessage::read_key(self.parent_message, &key_name)?;
+            let key = KeyedMessage::read_key_dynamic(self.parent_message, &key_name)?;
 
             self.next_item_exists = next_item_exists;
 

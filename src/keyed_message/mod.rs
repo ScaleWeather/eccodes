@@ -51,11 +51,11 @@ pub struct KeyedMessage {
 
 /// Structure representing a single key in the `KeyedMessage`
 #[derive(Clone, Debug, PartialEq)]
-pub struct Key {
+pub struct DynamicKey {
     #[allow(missing_docs)]
     pub name: String,
     #[allow(missing_docs)]
-    pub value: KeyType,
+    pub value: DynamicKeyType,
 }
 
 /// Enum representing the value of [`Key`] from the `KeyedMessage`
@@ -64,7 +64,7 @@ pub struct Key {
 /// ecCodes can return several different types of key, which are represented by this enum
 /// and each variant contains the respective data type.
 #[derive(Clone, Debug, PartialEq)]
-pub enum KeyType {
+pub enum DynamicKeyType {
     #[allow(missing_docs)]
     Float(f64),
     #[allow(missing_docs)]
@@ -135,13 +135,13 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let _ = current_message.read_key("validityDate")?;
-        let _ = current_message.read_key("validityTime")?;
-        let _ = current_message.read_key("level")?;
-        let _ = current_message.read_key("shortName")?;
-        let _ = current_message.read_key("units")?;
-        let _ = current_message.read_key("values")?;
-        let _ = current_message.read_key("typeOfLevel")?;
+        let _ = current_message.read_key_dynamic("validityDate")?;
+        let _ = current_message.read_key_dynamic("validityTime")?;
+        let _ = current_message.read_key_dynamic("level")?;
+        let _ = current_message.read_key_dynamic("shortName")?;
+        let _ = current_message.read_key_dynamic("units")?;
+        let _ = current_message.read_key_dynamic("values")?;
+        let _ = current_message.read_key_dynamic("typeOfLevel")?;
 
         Ok(())
     }
@@ -174,12 +174,12 @@ mod tests {
 
         drop(handle);
 
-        let _ = msg.read_key("dataDate")?;
-        let _ = msg.read_key("jDirectionIncrementInDegrees")?;
-        let _ = msg.read_key("values")?;
-        let _ = msg.read_key("name")?;
-        let _ = msg.read_key("section1Padding")?;
-        let _ = msg.read_key("experimentVersionNumber")?;
+        let _ = msg.read_key_dynamic("dataDate")?;
+        let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;
+        let _ = msg.read_key_dynamic("values")?;
+        let _ = msg.read_key_dynamic("name")?;
+        let _ = msg.read_key_dynamic("section1Padding")?;
+        let _ = msg.read_key_dynamic("experimentVersionNumber")?;
 
         Ok(())
     }

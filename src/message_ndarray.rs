@@ -3,7 +3,7 @@
 
 use ndarray::{s, Array2, Array3};
 
-use crate::{errors::MessageNdarrayError, CodesError, KeyType, KeyedMessage};
+use crate::{errors::MessageNdarrayError, CodesError, DynamicKeyType, KeyedMessage};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
@@ -42,17 +42,17 @@ impl KeyedMessage {
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
-        let KeyType::Int(ni) = self.read_key("Ni")?.value else {
+        let DynamicKeyType::Int(ni) = self.read_key_dynamic("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
         };
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::Int(nj) = self.read_key("Nj")?.value else {
+        let DynamicKeyType::Int(nj) = self.read_key_dynamic("Nj")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
         };
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::FloatArray(vals) = self.read_key("values")?.value else {
+        let DynamicKeyType::FloatArray(vals) = self.read_key_dynamic("values")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("values".to_owned()).into());
         };
 
@@ -60,7 +60,7 @@ impl KeyedMessage {
             return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
         }
 
-        let KeyType::Int(j_scanning) = self.read_key("jPointsAreConsecutive")?.value else {
+        let DynamicKeyType::Int(j_scanning) = self.read_key_dynamic("jPointsAreConsecutive")?.value else {
             return Err(
                 MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
             );
@@ -98,17 +98,17 @@ impl KeyedMessage {
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
-        let KeyType::Int(ni) = self.read_key("Ni")?.value else {
+        let DynamicKeyType::Int(ni) = self.read_key_dynamic("Ni")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
         };
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::Int(nj) = self.read_key("Nj")?.value else {
+        let DynamicKeyType::Int(nj) = self.read_key_dynamic("Nj")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
         };
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::FloatArray(latlonvals) = self.read_key("latLonValues")?.value else {
+        let DynamicKeyType::FloatArray(latlonvals) = self.read_key_dynamic("latLonValues")?.value else {
             return Err(MessageNdarrayError::UnexpectedKeyType("latLonValues".to_owned()).into());
         };
 
@@ -118,7 +118,7 @@ impl KeyedMessage {
             );
         }
 
-        let KeyType::Int(j_scanning) = self.read_key("jPointsAreConsecutive")?.value else {
+        let DynamicKeyType::Int(j_scanning) = self.read_key_dynamic("jPointsAreConsecutive")?.value else {
             return Err(
                 MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
             );
@@ -166,7 +166,7 @@ mod tests {
     use super::*;
     use crate::codes_handle::CodesHandle;
     use crate::FallibleStreamingIterator;
-    use crate::KeyType;
+    use crate::DynamicKeyType;
     use crate::ProductKind;
     use std::path::Path;
 
@@ -176,7 +176,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key("shortName")?.value == KeyType::Str("2d".to_string()) {
+            if msg.read_key_dynamic("shortName")?.value == DynamicKeyType::Str("2d".to_string()) {
                 let ndarray = msg.to_ndarray()?;
 
                 // values from xarray
@@ -202,7 +202,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key("shortName")?.value == KeyType::Str("2d".to_string()) {
+            if msg.read_key_dynamic("shortName")?.value == DynamicKeyType::Str("2d".to_string()) {
                 let rmsg = msg.to_lons_lats_values()?;
 
                 let vals = rmsg.values;

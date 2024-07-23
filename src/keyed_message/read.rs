@@ -5,7 +5,7 @@ use crate::{
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
         NativeKeyType,
     },
-    Key, KeyType, KeyedMessage,
+    DynamicKey, DynamicKeyType, KeyedMessage,
 };
 
 impl KeyedMessage {
@@ -57,7 +57,7 @@ impl KeyedMessage {
     /// Returns [`CodesError::IncorrectKeySize`] when the size of given key is lower than 1. This indicates corrupted data file,
     /// bug in the crate or bug in the ecCodes library. If you encounter this error please check
     /// if your file is correct and report it on Github.
-    pub fn read_key(&self, key_name: &str) -> Result<Key, CodesError> {
+    pub fn read_key_dynamic(&self, key_name: &str) -> Result<DynamicKey, CodesError> {
         let key_type;
 
         unsafe {
@@ -76,7 +76,7 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::Int(val)),
+                        Ok(val) => Ok(DynamicKeyType::Int(val)),
                         Err(err) => Err(err),
                     }
                 } else if key_size >= 2 {
@@ -86,7 +86,7 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::IntArray(val)),
+                        Ok(val) => Ok(DynamicKeyType::IntArray(val)),
                         Err(err) => Err(err),
                     }
                 } else {
@@ -104,7 +104,7 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::Float(val)),
+                        Ok(val) => Ok(DynamicKeyType::Float(val)),
                         Err(err) => Err(err),
                     }
                 } else if key_size >= 2 {
@@ -114,7 +114,7 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::FloatArray(val)),
+                        Ok(val) => Ok(DynamicKeyType::FloatArray(val)),
                         Err(err) => Err(err),
                     }
                 } else {
@@ -128,7 +128,7 @@ impl KeyedMessage {
                 }
 
                 match value {
-                    Ok(val) => Ok(KeyType::Bytes(val)),
+                    Ok(val) => Ok(DynamicKeyType::Bytes(val)),
                     Err(err) => Err(err),
                 }
             }
@@ -140,14 +140,14 @@ impl KeyedMessage {
                 }
 
                 match value {
-                    Ok(val) => Ok(KeyType::Str(val)),
+                    Ok(val) => Ok(DynamicKeyType::Str(val)),
                     Err(err) => Err(err),
                 }
             }
         };
 
         if let Ok(value) = key_value {
-            Ok(Key {
+            Ok(DynamicKey {
                 name: key_name.to_owned(),
                 value,
             })
@@ -157,9 +157,9 @@ impl KeyedMessage {
                 value = codes_get_bytes(self.message_handle, key_name)?;
             }
 
-            Ok(Key {
+            Ok(DynamicKey {
                 name: key_name.to_owned(),
-                value: KeyType::Bytes(value),
+                value: DynamicKeyType::Bytes(value),
             })
         }
     }
@@ -170,7 +170,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator, KeyType};
+    use crate::{FallibleIterator, FallibleStreamingIterator, DynamicKeyType};
     use std::path::Path;
 
     #[test]
@@ -182,36 +182,36 @@ mod tests {
 
         let current_message = handle.next()?.context("Message not some")?;
 
-        let str_key = current_message.read_key("name")?;
+        let str_key = current_message.read_key_dynamic("name")?;
 
         match str_key.value {
-            KeyType::Str(_) => {}
+            DynamicKeyType::Str(_) => {}
             _ => panic!("Incorrect variant of string key"),
         }
 
         assert_eq!(str_key.name, "name");
 
-        let double_key = current_message.read_key("jDirectionIncrementInDegrees")?;
+        let double_key = current_message.read_key_dynamic("jDirectionIncrementInDegrees")?;
         match double_key.value {
-            KeyType::Float(_) => {}
+            DynamicKeyType::Float(_) => {}
             _ => panic!("Incorrect variant of double key"),
         }
 
         assert_eq!(double_key.name, "jDirectionIncrementInDegrees");
 
-        let long_key = current_message.read_key("numberOfPointsAlongAParallel")?;
+        let long_key = current_message.read_key_dynamic("numberOfPointsAlongAParallel")?;
 
         match long_key.value {
-            KeyType::Int(_) => {}
+            DynamicKeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
 
         assert_eq!(long_key.name, "numberOfPointsAlongAParallel");
 
-        let double_arr_key = current_message.read_key("values")?;
+        let double_arr_key = current_message.read_key_dynamic("values")?;
 
         match double_arr_key.value {
-            KeyType::FloatArray(_) => {}
+            DynamicKeyType::FloatArray(_) => {}
             _ => panic!("Incorrect variant of double array key"),
         }
 
@@ -260,7 +260,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let missing_key = current_message.read_key("doesNotExist");
+        let missing_key = current_message.read_key_dynamic("doesNotExist");
 
         assert!(missing_key.is_err());
 
@@ -276,15 +276,15 @@ mod tests {
 
         let msg = handle.next()?.context("Message not some")?;
 
-        let _ = msg.read_key("dataDate")?;
-        let _ = msg.read_key("jDirectionIncrementInDegrees")?;
-        let _ = msg.read_key("values")?;
-        let _ = msg.read_key("name")?;
-        let _ = msg.read_key("section1Padding")?;
-        let _ = msg.read_key("experimentVersionNumber")?;
+        let _ = msg.read_key_dynamic("dataDate")?;
+        let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;
+        let _ = msg.read_key_dynamic("values")?;
+        let _ = msg.read_key_dynamic("name")?;
+        let _ = msg.read_key_dynamic("section1Padding")?;
+        let _ = msg.read_key_dynamic("experimentVersionNumber")?;
         let _ = msg
-            .read_key("zero")
-            .unwrap_or_else(|_| msg.read_key("zeros").unwrap());
+            .read_key_dynamic("zero")
+            .unwrap_or_else(|_| msg.read_key_dynamic("zeros").unwrap());
 
         Ok(())
     }

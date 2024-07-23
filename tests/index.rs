@@ -4,7 +4,7 @@ use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
 use eccodes::{
-    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyType,
+    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, DynamicKeyType,
     ProductKind,
 };
 use rand::Rng;

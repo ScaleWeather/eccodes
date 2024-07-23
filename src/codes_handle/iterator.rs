@@ -91,7 +91,7 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 mod tests {
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
-        KeyType,
+        DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
@@ -104,17 +104,17 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let msg1 = handle.next()?.context("Message not some")?;
-        let key1 = msg1.read_key("typeOfLevel")?;
+        let key1 = msg1.read_key_dynamic("typeOfLevel")?;
 
         let msg2 = handle.next()?.context("Message not some")?;
-        let key2 = msg2.read_key("typeOfLevel")?;
+        let key2 = msg2.read_key_dynamic("typeOfLevel")?;
 
         let msg3 = handle.next()?.context("Message not some")?;
-        let key3 = msg3.read_key("typeOfLevel")?;
+        let key3 = msg3.read_key_dynamic("typeOfLevel")?;
 
-        assert_eq!(key1.value, KeyType::Str("isobaricInhPa".to_string()));
-        assert_eq!(key2.value, KeyType::Str("isobaricInhPa".to_string()));
-        assert_eq!(key3.value, KeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key1.value, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key2.value, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key3.value, DynamicKeyType::Str("isobaricInhPa".to_string()));
 
         Ok(())
     }
@@ -127,10 +127,10 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         while let Some(msg) = handle.next()? {
-            let key = msg.read_key("shortName")?;
+            let key = msg.read_key_dynamic("shortName")?;
 
             match key.value {
-                KeyType::Str(_) => {}
+                DynamicKeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
@@ -151,9 +151,9 @@ mod tests {
         }
 
         for msg in handle_collected {
-            let key = msg.read_key("name")?;
+            let key = msg.read_key_dynamic("name")?;
             match key.value {
-                KeyType::Str(_) => {}
+                DynamicKeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
@@ -207,8 +207,8 @@ mod tests {
         let mut level = vec![];
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
-                && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string())
+            if msg.read_key_dynamic("shortName")?.value == DynamicKeyType::Str("msl".to_string())
+                && msg.read_key_dynamic("typeOfLevel")?.value == DynamicKeyType::Str("surface".to_string())
             {
                 level.push(msg.try_clone()?);
             }
@@ -218,7 +218,7 @@ mod tests {
         // Find nearest modifies internal KeyedMessage fields so we need mutable reference
         let level = &level[0];
 
-        println!("{:?}", level.read_key("shortName"));
+        println!("{:?}", level.read_key_dynamic("shortName"));
 
         // Get the four nearest gridpoints of Reykjavik
         let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89)?;

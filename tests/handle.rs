@@ -1,7 +1,7 @@
 use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
-use eccodes::{CodesHandle, FallibleStreamingIterator, KeyType, ProductKind};
+use eccodes::{CodesHandle, FallibleStreamingIterator, DynamicKeyType, ProductKind};
 
 #[test]
 fn thread_safety() -> Result<()> {
@@ -13,12 +13,12 @@ fn thread_safety() -> Result<()> {
             let current_message = handle.next()?.context("Message not some")?;
 
             for _ in 0..100 {
-                let _ = current_message.read_key("name")?;
+                let _ = current_message.read_key_dynamic("name")?;
 
-                let str_key = current_message.read_key("name")?;
+                let str_key = current_message.read_key_dynamic("name")?;
 
                 match str_key.value {
-                    KeyType::Str(_) => {}
+                    DynamicKeyType::Str(_) => {}
                     _ => panic!("Incorrect variant of string key"),
                 }
 
@@ -35,10 +35,10 @@ fn thread_safety() -> Result<()> {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let long_key = current_message.read_key("numberOfPointsAlongAParallel")?;
+        let long_key = current_message.read_key_dynamic("numberOfPointsAlongAParallel")?;
 
         match long_key.value {
-            KeyType::Int(_) => {}
+            DynamicKeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
 
