@@ -10,18 +10,18 @@ use crate::{
 
 impl KeyedMessage {
     /// Method to get a [`Key`] with provided name from the `KeyedMessage`, if it exists.
-    /// 
+    ///
     /// This function check the type of requested key and tries to read it as the native type.
     /// That flow adds performance overhead, but makes the function highly unlikely to fail.
-    /// 
+    ///
     /// This function will try to retrieve the key of native string type as string even
     /// when the nul byte is not positioned at the end of key value.
-    /// 
+    ///
     /// If retrieving the key value in native type fails this function will try to read
     /// the requested key as bytes.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     ///  use eccodes::{ProductKind, CodesHandle, KeyType};
     ///  # use std::path::Path;
@@ -41,19 +41,19 @@ impl KeyedMessage {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns [`CodesNotFound`](crate::errors::CodesInternal::CodesNotFound)
     /// when a key of given name has not been found in the message.
-    /// 
+    ///
     /// Returns [`CodesError::MissingKey`] when a given key does not have a specified type.
-    /// 
+    ///
     /// Returns [`CodesError::Internal`] when one of internal ecCodes functions to read the key fails.
-    /// 
+    ///
     /// Returns [`CodesError::CstrUTF8`] and [`CodesError::NulChar`] when the string returned by ecCodes
     /// library cannot be parsed as valid UTF8 Rust string.
-    /// 
+    ///
     /// Returns [`CodesError::IncorrectKeySize`] when the size of given key is lower than 1. This indicates corrupted data file,
     /// bug in the crate or bug in the ecCodes library. If you encounter this error please check
     /// if your file is correct and report it on Github.
@@ -90,7 +90,7 @@ impl KeyedMessage {
                         Err(err) => Err(err),
                     }
                 } else {
-                    return Err(CodesError::IncorrectKeySize)
+                    return Err(CodesError::IncorrectKeySize);
                 }
             }
             NativeKeyType::Double => {
@@ -118,7 +118,7 @@ impl KeyedMessage {
                         Err(err) => Err(err),
                     }
                 } else {
-                    return Err(CodesError::IncorrectKeySize)
+                    return Err(CodesError::IncorrectKeySize);
                 }
             }
             NativeKeyType::Bytes => {
@@ -170,7 +170,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator, DynamicKeyType};
+    use crate::{DynamicKeyType, FallibleIterator, FallibleStreamingIterator};
     use std::path::Path;
 
     #[test]
@@ -221,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn era5_keys() -> Result<()> {
+    fn era5_keys_dynamic() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -229,15 +229,16 @@ mod tests {
         let current_message = handle.next()?.context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
-        while let Some(key) = kiter.next()? {
-            assert!(!key.name.is_empty());
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
+            assert!(current_message.read_key_dynamic(&key_name).is_ok())
         }
 
         Ok(())
     }
 
     #[test]
-    fn gfs_keys() -> Result<()> {
+    fn gfs_keys_dynamic() -> Result<()> {
         let file_path = Path::new("./data/gfs.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -245,8 +246,9 @@ mod tests {
         let current_message = handle.next()?.context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
-        while let Some(key) = kiter.next()? {
-            assert!(!key.name.is_empty());
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
+            assert!(current_message.read_key_dynamic(&key_name).is_ok())
         }
 
         Ok(())

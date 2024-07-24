@@ -3,7 +3,7 @@
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
 use log::warn;
-use std::ptr::null_mut;
+use std::{marker::PhantomData, ptr::null_mut};
 
 use crate::{
     errors::CodesError,
@@ -11,24 +11,24 @@ use crate::{
         codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
         codes_keys_iterator_next,
     },
-    DynamicKey, KeyedMessage,
+    KeyedMessage,
 };
 
 /// Structure to iterate through keys in [`KeyedMessage`].
-/// 
+///
 /// Mainly useful to discover what keys are present inside the message.
-/// 
+///
 /// Implements [`FallibleIterator`] providing similar functionality to classic `Iterator`.
 /// `FallibleIterator` is used because internal ecCodes functions can return internal error in some edge-cases.
 /// The usage of `FallibleIterator` is sligthly different than usage of `Iterator`,
 /// check the documentation for more details.
-/// 
+///
 /// The `next()` function internally calls [`read_key()`](KeyedMessage::read_key()) function
 /// so it is usually more efficient to call that function directly only for keys you
 /// are interested in.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```
 ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags, KeyType};
 ///  # use std::path::Path;
@@ -51,15 +51,15 @@ use crate::{
 ///  # Ok(())
 ///  # }
 /// ```
-/// 
+///
 /// ## Errors
-/// 
+///
 /// The `next()` method will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct KeysIterator<'a> {
-    parent_message: &'a KeyedMessage,
+    parent_message: PhantomData<&'a KeyedMessage>,
     iterator_handle: *mut codes_keys_iterator,
     next_item_exists: bool,
 }
@@ -91,15 +91,15 @@ pub enum KeysIteratorFlags {
 
 impl KeyedMessage {
     /// Creates new [`KeysIterator`] for the message with specified flags and namespace.
-    /// 
+    ///
     /// The flags are set by providing any combination of [`KeysIteratorFlags`]
     /// inside a slice. Check the documentation for the details of each flag meaning.
-    /// 
+    ///
     /// Namespace is set simply as string, eg. `"ls"`, `"time"`, `"parameter"`, `"geography"`, `"statistics"`.
     /// Invalid namespace will result in empty iterator.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags, KeyType};
     ///  # use std::path::Path;
@@ -131,9 +131,9 @@ impl KeyedMessage {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
     pub fn new_keys_iterator(
@@ -148,18 +148,18 @@ impl KeyedMessage {
         let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
         Ok(KeysIterator {
-            parent_message: self,
+            parent_message: PhantomData,
             iterator_handle,
             next_item_exists,
         })
     }
 
-    /// Same as [`new_keys_iterator()`](KeyedMessage::new_keys_iterator) but with default 
+    /// Same as [`new_keys_iterator()`](KeyedMessage::new_keys_iterator) but with default
     /// parameters: [`AllKeys`](KeysIteratorFlags::AllKeys) flag and `""` namespace,
     /// yeilding iterator over all keys in the message.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
     pub fn default_keys_iterator(&self) -> Result<KeysIterator, CodesError> {
@@ -167,7 +167,7 @@ impl KeyedMessage {
         let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
         Ok(KeysIterator {
-            parent_message: self,
+            parent_message: PhantomData,
             iterator_handle,
             next_item_exists,
         })
@@ -175,7 +175,7 @@ impl KeyedMessage {
 }
 
 impl FallibleIterator for KeysIterator<'_> {
-    type Item = DynamicKey;
+    type Item = String;
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
@@ -188,11 +188,9 @@ impl FallibleIterator for KeysIterator<'_> {
                 next_item_exists = codes_keys_iterator_next(self.iterator_handle)?;
             }
 
-            let key = KeyedMessage::read_key_dynamic(self.parent_message, &key_name)?;
-
             self.next_item_exists = next_item_exists;
 
-            Ok(Some(key))
+            Ok(Some(key_name.to_owned()))
         } else {
             Ok(None)
         }
@@ -239,13 +237,12 @@ mod tests {
             KeysIteratorFlags::SkipReadOnly,   //1
             KeysIteratorFlags::SkipDuplicates, //32
         ];
-
         let namespace = "geography";
 
         let mut kiter = current_message.new_keys_iterator(&flags, namespace)?;
 
-        while let Some(key) = kiter.next()? {
-            assert!(!key.name.is_empty());
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
         }
 
         Ok(())
@@ -267,8 +264,8 @@ mod tests {
 
         let mut kiter = current_message.new_keys_iterator(&flags, namespace)?;
 
-        while let Some(key) = kiter.next()? {
-            assert!(!key.name.is_empty());
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
         }
 
         Ok(())
