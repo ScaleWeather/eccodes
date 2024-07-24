@@ -59,10 +59,10 @@ pub struct Key<T: Clone> {
 }
 
 pub trait KeyOps<T: Clone> {
-    fn read(&self, key_name: &str) -> Result<T, CodesError>;
-    fn read_unchecked(&self, key_name: &str) -> Result<T, CodesError>;
+    fn read_key(&self, key_name: &str) -> Result<T, CodesError>;
+    fn read_key_unchecked(&self, key_name: &str) -> Result<T, CodesError>;
 
-    fn write(&mut self, key: Key<T>) -> Result<(), CodesError>;
+    fn write_key(&mut self, key: Key<T>) -> Result<(), CodesError>;
 }
 
 /// Structure representing a single key in the `KeyedMessage`

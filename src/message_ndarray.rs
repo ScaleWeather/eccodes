@@ -3,7 +3,7 @@
 
 use ndarray::{s, Array2, Array3};
 
-use crate::{errors::MessageNdarrayError, CodesError, DynamicKeyType, KeyedMessage};
+use crate::{errors::MessageNdarrayError, CodesError, DynamicKeyType, KeyOps, KeyedMessage};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
@@ -22,14 +22,14 @@ impl KeyedMessage {
     /// Converts the message to a 2D ndarray.
     ///
     /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
-    /// ie. `[lat, lon]`. 
-    /// 
-    /// Common convention for grib files on regular lon-lat grid assumes that: 
+    /// ie. `[lat, lon]`.
+    ///
+    /// Common convention for grib files on regular lon-lat grid assumes that:
     /// index `[0, 0]` is the top-left corner of the grid:
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
-    /// 
-    /// This convention can be checked with `iScansNegatively` and `jScansPositively` keys - 
+    ///
+    /// This convention can be checked with `iScansNegatively` and `jScansPositively` keys -
     /// if both are false, the above convention is used.
     ///
     /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
@@ -42,29 +42,18 @@ impl KeyedMessage {
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
-        let DynamicKeyType::Int(ni) = self.read_key_dynamic("Ni")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
-        };
+        let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
-        let DynamicKeyType::Int(nj) = self.read_key_dynamic("Nj")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
-        };
+        let nj: i64 = self.read_key("Nj")?;
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let DynamicKeyType::FloatArray(vals) = self.read_key_dynamic("values")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("values".to_owned()).into());
-        };
-
+        let vals: Vec<f64> = self.read_key("values")?;
         if vals.len() != (ni * nj) {
             return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
         }
 
-        let DynamicKeyType::Int(j_scanning) = self.read_key_dynamic("jPointsAreConsecutive")?.value else {
-            return Err(
-                MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
-            );
-        };
+        let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
 
         if ![0, 1].contains(&j_scanning) {
             return Err(MessageNdarrayError::UnexpectedKeyValue(
@@ -98,19 +87,13 @@ impl KeyedMessage {
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
-        let DynamicKeyType::Int(ni) = self.read_key_dynamic("Ni")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
-        };
+        let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
-        let DynamicKeyType::Int(nj) = self.read_key_dynamic("Nj")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
-        };
+        let nj: i64 = self.read_key("Nj")?;
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let DynamicKeyType::FloatArray(latlonvals) = self.read_key_dynamic("latLonValues")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("latLonValues".to_owned()).into());
-        };
+        let latlonvals: Vec<f64> = self.read_key("latLonValues")?;
 
         if latlonvals.len() != (ni * nj * 3) {
             return Err(
@@ -118,12 +101,8 @@ impl KeyedMessage {
             );
         }
 
-        let DynamicKeyType::Int(j_scanning) = self.read_key_dynamic("jPointsAreConsecutive")?.value else {
-            return Err(
-                MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
-            );
-        };
-
+        let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
+        
         if ![0, 1].contains(&j_scanning) {
             return Err(MessageNdarrayError::UnexpectedKeyValue(
                 "jPointsAreConsecutive".to_owned(),
@@ -165,8 +144,8 @@ mod tests {
 
     use super::*;
     use crate::codes_handle::CodesHandle;
-    use crate::FallibleStreamingIterator;
     use crate::DynamicKeyType;
+    use crate::FallibleStreamingIterator;
     use crate::ProductKind;
     use std::path::Path;
 
