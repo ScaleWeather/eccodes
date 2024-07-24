@@ -171,3 +171,89 @@ impl KeyOps<Vec<u8>> for KeyedMessage {
         unsafe { codes_set_bytes(self.message_handle, &key.name, &key.value) }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use anyhow::{Context, Result};
+    use fallible_iterator::FallibleIterator;
+    use fallible_streaming_iterator::FallibleStreamingIterator;
+
+    use crate::{CodesError, CodesHandle, KeyOps, ProductKind};
+    #[test]
+    fn static_read() -> Result<()> {
+        let file_path = Path::new("./data/iceland.grib");
+        static_read_core(file_path)?;
+
+        let file_path = Path::new("./data/gfs.grib");
+        static_read_core(file_path)?;
+
+        Ok(())
+    }
+
+    fn static_read_core(file_path: &Path) -> Result<()> {
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.context("Message not some")?;
+        let mut kiter = current_message.default_keys_iterator()?;
+
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
+
+            // annoying keys
+            if ["zero", "zeros"].contains(&key_name.as_str()) {
+                continue;
+            }
+
+            let kv: Result<i64, CodesError> = current_message.read(&key_name);
+            validate_read_error(kv, &key_name)?;
+
+            let kv: Result<f64, CodesError> = current_message.read(&key_name);
+            validate_read_error(kv, &key_name)?;
+
+            let kv: Result<String, CodesError> = current_message.read(&key_name);
+            validate_read_error(kv, &key_name)?;
+
+            let kv: Result<Vec<i64>, CodesError> = current_message.read(&key_name);
+            validate_read_error(kv, &key_name)?;
+
+            let kv: Result<Vec<f64>, CodesError> = current_message.read(&key_name);
+            validate_read_error(kv, &key_name)?;
+
+            let kv: Result<Vec<u8>, CodesError> = current_message.read(&key_name);
+            validate_read_error(kv, &key_name)?;
+        }
+
+        Ok(())
+    }
+
+    fn validate_read_error<T>(kv: Result<T, CodesError>, key_name: &str) -> Result<()> {
+        let allowed_incorrect_size = [
+            "localExtensionPadding",
+            "section1Padding",
+            "padding_sec2_2",
+            "padding_sec2_1",
+            "padding_sec2_3",
+            "padding_sec4_1",
+            "section3Padding",
+        ];
+
+        match kv {
+            Ok(_) => return Ok(()),
+            Err(ke) => match ke {
+                CodesError::WrongRequestedKeySize => return Ok(()),
+                CodesError::WrongRequestedKeyType => return Ok(()),
+                CodesError::IncorrectKeySize => {
+                    if allowed_incorrect_size.contains(&&key_name) {
+                        return Ok(());
+                    }
+
+                    panic!("Key {key_name} not on a list allowed to have incorrect size")
+                }
+                _ => panic!("Unexpected error {ke} for {key_name}"),
+            },
+        }
+    }
+}
