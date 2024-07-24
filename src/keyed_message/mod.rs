@@ -63,7 +63,6 @@ pub trait KeyOps<T: Clone> {
     fn read_unchecked(&self, key_name: &str) -> Result<T, CodesError>;
 
     fn write(&mut self, key: Key<T>) -> Result<(), CodesError>;
-    fn write_unchecked(&mut self, key: Key<T>) -> Result<(), CodesError>;
 }
 
 /// Structure representing a single key in the `KeyedMessage`
