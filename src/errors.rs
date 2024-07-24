@@ -48,6 +48,12 @@ pub enum CodesError {
     #[error("Incorrect key size")]
     IncorrectKeySize,
 
+    #[error("Requested key size is incorrect")]
+    WrongRequestedKeySize,
+
+    #[error("Requested key type is incorrect")]
+    WrongRequestedKeyType,
+
     /// Returned when codes_handle_clone returns null pointer
     /// indicating issues with cloning the message.
     #[error("Cannot clone the message")]

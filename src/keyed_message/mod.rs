@@ -1,6 +1,7 @@
 //! Definition of `KeyedMessage` and its associated functions
 //! used for reading and writing data of given variable from GRIB file
 
+mod ops;
 mod read;
 mod write;
 
@@ -47,6 +48,22 @@ use crate::{
 #[derive(Hash, Debug)]
 pub struct KeyedMessage {
     pub(crate) message_handle: *mut codes_handle,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Key<T: Clone> {
+    #[allow(missing_docs)]
+    pub name: String,
+    #[allow(missing_docs)]
+    pub value: T,
+}
+
+pub trait KeyOps<T: Clone> {
+    fn read(&self, key_name: &str) -> Result<T, CodesError>;
+    fn read_unchecked(&self, key_name: &str) -> Result<T, CodesError>;
+
+    fn write(&mut self, key: Key<T>) -> Result<(), CodesError>;
+    fn write_unchecked(&mut self, key: Key<T>) -> Result<(), CodesError>;
 }
 
 /// Structure representing a single key in the `KeyedMessage`

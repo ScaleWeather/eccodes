@@ -231,5 +231,5 @@ pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 pub use fallible_streaming_iterator::FallibleStreamingIterator;
-pub use keyed_message::{DynamicKey, DynamicKeyType, KeyedMessage};
+pub use keyed_message::{DynamicKey, DynamicKeyType, KeyedMessage, Key, KeyOps};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
