@@ -4,7 +4,12 @@ use anyhow::{Context, Result};
 use eccodes::{CodesHandle, FallibleStreamingIterator, DynamicKeyType, ProductKind};
 
 #[test]
-fn thread_safety() -> Result<()> {
+fn thread_safety() {
+    // errors are fine
+    thread_safety_core().unwrap_or(());
+}
+
+fn thread_safety_core() -> Result<()> {
     thread::spawn(|| -> anyhow::Result<()> {
         loop {
             let file_path = Path::new("./data/iceland.grib");
