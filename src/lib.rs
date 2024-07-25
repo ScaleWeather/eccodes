@@ -98,7 +98,7 @@
 //! // nearest to Reykjavik (64.13N, -21.89E) for 1st June 2021 00:00 UTC
 //! // from ERA5 Climate Reanalysis
 //! 
-//! use eccodes::{ProductKind, CodesHandle, KeyType};
+//! use eccodes::{ProductKind, CodesHandle, KeyRead};
 //! # use std::path::Path;
 //! use eccodes::FallibleStreamingIterator;
 //! #
@@ -112,9 +112,11 @@
 //! // Use iterator to find a message with shortName "msl" and typeOfLevel "surface"
 //! // We can use while let or for_each() to iterate over the messages
 //! while let Some(msg) = handle.next()? {
-//!     if msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
-//!         && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string()) {
-//!        
+//!     // We need to specify the type of key we read
+//!     let short_name: String = msg.read_key("shortName")?;
+//!     let type_of_level: String = msg.read_key("typeOfLevel")?;
+//! 
+//!     if short_name == "msl" && type_of_level == "surface" {
 //!         // Create CodesNearest for given message
 //!         let nearest_gridpoints = msg.codes_nearest()?
 //!             // Find the nearest gridpoints to Reykjavik
@@ -142,7 +144,7 @@
 //! // of 900hPa and 800hPa and writing it to a new file.
 //! 
 //! use eccodes::FallibleStreamingIterator;
-//! use eccodes::{CodesHandle, Key, KeyType, ProductKind};
+//! use eccodes::{CodesHandle, KeyRead, KeyWrite, ProductKind};
 //! # use std::{fs::remove_file, path::Path};
 //!  
 //! # fn main() -> anyhow::Result<()> {
@@ -150,32 +152,32 @@
 //! let file_path = Path::new("./data/iceland-levels.grib");
 //! let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 //!
-//! // We need a message to edit,in this case we can use 
+//! // We need a message to edit, in this case we can use 
 //! // temperature at 700hPa, which is similar to our result
 //! let mut new_msg = vec![];
 //!
 //! // Get data values of temperatures at 800hPa and 900hPa
-//! let mut t800 = vec![];
-//! let mut t900 = vec![];
+//! let mut t800: Vec<f64> = vec![];
+//! let mut t900: Vec<f64> = vec![];
 //!
 //! // Iterate over the messages and collect the data to defined vectors
 //! while let Some(msg) = handle.next()? {
-//!     if msg.read_key("shortName")?.value == KeyType::Str("t".to_string()) {
-//!         if msg.read_key("level")?.value == KeyType::Int(700) {
+//!     let short_name: String = msg.read_key("shortName")?;
+//! 
+//!     if short_name == "t" {
+//!         let level: i64 = msg.read_key("level")?;
+//! 
+//!         if level == 700 {
 //!            // To use message outside of the iterator we need to clone it
 //!             new_msg.push(msg.try_clone()?);
 //!         }
 //!
-//!         if msg.read_key("level")?.value == KeyType::Int(800) {
-//!             if let KeyType::FloatArray(vals) = msg.read_key("values")?.value {
-//!                 t800 = vals;
-//!             }
+//!         if level == 800 {
+//!             t800 = msg.read_key("values")?;
 //!         }
 //!
-//!         if msg.read_key("level")?.value == KeyType::Int(900) {
-//!             if let KeyType::FloatArray(vals) = msg.read_key("values")?.value {
-//!                 t900 = vals;
-//!             }
+//!         if level == 900 {
+//!             t900 = msg.read_key("values")?;
 //!         }
 //!     }
 //! }
@@ -191,14 +193,8 @@
 //!     .collect();
 //!
 //! // Edit appropriate keys in the editable message
-//! new_msg.write_key(Key {
-//!     name: "level".to_string(),
-//!     value: KeyType::Int(850),
-//! })?;
-//! new_msg.write_key(Key {
-//!     name: "values".to_string(),
-//!     value: KeyType::FloatArray(t850),
-//! })?;
+//! new_msg.write_key("level", 850)?;
+//! new_msg.write_key("values", &t850)?;
 //!
 //! // Save the message to a new file without appending
 //! new_msg.write_to_file(Path::new("iceland-850.grib"), false)?;

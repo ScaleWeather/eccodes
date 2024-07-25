@@ -41,8 +41,32 @@ impl KeyWrite<&[u8]> for KeyedMessage {
     }
 }
 
+impl KeyWrite<&Vec<i64>> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &Vec<i64>) -> Result<(), CodesError> {
+        unsafe { codes_set_long_array(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&Vec<f64>> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &Vec<f64>) -> Result<(), CodesError> {
+        unsafe { codes_set_double_array(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&Vec<u8>> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &Vec<u8>) -> Result<(), CodesError> {
+        unsafe { codes_set_bytes(self.message_handle, name, value) }
+    }
+}
+
 impl KeyWrite<&str> for KeyedMessage {
     fn write_key(&mut self, name: &str, value: &str) -> Result<(), CodesError> {
+        unsafe { codes_set_string(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&String> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &String) -> Result<(), CodesError> {
         unsafe { codes_set_string(self.message_handle, name, value) }
     }
 }
@@ -56,7 +80,7 @@ impl KeyedMessage {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{CodesHandle, Key, KeyOps, ProductKind};
+    ///  use eccodes::{CodesHandle, KeyRead, ProductKind};
     ///  # use eccodes::errors::CodesError;
     ///  use eccodes::FallibleStreamingIterator;
     ///  # use std::path::Path;

@@ -57,7 +57,7 @@ pub struct GribFile {
 /// Therefore the probably most versatile way to iterate over the messages is to use `while let` loop.
 ///
 /// ```
-/// use eccodes::{ProductKind, CodesHandle, KeyOps};
+/// use eccodes::{ProductKind, CodesHandle, KeyRead};
 /// # use std::path::Path;
 /// // FallibleStreamingIterator must be in scope to use it
 /// use eccodes::FallibleStreamingIterator;

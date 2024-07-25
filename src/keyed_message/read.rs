@@ -153,7 +153,7 @@ impl KeyedMessage {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesHandle, KeyType};
+    ///  use eccodes::{ProductKind, CodesHandle, DynamicKeyType};
     ///  # use std::path::Path;
     ///  # use anyhow::Context;
     ///  use eccodes::FallibleStreamingIterator;
@@ -164,8 +164,8 @@ impl KeyedMessage {
     ///  
     ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
     ///  let message = handle.next()?.context("no message")?;
-    ///  let message_short_name = message.read_key("shortName")?;
-    ///  let expected_short_name = KeyType::Str("msl".to_string());
+    ///  let message_short_name = message.read_key_dynamic("shortName")?;
+    ///  let expected_short_name = DynamicKeyType::Str("msl".to_string());
     ///  
     ///  assert_eq!(message_short_name.value, expected_short_name);
     ///  # Ok(())
