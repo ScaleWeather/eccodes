@@ -188,7 +188,7 @@ impl FallibleIterator for KeysIterator<'_> {
 
             self.next_item_exists = next_item_exists;
 
-            Ok(Some(key_name.to_owned()))
+            Ok(Some(key_name))
         } else {
             Ok(None)
         }

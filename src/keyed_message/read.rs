@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{
     errors::CodesError,
     intermediate_bindings::{
@@ -17,10 +19,10 @@ impl KeyRead<i64> for KeyedMessage {
 
         let key_size = self.get_key_size(key_name)?;
 
-        if key_size < 1 {
-            return Err(CodesError::IncorrectKeySize);
-        } else if key_size > 1 {
-            return Err(CodesError::WrongRequestedKeySize);
+        match key_size.cmp(&1) {
+            Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
+            Ordering::Less => return Err(CodesError::IncorrectKeySize),
+            Ordering::Equal => (),
         }
 
         self.read_key_unchecked(key_name)
@@ -40,10 +42,10 @@ impl KeyRead<f64> for KeyedMessage {
 
         let key_size = self.get_key_size(key_name)?;
 
-        if key_size < 1 {
-            return Err(CodesError::IncorrectKeySize);
-        } else if key_size > 1 {
-            return Err(CodesError::WrongRequestedKeySize);
+        match key_size.cmp(&1) {
+            Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
+            Ordering::Less => return Err(CodesError::IncorrectKeySize),
+            Ordering::Equal => (),
         }
 
         self.read_key_unchecked(key_name)

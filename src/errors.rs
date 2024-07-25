@@ -54,12 +54,12 @@ pub enum CodesError {
     #[error("Requested key type is incorrect")]
     WrongRequestedKeyType,
 
-    /// Returned when codes_handle_clone returns null pointer
+    /// Returned when [`eccodes_sys::codes_handle_clone`] returns null pointer
     /// indicating issues with cloning the message.
     #[error("Cannot clone the message")]
     CloneFailed,
 
-    /// Returned when codes_keys_iterator_new returns null pointer
+    /// Returned when [`eccodes_sys::codes_keys_iterator_new`] returns null pointer
     #[error("Cannot create or manipulate keys iterator")]
     KeysIteratorFailed,
 
@@ -360,7 +360,7 @@ pub enum CodesInternal {
     #[error("Attribute is already present =  cannot add")]
     CodesAttributeClash = -61,
 
-    ///Too many attributes. Increase MAX_ACCESSOR_ATTRIBUTES
+    ///Too many attributes. Increase `MAX_ACCESSOR_ATTRIBUTES`
     #[error("Too many attributes. Increase MAX_ACCESSOR_ATTRIBUTES")]
     CodesTooManyAttributes = -62,
 
