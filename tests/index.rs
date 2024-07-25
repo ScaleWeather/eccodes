@@ -4,7 +4,7 @@ use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
 use eccodes::{
-    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, DynamicKeyType,
+    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyOps,
     ProductKind,
 };
 use rand::Rng;
@@ -40,18 +40,12 @@ fn read_index_messages() -> Result<()> {
     let current_message = handle.next()?.context("Message not some")?;
 
     {
-        let short_name = current_message.read_key("shortName")?;
-        match short_name.value {
-            KeyType::Str(val) => assert!(val == "2t"),
-            _ => panic!("Unexpected key type"),
-        };
+        let short_name: String = current_message.read_key("shortName")?;
+        assert_eq!(short_name, "2t");
     }
     {
-        let level = current_message.read_key("level")?;
-        match level.value {
-            KeyType::Int(val) => assert!(val == 0),
-            _ => panic!("Unexpected key type"),
-        };
+        let level: i64 = current_message.read_key("level")?;
+        assert_eq!(level, 0);
     }
 
     Ok(())

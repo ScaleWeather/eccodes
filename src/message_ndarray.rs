@@ -3,7 +3,7 @@
 
 use ndarray::{s, Array2, Array3};
 
-use crate::{errors::MessageNdarrayError, CodesError, DynamicKeyType, KeyOps, KeyedMessage};
+use crate::{errors::MessageNdarrayError, CodesError, KeyOps, KeyedMessage};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
@@ -102,7 +102,7 @@ impl KeyedMessage {
         }
 
         let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
-        
+
         if ![0, 1].contains(&j_scanning) {
             return Err(MessageNdarrayError::UnexpectedKeyValue(
                 "jPointsAreConsecutive".to_owned(),
