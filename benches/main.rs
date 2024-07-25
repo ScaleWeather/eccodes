@@ -37,7 +37,10 @@ pub fn key_reading(c: &mut Criterion) {
     });
 
     c.bench_function("missing nul-byte termination reading", |b| {
-        b.iter(|| msg.read_key_dynamic(black_box("experimentVersionNumber")).unwrap())
+        b.iter(|| {
+            msg.read_key_dynamic(black_box("experimentVersionNumber"))
+                .unwrap()
+        })
     });
 
     c.bench_function("problematic key reading", |b| {

@@ -133,7 +133,10 @@ pub unsafe fn codes_get_long_array(
     Ok(key_values)
 }
 
-pub unsafe fn codes_get_length(handle: *const codes_handle, key: &str) -> Result<usize, CodesError> {
+pub unsafe fn codes_get_length(
+    handle: *const codes_handle,
+    key: &str,
+) -> Result<usize, CodesError> {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -149,7 +152,10 @@ pub unsafe fn codes_get_length(handle: *const codes_handle, key: &str) -> Result
     Ok(key_length)
 }
 
-pub unsafe fn codes_get_string(handle: *const codes_handle, key: &str) -> Result<String, CodesError> {
+pub unsafe fn codes_get_string(
+    handle: *const codes_handle,
+    key: &str,
+) -> Result<String, CodesError> {
     pointer_guard::non_null!(handle);
 
     let mut key_length = codes_get_length(handle, key)?;
@@ -184,7 +190,10 @@ pub unsafe fn codes_get_string(handle: *const codes_handle, key: &str) -> Result
     Ok(key_message_string)
 }
 
-pub unsafe fn codes_get_bytes(handle: *const codes_handle, key: &str) -> Result<Vec<u8>, CodesError> {
+pub unsafe fn codes_get_bytes(
+    handle: *const codes_handle,
+    key: &str,
+) -> Result<Vec<u8>, CodesError> {
     pointer_guard::non_null!(handle);
 
     let mut key_size = codes_get_length(handle, key)?;

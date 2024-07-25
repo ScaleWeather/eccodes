@@ -143,11 +143,11 @@ impl KeyRead<Vec<u8>> for KeyedMessage {
 impl KeyedMessage {
     /// Method to get a value of given key with [`DynamicKeyType`] from the `KeyedMessage`, if it exists.
     ///
-    /// In most cases you should use [`read_key()`](KeyRead::read_key) due to more predictive behaviour 
+    /// In most cases you should use [`read_key()`](KeyRead::read_key) due to more predictive behaviour
     /// and simpler interface.
-    /// 
+    ///
     /// This function exists for backwards compatibility and user convienience.
-    /// 
+    ///
     /// This function checks the type of requested key and tries to read it as the native type.
     /// That flow adds performance overhead, but makes the function highly unlikely to fail.
     ///

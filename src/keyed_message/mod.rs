@@ -55,7 +55,7 @@ pub struct KeyedMessage {
 pub trait KeyRead<T> {
     /// Tries to read a key of given name from [`KeyedMessage`]. This function checks if key native type
     /// matches the requested type (ie. you cannot read integer as string, or array as a number).
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -76,25 +76,25 @@ pub trait KeyRead<T> {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeyType) when trying to read key in non-native type (use [`unchecked`](KeyRead::read_key_unchecked) instead).
-    /// 
+    ///
     /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeySize) when trying to read array as integer.
-    /// 
+    ///
     /// Returns [`IncorrectKeySize`](CodesError::IncorrectKeySize) when key size is 0. This can indicate corrupted data.
-    /// 
+    ///
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
     fn read_key(&self, name: &str) -> Result<T, CodesError>;
 
     /// Skips all the checks provided by [`read_key`](KeyRead::read_key) and directly calls ecCodes, ensuring only memory and type safety.
-    /// 
+    ///
     /// This function has better perfomance than [`read_key`](KeyRead::read_key) but all error handling and (possible)
     /// type conversions are performed directly by ecCodes.
-    /// 
+    ///
     /// This function is also useful for (not usually used) keys that return incorrect native type.
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -115,18 +115,18 @@ pub trait KeyRead<T> {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
     fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
 }
 
 /// Provides GRIB key writing capabilites. Implemented by [`KeyedMessage`] for all possible key types.
 pub trait KeyWrite<T> {
-    /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless 
+    /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless
     /// the key is read-only. This function directly calls ecCodes ensuring only type and memory safety.
-    /// 
+    ///
     /// # Example
     ///
     /// ```
@@ -140,7 +140,7 @@ pub trait KeyWrite<T> {
     ///  # let product_kind = ProductKind::GRIB;
     ///  #
     ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    /// 
+    ///
     /// // CodesHandle iterator returns immutable messages.
     /// // To edit a message it must be cloned.
     ///  let mut message = handle.next()?.context("no message")?.try_clone()?;
@@ -148,9 +148,9 @@ pub trait KeyWrite<T> {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to write the key.
     fn write_key(&mut self, name: &str, value: T) -> Result<(), CodesError>;
 }
