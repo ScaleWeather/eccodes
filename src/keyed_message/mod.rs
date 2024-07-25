@@ -1,7 +1,6 @@
 //! Definition of `KeyedMessage` and its associated functions
 //! used for reading and writing data of given variable from GRIB file
 
-mod ops;
 mod read;
 mod write;
 
@@ -10,7 +9,10 @@ use log::warn;
 use std::ptr::null_mut;
 
 use crate::{
-    intermediate_bindings::{codes_handle_clone, codes_handle_delete},
+    intermediate_bindings::{
+        codes_get_native_type, codes_get_size, codes_handle_clone, codes_handle_delete,
+        NativeKeyType,
+    },
     CodesError,
 };
 
@@ -50,19 +52,13 @@ pub struct KeyedMessage {
     pub(crate) message_handle: *mut codes_handle,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Key<T: Clone> {
-    #[allow(missing_docs)]
-    pub name: String,
-    #[allow(missing_docs)]
-    pub value: T,
+pub trait KeyRead<T> {
+    fn read_key(&self, name: &str) -> Result<T, CodesError>;
+    fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
 }
 
-pub trait KeyOps<T: Clone> {
-    fn read_key(&self, key_name: &str) -> Result<T, CodesError>;
-    fn read_key_unchecked(&self, key_name: &str) -> Result<T, CodesError>;
-
-    fn write_key(&mut self, key: Key<T>) -> Result<(), CodesError>;
+pub trait KeyWrite<T> {
+    fn write_key(&mut self, name: &str, value: T) -> Result<(), CodesError>;
 }
 
 /// Structure representing a single key in the `KeyedMessage`
@@ -106,6 +102,14 @@ impl KeyedMessage {
         Ok(Self {
             message_handle: new_handle,
         })
+    }
+
+    fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError> {
+        unsafe { codes_get_size(self.message_handle, key_name) }
+    }
+
+    fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError> {
+        unsafe { codes_get_native_type(self.message_handle, key_name) }
     }
 }
 

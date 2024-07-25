@@ -3,7 +3,7 @@
 
 use ndarray::{s, Array2, Array3};
 
-use crate::{errors::MessageNdarrayError, CodesError, KeyOps, KeyedMessage};
+use crate::{errors::MessageNdarrayError, CodesError, KeyRead, KeyedMessage};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
