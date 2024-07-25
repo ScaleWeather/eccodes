@@ -2,6 +2,8 @@
 #![allow(clippy::cast_possible_wrap)]
 #![warn(missing_docs)]
 #![warn(clippy::cargo)]
+#![warn(clippy::perf)]
+#![warn(clippy::doc_lazy_continuation)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! # Unofficial high-level safe Rust bindings to ecCodes library
@@ -56,14 +58,14 @@
 //! ## Features
 //!
 //! - `message_ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
-//! This feature is enabled by default. It is currently tested only with simple lat-lon grids.
+//!   This feature is enabled by default. It is currently tested only with simple lat-lon grids.
 //!
 //! - `experimental_index` - enables support for creating and using index files for GRIB files.
-//! **This feature is experimental** and disabled by default. If you want to use it, please read
-//! the information provided in [`codes_index`] documentation.
+//!   **This feature is experimental** and disabled by default. If you want to use it, please read
+//!   the information provided in [`codes_index`] documentation.
 //!
 //! - `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
-//! on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
+//!   on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
 //!
 //! To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
 //!
