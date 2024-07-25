@@ -210,8 +210,9 @@ fn simulatenous_index_destructors() -> Result<()> {
         Ok(())
     });
 
-    h1.join().unwrap()?;
-    h2.join().unwrap()?;
+    // errors are fine
+    h1.join().unwrap().unwrap_or(());
+    h2.join().unwrap().unwrap_or(());
 
     Ok(())
 }

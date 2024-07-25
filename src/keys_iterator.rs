@@ -14,7 +14,7 @@ use crate::{
     KeyedMessage,
 };
 
-/// Structure to iterate through keys in [`KeyedMessage`].
+/// Structure to iterate through key names in [`KeyedMessage`].
 ///
 /// Mainly useful to discover what keys are present inside the message.
 ///
@@ -23,14 +23,12 @@ use crate::{
 /// The usage of `FallibleIterator` is sligthly different than usage of `Iterator`,
 /// check the documentation for more details.
 ///
-/// The `next()` function internally calls [`read_key()`](KeyedMessage::read_key()) function
-/// so it is usually more efficient to call that function directly only for keys you
-/// are interested in.
+/// To discover key contents you need to [`read_key`] with name given by the iterator.
 ///
 /// ## Example
 ///
 /// ```
-///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags, KeyType};
+///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
 ///  # use std::path::Path;
 ///  # use anyhow::Context;
 ///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
@@ -45,8 +43,8 @@ use crate::{
 ///  
 ///  let mut keys_iter = current_message.default_keys_iterator()?;
 ///  
-///  while let Some(key) = keys_iter.next()? {
-///      println!("{:?}", key);
+///  while let Some(key_name) = keys_iter.next()? {
+///      println!("{key_name}");
 ///  }
 ///  # Ok(())
 ///  # }
@@ -101,7 +99,7 @@ impl KeyedMessage {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags, KeyType};
+    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
     ///  # use std::path::Path;
     ///  # use anyhow::Context;
     ///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
@@ -125,8 +123,8 @@ impl KeyedMessage {
     ///  
     ///  let mut keys_iter = current_message.new_keys_iterator(&flags, namespace)?;
     ///  
-    ///  while let Some(key) = keys_iter.next()? {
-    ///      println!("{:?}", key);
+    ///  while let Some(key_name) = keys_iter.next()? {
+    ///      println!("{key_name}");
     ///  }
     ///  # Ok(())
     ///  # }

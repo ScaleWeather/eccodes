@@ -18,7 +18,7 @@ impl KeyedMessage {
     /// # Example
     /// 
     /// ```
-    ///  use eccodes::{CodesHandle, Key, KeyType, ProductKind};
+    ///  use eccodes::{CodesHandle, Key, KeyOps, ProductKind};
     ///  # use eccodes::errors::CodesError;
     ///  use eccodes::FallibleStreamingIterator;
     ///  # use std::path::Path;
@@ -31,7 +31,8 @@ impl KeyedMessage {
     ///  let mut handle = CodesHandle::new_from_file(in_path, ProductKind::GRIB)?;
     /// 
     ///  while let Some(msg) = handle.next()? {
-    ///      if msg.read_key("level")?.value == KeyType::Int(800) {
+    ///      let level: i64 = msg.read_key("level")?;
+    ///      if level == 800 {
     ///          msg.write_to_file(out_path, true)?;
     ///      }
     ///  }
