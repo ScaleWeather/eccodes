@@ -139,7 +139,7 @@ impl KeyRead<Vec<u8>> for KeyedMessage {
 }
 
 impl KeyedMessage {
-    /// Method to get a [`Key`] with provided name from the `KeyedMessage`, if it exists.
+    /// Method to get a [`DynamicKey`] with provided name from the `KeyedMessage`, if it exists.
     ///
     /// This function check the type of requested key and tries to read it as the native type.
     /// That flow adds performance overhead, but makes the function highly unlikely to fail.

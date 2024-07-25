@@ -22,7 +22,7 @@ use crate::{
 ///
 /// You can think about the message as a container of data corresponding to a single variable
 /// at given date, time and level. In ecCodes the message is represented as a collection of unique
-/// key-value pairs. Each [`Key`] in the message has a unique name and a value of type [`KeyType`].
+/// key-value pairs. Each [`DynamicKey`] in the message has a unique name and a value of type [`DynamicKeyType`].
 ///
 /// You can read a `Key` directly using [`read_key()`](KeyedMessage::read_key()) or iterate over
 /// all keys using [`KeysIterator`](crate::KeysIterator). You can also modify the message using
@@ -70,7 +70,7 @@ pub struct DynamicKey {
     pub value: DynamicKeyType,
 }
 
-/// Enum representing the value of [`Key`] from the `KeyedMessage`
+/// Enum of types that value inside [`DynamicKey`] can have
 ///
 /// Messages inside GRIB files can contain keys of arbitrary types, which are known only at runtime (after being checked).
 /// ecCodes can return several different types of key, which are represented by this enum

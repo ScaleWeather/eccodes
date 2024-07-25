@@ -23,7 +23,7 @@ use crate::{
 /// The usage of `FallibleIterator` is sligthly different than usage of `Iterator`,
 /// check the documentation for more details.
 ///
-/// To discover key contents you need to [`read_key`] with name given by the iterator.
+/// To discover key contents you need to [`read_key`](crate::KeyRead::read_key) with name given by the iterator.
 ///
 /// ## Example
 ///

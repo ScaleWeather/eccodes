@@ -84,7 +84,7 @@
 //! `KeyedMessage` implements several methods to access the data as needed, most of those can be called directly on `&KeyedMessage`.
 //! You can also use [`try_clone()`](KeyedMessage::try_clone) to clone the message and prolong its lifetime.
 //! 
-//! Data defining and contained by `KeyedMessage` is represented by [`Key`]s. 
+//! Data defining and contained by `KeyedMessage` is represented by [`DynamicKey`]s. 
 //! You can read them directly with [`read_key()`](KeyedMessage::read_key), use [`KeysIterator`](KeyedMessage) 
 //! to iterate over them or use [`CodesNearest`] to get the values of four nearest gridpoints for given coordinates.
 //! 
