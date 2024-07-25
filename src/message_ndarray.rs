@@ -1,5 +1,5 @@
 #![cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-//! Definition of functions to convert a `KeyedMessage` to ndarray
+//! Definitions for converting a `KeyedMessage` to ndarray
 
 use ndarray::{s, Array2, Array3};
 
@@ -155,7 +155,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key_dynamic("shortName")?.value == DynamicKeyType::Str("2d".to_string()) {
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let ndarray = msg.to_ndarray()?;
 
                 // values from xarray
@@ -181,7 +181,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key_dynamic("shortName")?.value == DynamicKeyType::Str("2d".to_string()) {
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let rmsg = msg.to_lons_lats_values()?;
 
                 let vals = rmsg.values;

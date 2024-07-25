@@ -204,8 +204,7 @@ mod tests {
         let read_key = current_message.read_key_dynamic("centre")?;
 
         assert_ne!(old_key, read_key);
-        assert_eq!(read_key.name, "centre");
-        assert_eq!(read_key.value, DynamicKeyType::Str("cnmc".into()));
+        assert_eq!(read_key, DynamicKeyType::Str("cnmc".into()));
 
         Ok(())
     }
@@ -232,8 +231,7 @@ mod tests {
         let read_key = current_message.read_key_dynamic("centre")?;
 
         assert_ne!(old_key, read_key);
-        assert_eq!(read_key.name, "centre");
-        assert_eq!(read_key.value, DynamicKeyType::Str("cnmc".into()));
+        assert_eq!(read_key, DynamicKeyType::Str("cnmc".into()));
 
         remove_file(Path::new("./data/iceland_edit.grib"))?;
 

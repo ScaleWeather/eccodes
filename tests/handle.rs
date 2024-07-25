@@ -1,7 +1,7 @@
 use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
-use eccodes::{CodesHandle, FallibleStreamingIterator, DynamicKeyType, ProductKind};
+use eccodes::{CodesHandle, DynamicKeyType, FallibleStreamingIterator, ProductKind};
 
 #[test]
 fn thread_safety() {
@@ -22,12 +22,10 @@ fn thread_safety_core() -> Result<()> {
 
                 let str_key = current_message.read_key_dynamic("name")?;
 
-                match str_key.value {
+                match str_key {
                     DynamicKeyType::Str(_) => {}
                     _ => panic!("Incorrect variant of string key"),
                 }
-
-                assert_eq!(str_key.name, "name");
             }
 
             drop(handle);
@@ -42,12 +40,10 @@ fn thread_safety_core() -> Result<()> {
 
         let long_key = current_message.read_key_dynamic("numberOfPointsAlongAParallel")?;
 
-        match long_key.value {
+        match long_key {
             DynamicKeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
-
-        assert_eq!(long_key.name, "numberOfPointsAlongAParallel");
 
         drop(handle);
     }

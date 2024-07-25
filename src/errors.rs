@@ -48,9 +48,11 @@ pub enum CodesError {
     #[error("Incorrect key size")]
     IncorrectKeySize,
 
+    /// Returned when trying to read array as number.
     #[error("Requested key size is incorrect")]
     WrongRequestedKeySize,
 
+    /// Returned when trying to checked read key in non-native type.
     #[error("Requested key type is incorrect")]
     WrongRequestedKeyType,
 

@@ -112,9 +112,9 @@ mod tests {
         let msg3 = handle.next()?.context("Message not some")?;
         let key3 = msg3.read_key_dynamic("typeOfLevel")?;
 
-        assert_eq!(key1.value, DynamicKeyType::Str("isobaricInhPa".to_string()));
-        assert_eq!(key2.value, DynamicKeyType::Str("isobaricInhPa".to_string()));
-        assert_eq!(key3.value, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key1, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key2, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key3, DynamicKeyType::Str("isobaricInhPa".to_string()));
 
         Ok(())
     }
@@ -129,7 +129,7 @@ mod tests {
         while let Some(msg) = handle.next()? {
             let key = msg.read_key_dynamic("shortName")?;
 
-            match key.value {
+            match key {
                 DynamicKeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
@@ -151,8 +151,8 @@ mod tests {
         }
 
         for msg in handle_collected {
-            let key = msg.read_key_dynamic("name")?;
-            match key.value {
+            let key: DynamicKeyType = msg.read_key_dynamic("name")?;
+            match key {
                 DynamicKeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
@@ -207,8 +207,9 @@ mod tests {
         let mut level = vec![];
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key_dynamic("shortName")?.value == DynamicKeyType::Str("msl".to_string())
-                && msg.read_key_dynamic("typeOfLevel")?.value == DynamicKeyType::Str("surface".to_string())
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("msl".to_string())
+                && msg.read_key_dynamic("typeOfLevel")?
+                    == DynamicKeyType::Str("surface".to_string())
             {
                 level.push(msg.try_clone()?);
             }

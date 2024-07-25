@@ -41,7 +41,7 @@
 //! Destructors, which cannot panic, report errors through the `log` crate.
 //! 
 //! None of the functions in this crate explicitly panics.
-//! However, users should not that dependencies might panic in some edge cases.
+//! However, users should be aware that dependencies might panic in some edge cases.
 //! 
 //! ## Safety
 //! 
@@ -59,7 +59,7 @@
 //! This feature is enabled by default. It is currently tested only with simple lat-lon grids.
 //! 
 //! - `experimental_index` - enables support for creating and using index files for GRIB files.
-//! This feature experimental and disabled by default. If you want to use it, please read
+//! **This feature is experimental** and disabled by default. If you want to use it, please read
 //! the information provided in [`codes_index`] documentation.
 //! 
 //! - `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
@@ -80,13 +80,15 @@
 //! Messages are represented by the [`KeyedMessage`] structure.
 //! 
 //! [`CodesHandle`] implements [`FallibleStreamingIterator`](CodesHandle#impl-FallibleStreamingIterator-for-CodesHandle<GribFile>)
-//! which allows you to iterate over messages in the file. The iterator returns `&KeyedMessage` which valid until next iteration.
+//! which allows you to iterate over messages in the file. The iterator returns `&KeyedMessage` which valid is until next iteration.
 //! `KeyedMessage` implements several methods to access the data as needed, most of those can be called directly on `&KeyedMessage`.
 //! You can also use [`try_clone()`](KeyedMessage::try_clone) to clone the message and prolong its lifetime.
 //! 
-//! Data defining and contained by `KeyedMessage` is represented by [`DynamicKey`]s. 
-//! You can read them directly with [`read_key()`](KeyedMessage::read_key), use [`KeysIterator`](KeyedMessage) 
-//! to iterate over them or use [`CodesNearest`] to get the values of four nearest gridpoints for given coordinates.
+//! Data contained by `KeyedMessage` is represented as *keys* (like in dictionary). 
+//! Keys can be read with static types using [`read_key()`](KeyedMessage::read_key) or with [dynamic types](`DynamicKeyType`)
+//! using [`read_key_dynamic()`](KeyedMessage::read_key_dynamic). To discover what keys are present in a message use [`KeysIterator`](KeyedMessage).
+//! 
+//! You can use [`CodesNearest`] to get the data values of four nearest gridpoints for given coordinates.
 //! 
 //! You can also modify the message with [`write_key()`](KeyedMessage::write_key) and write 
 //! it to a new file with [`write_to_file()`](KeyedMessage::write_to_file).
@@ -227,5 +229,5 @@ pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
 pub use fallible_streaming_iterator::FallibleStreamingIterator;
-pub use keyed_message::{DynamicKey, DynamicKeyType, KeyedMessage, KeyRead, KeyWrite};
+pub use keyed_message::{DynamicKeyType, KeyedMessage, KeyRead, KeyWrite};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
