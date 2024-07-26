@@ -2,7 +2,7 @@
 
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
-use log::warn;
+use log::error;
 use std::{marker::PhantomData, ptr::null_mut};
 
 use crate::{
@@ -200,7 +200,7 @@ impl Drop for KeysIterator<'_> {
     fn drop(&mut self) {
         unsafe {
             codes_keys_iterator_delete(self.iterator_handle).unwrap_or_else(|error| {
-                warn!(
+                error!(
                     "codes_keys_iterator_delete() returned an error: {:?}",
                     &error
                 );

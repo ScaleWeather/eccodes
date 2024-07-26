@@ -4,7 +4,7 @@
 use std::ptr::null_mut;
 
 use eccodes_sys::codes_nearest;
-use log::warn;
+use log::error;
 
 use crate::{
     intermediate_bindings::{
@@ -106,7 +106,7 @@ impl Drop for CodesNearest<'_> {
     fn drop(&mut self) {
         unsafe {
             codes_grib_nearest_delete(self.nearest_handle).unwrap_or_else(|error| {
-                warn!(
+                error!(
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );

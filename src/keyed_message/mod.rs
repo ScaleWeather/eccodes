@@ -5,7 +5,7 @@ mod read;
 mod write;
 
 use eccodes_sys::codes_handle;
-use log::warn;
+use log::error;
 use std::ptr::null_mut;
 
 use crate::{
@@ -216,7 +216,7 @@ impl Drop for KeyedMessage {
     fn drop(&mut self) {
         unsafe {
             codes_handle_delete(self.message_handle).unwrap_or_else(|error| {
-                warn!("codes_handle_delete() returned an error: {:?}", &error);
+                error!("codes_handle_delete() returned an error: {:?}", &error);
             });
         }
 
