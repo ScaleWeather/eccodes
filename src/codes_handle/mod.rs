@@ -13,7 +13,6 @@ use std::{
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
     path::Path,
-    ptr::null_mut,
 };
 
 mod iterator;
@@ -108,7 +107,7 @@ pub struct CodesHandle<SOURCE: Debug> {
     _data: DataContainer,
     source: SOURCE,
     product_kind: ProductKind,
-    unsafe_message: KeyedMessage,
+    current_message: Option<KeyedMessage>,
 }
 
 // 2024-07-26
@@ -189,9 +188,7 @@ impl CodesHandle<GribFile> {
                 pointer: file_pointer,
             },
             product_kind,
-            unsafe_message: KeyedMessage {
-                message_handle: null_mut(),
-            },
+            current_message: None,
         })
     }
 
@@ -240,9 +237,7 @@ impl CodesHandle<GribFile> {
                 pointer: file_pointer,
             },
             product_kind,
-            unsafe_message: KeyedMessage {
-                message_handle: null_mut(),
-            },
+            current_message: None,
         })
     }
 }
@@ -283,9 +278,7 @@ impl CodesHandle<CodesIndex> {
             _data: DataContainer::Empty(), //unused, index owns data
             source: index,
             product_kind: ProductKind::GRIB,
-            unsafe_message: KeyedMessage {
-                message_handle: null_mut(),
-            },
+            current_message: None,
         };
 
         Ok(new_handle)
@@ -346,7 +339,7 @@ mod tests {
         let handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.unsafe_message.message_handle.is_null());
+        assert!(handle.current_message.is_none());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         match &handle._data {
@@ -368,7 +361,7 @@ mod tests {
 
         let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.unsafe_message.message_handle.is_null());
+        assert!(handle.current_message.is_none());
         assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         match &handle._data {
@@ -396,7 +389,7 @@ mod tests {
         let handle = CodesHandle::new_from_index(index)?;
 
         assert_eq!(handle.source.pointer, i_ptr);
-        assert!(handle.unsafe_message.message_handle.is_null());
+        assert!(handle.current_message.is_none());
 
         Ok(())
     }
@@ -457,7 +450,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_index(index)?;
 
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.unsafe_message.message_handle.is_null());
+        assert!(handle.current_message.is_none());
 
         let msg = handle.next()?;
 

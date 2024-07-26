@@ -1,11 +1,8 @@
-use std::ptr;
-
 use fallible_streaming_iterator::FallibleStreamingIterator;
 
 use crate::{
-    errors::CodesError,
-    intermediate_bindings::{codes_handle_delete, codes_handle_new_from_file},
-    CodesHandle, KeyedMessage,
+    errors::CodesError, intermediate_bindings::codes_handle_new_from_file, CodesHandle,
+    KeyedMessage,
 };
 #[cfg(feature = "experimental_index")]
 use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};
@@ -22,30 +19,24 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
     type Error = CodesError;
 
     fn advance(&mut self) -> Result<(), Self::Error> {
-        unsafe {
-            codes_handle_delete(self.unsafe_message.message_handle)?;
-        }
-
-        // nullify message handle so that destructor is harmless
-        // it might be excessive but it follows the correct pattern
-        self.unsafe_message.message_handle = ptr::null_mut();
+        // destructor of KeyedMessage calls ecCodes
 
         let new_eccodes_handle =
             unsafe { codes_handle_new_from_file(self.source.pointer, self.product_kind)? };
 
-        self.unsafe_message = KeyedMessage {
-            message_handle: new_eccodes_handle,
+        self.current_message = if new_eccodes_handle.is_null() {
+            None
+        } else {
+            Some(KeyedMessage {
+                message_handle: new_eccodes_handle,
+            })
         };
 
         Ok(())
     }
 
     fn get(&self) -> Option<&Self::Item> {
-        if self.unsafe_message.message_handle.is_null() {
-            None
-        } else {
-            Some(&self.unsafe_message)
-        }
+        self.current_message.as_ref()
     }
 }
 
@@ -61,29 +52,23 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
     type Error = CodesError;
 
     fn advance(&mut self) -> Result<(), Self::Error> {
-        unsafe {
-            codes_handle_delete(self.unsafe_message.message_handle)?;
-        }
-
-        // nullify message handle so that destructor is harmless
-        // it might be excessive but it follows the correct pattern
-        self.unsafe_message.message_handle = ptr::null_mut();
+        // destructor of KeyedMessage calls ecCodes
 
         let new_eccodes_handle = unsafe { codes_handle_new_from_index(self.source.pointer)? };
 
-        self.unsafe_message = KeyedMessage {
-            message_handle: new_eccodes_handle,
+        self.current_message = if new_eccodes_handle.is_null() {
+            None
+        } else {
+            Some(KeyedMessage {
+                message_handle: new_eccodes_handle,
+            })
         };
 
         Ok(())
     }
 
     fn get(&self) -> Option<&Self::Item> {
-        if self.unsafe_message.message_handle.is_null() {
-            None
-        } else {
-            Some(&self.unsafe_message)
-        }
+        self.current_message.as_ref()
     }
 }
 
