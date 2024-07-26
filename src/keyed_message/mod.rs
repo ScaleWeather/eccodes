@@ -290,24 +290,33 @@ mod tests {
     }
 
     #[test]
-    fn message_drop() -> Result<()> {
+    fn message_clone_drop() -> Result<()> {
         testing_logger::setup();
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?.try_clone()?;
-
-        let _kiter = current_message.default_keys_iterator()?;
-        let _niter = current_message.codes_nearest()?;
-
-        drop(handle);
-        drop(_kiter);
-        drop(_niter);
-        drop(current_message);
+        let _msg_ref = handle.next()?.context("Message not some")?;
+        let _msg_clone = _msg_ref.try_clone()?;
 
         testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 0);
+        });
+
+        drop(_msg_clone);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_handle_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
+
+        drop(handle);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_handle_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
         });
 
         Ok(())

@@ -34,7 +34,7 @@ pub unsafe fn codes_keys_iterator_delete(
     keys_iterator: *mut codes_keys_iterator,
 ) -> Result<(), CodesError> {
     #[cfg(test)]
-    log::info!("codes_keys_iterator_delete");
+    log::trace!("codes_keys_iterator_delete");
 
     if keys_iterator.is_null() {
         return Ok(());

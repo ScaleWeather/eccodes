@@ -104,10 +104,11 @@ pub struct GribFile {
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
 pub struct CodesHandle<SOURCE: Debug> {
-    _data: DataContainer,
-    source: SOURCE,
+    // fields are dropped from top to bottom
     product_kind: ProductKind,
     current_message: Option<KeyedMessage>,
+    source: SOURCE,
+    _data: DataContainer,
 }
 
 // 2024-07-26
@@ -321,13 +322,13 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
-    use bytes::Bytes;
-    use eccodes_sys::ProductKind_PRODUCT_GRIB;
-
     use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
+    use anyhow::{Context, Result};
+    use bytes::Bytes;
+    use eccodes_sys::ProductKind_PRODUCT_GRIB;
+    use fallible_streaming_iterator::FallibleStreamingIterator;
     use log::Level;
     use std::{fs::File, io::Read, path::Path};
 
@@ -405,9 +406,6 @@ mod tests {
         drop(handle);
 
         testing_logger::validate(|captured_logs| {
-            captured_logs
-                .iter()
-                .for_each(|clg| println!("{:?}", clg.body));
             assert_eq!(captured_logs.len(), 0);
         });
 
@@ -425,9 +423,6 @@ mod tests {
         f.read_to_end(&mut buf)?;
         let file_data = Bytes::from(buf);
 
-        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
-        drop(handle);
-
         //logs from Reqwest are expected
         testing_logger::validate(|captured_logs| {
             for log in captured_logs {
@@ -436,14 +431,80 @@ mod tests {
             }
         });
 
+        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
+        drop(handle);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 0);
+        });
+
+        Ok(())
+    }
+
+    #[test]
+    fn multiple_drops() -> Result<()> {
+        testing_logger::setup();
+        {
+            let file_path = Path::new("./data/iceland-surface.grib");
+            let product_kind = ProductKind::GRIB;
+
+            let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+
+            let _ref_msg = handle.next()?.context("no message")?;
+            let clone_msg = _ref_msg.try_clone()?;
+            let _oth_ref = handle.next()?.context("no message")?;
+
+            let _nrst = clone_msg.codes_nearest()?;
+            let _kiter = clone_msg.default_keys_iterator()?;
+        }
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 5);
+
+            let expected_logs = vec![
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_keys_iterator_delete", log::Level::Trace),
+                ("codes_grib_nearest_delete", log::Level::Trace),
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_handle_delete", log::Level::Trace),
+            ];
+
+            captured_logs
+                .iter()
+                .zip(expected_logs)
+                .for_each(|(clg, elg)| {
+                    assert_eq!(clg.body, elg.0);
+                    assert_eq!(clg.level, elg.1)
+                });
+        });
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "experimental_index")]
+    fn codes_handle_drop_index() -> Result<()> {
+        testing_logger::setup();
+
+        let file_path = Path::new("./data/iceland-surface.grib.idx");
+        let index = CodesIndex::read_from_file(file_path)?;
+        assert!(!index.pointer.is_null());
+
+        let handle = CodesHandle::new_from_index(index)?;
+        drop(handle);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_index_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
+
         Ok(())
     }
 
     #[test]
     #[cfg(feature = "experimental_index")]
     fn empty_index_constructor() -> Result<()> {
-        use fallible_streaming_iterator::FallibleStreamingIterator;
-
         let index =
             CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level", "stepType"])?;
 
@@ -455,6 +516,52 @@ mod tests {
         let msg = handle.next()?;
 
         assert!(!msg.is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "experimental_index")]
+    fn multiple_drops_with_index() -> Result<()> {
+        testing_logger::setup();
+        {
+            let keys = vec!["typeOfLevel", "level"];
+            let index = CodesIndex::new_from_keys(&keys)?;
+            let grib_path = Path::new("./data/iceland-levels.grib");
+            let index = index
+                .add_grib_file(grib_path)?
+                .select("typeOfLevel", "isobaricInhPa")?
+                .select("level", 600)?;
+
+            let mut handle = CodesHandle::new_from_index(index)?;
+            let _ref_msg = handle.next()?.context("no message")?;
+            let clone_msg = _ref_msg.try_clone()?;
+            let _oth_ref = handle.next()?.context("no message")?;
+
+            let _nrst = clone_msg.codes_nearest()?;
+            let _kiter = clone_msg.default_keys_iterator()?;
+        }
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 6);
+
+            let expected_logs = vec![
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_keys_iterator_delete", log::Level::Trace),
+                ("codes_grib_nearest_delete", log::Level::Trace),
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_index_delete", log::Level::Trace),
+            ];
+
+            captured_logs
+                .iter()
+                .zip(expected_logs)
+                .for_each(|(clg, elg)| {
+                    assert_eq!(clg.body, elg.0);
+                    assert_eq!(clg.level, elg.1)
+                });
+        });
 
         Ok(())
     }

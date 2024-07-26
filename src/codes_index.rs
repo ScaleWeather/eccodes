@@ -265,12 +265,13 @@ impl Drop for CodesIndex {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{bail, Result};
+    use anyhow::{bail, Context, Result};
+    use fallible_streaming_iterator::FallibleStreamingIterator;
 
     use crate::{
         codes_index::{CodesIndex, Select},
         errors::CodesInternal,
-        CodesError,
+        CodesError, CodesHandle,
     };
     use std::path::Path;
     #[test]
@@ -295,6 +296,13 @@ mod tests {
         let index = CodesIndex::new_from_keys(&keys)?;
 
         drop(index);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_index_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
+
         Ok(())
     }
 
@@ -332,6 +340,42 @@ mod tests {
         } else {
             bail!("Expected CodesError::Internal(CodesInternal::CodesIoProblem)");
         }
+        Ok(())
+    }
+
+    #[test]
+    fn handle_from_index_destructor() -> Result<()> {
+        testing_logger::setup();
+        {
+            let keys = vec!["typeOfLevel", "level"];
+            let index = CodesIndex::new_from_keys(&keys)?;
+            let grib_path = Path::new("./data/iceland-levels.grib");
+            let index = index
+                .add_grib_file(grib_path)?
+                .select("typeOfLevel", "isobaricInhPa")?
+                .select("level", 600)?;
+
+            let mut handle = CodesHandle::new_from_index(index)?;
+            let _ref_msg = handle.next()?.context("no message")?;
+        }
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 2);
+
+            let expected_logs = vec![
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_index_delete", log::Level::Trace),
+            ];
+
+            captured_logs
+                .iter()
+                .zip(expected_logs)
+                .for_each(|(clg, elg)| {
+                    assert_eq!(clg.body, elg.0);
+                    assert_eq!(clg.level, elg.1)
+                });
+        });
+
         Ok(())
     }
 }

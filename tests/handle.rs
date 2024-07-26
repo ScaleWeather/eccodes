@@ -50,3 +50,27 @@ fn thread_safety_core() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn check_no_testing_logs() -> Result<()> {
+    testing_logger::setup();
+    {
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+
+        let _ref_msg = handle.next()?.context("no message")?;
+        let clone_msg = _ref_msg.try_clone()?;
+        let _oth_ref = handle.next()?.context("no message")?;
+
+        let _nrst = clone_msg.codes_nearest()?;
+        let _kiter = clone_msg.default_keys_iterator()?;
+    }
+
+    testing_logger::validate(|captured_logs| {
+        assert_eq!(captured_logs.len(), 0);
+    });
+
+    Ok(())
+}
