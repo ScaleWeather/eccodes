@@ -51,6 +51,9 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
+        cargo test --no-default-features
+        cargo test --features "message_ndarray"
+        cargo test --features "experimental_index"
         cargo test --features "experimental_index, message_ndarray"
         cargo clean
     - name: Benchmark with criterion
@@ -79,6 +82,9 @@ jobs:
         cargo clean
     - name: Test with cargo
       run: |
+        cargo test --no-default-features
+        cargo test --features "message_ndarray"
+        cargo test --features "experimental_index"
         cargo test --features "experimental_index, message_ndarray"
         cargo clean
     - name: Benchmark with criterion
