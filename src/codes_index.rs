@@ -33,15 +33,14 @@
 //! If you have any suggestions or ideas how to improve the safety of this feature, please open an issue or a pull request.
 
 use crate::{
-    codes_handle::SpecialDrop,
     errors::CodesError,
     intermediate_bindings::{
-        codes_index_add_file, codes_index_new, codes_index_read, codes_index_select_double,
-        codes_index_select_long, codes_index_select_string,
+        codes_index_add_file, codes_index_delete, codes_index_new, codes_index_read,
+        codes_index_select_double, codes_index_select_long, codes_index_select_string,
     },
 };
 use eccodes_sys::codes_index;
-use std::path::Path;
+use std::{path::Path, ptr::null_mut};
 
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -259,7 +258,8 @@ impl Select<&str> for CodesIndex {
 #[doc(hidden)]
 impl Drop for CodesIndex {
     fn drop(&mut self) {
-        self.spec_drop();
+        unsafe { codes_index_delete(self.pointer) }
+        self.pointer = null_mut();
     }
 }
 

@@ -2,13 +2,12 @@
 //! used for accessing GRIB files
 
 #[cfg(feature = "experimental_index")]
-use crate::{codes_index::CodesIndex, intermediate_bindings::codes_index_delete};
+use crate::codes_index::CodesIndex;
 use crate::{pointer_guard, CodesError, KeyedMessage};
 use bytes::Bytes;
 use eccodes_sys::ProductKind_PRODUCT_GRIB;
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
-use log::warn;
 use std::{
     fmt::Debug,
     fs::{File, OpenOptions},
@@ -105,12 +104,26 @@ pub struct GribFile {
 ///
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
-pub struct CodesHandle<SOURCE: Debug + SpecialDrop> {
+pub struct CodesHandle<SOURCE: Debug> {
     _data: DataContainer,
     source: SOURCE,
     product_kind: ProductKind,
     unsafe_message: KeyedMessage,
 }
+
+// 2024-07-26
+// Previously CodesHandle had implemented Drop which called libc::fclose()
+// but that closed the file descriptor and interfered with rust's fs::file destructor.
+//
+// To my best understanding the purpose of destructor is to clear memory and remove
+// any pointers that would be dangling.
+//
+// The only pointer that is handed out of CodesHandle is &KeyedMessage, which is tied
+// to CodesHandle through lifetimes, so if we destruct CodesHandle that pointer is first
+// destructed as well. Source pointer is only used internally so we don't need to worry about it.
+//
+// Clearing the memory is handled on ecCodes side by KeyedMessage/CodesIndex destructors
+// and on rust side by destructors of data_container we own.
 
 #[derive(Debug)]
 enum DataContainer {
@@ -313,68 +326,6 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
-// This trait is neccessary because (1) drop in GribFile/IndexFile cannot
-// be called directly as source cannot be moved out of shared reference
-// and (2) Drop drops fields in arbitrary order leading to fclose() failing
-#[doc(hidden)]
-pub trait SpecialDrop {
-    fn spec_drop(&mut self);
-}
-
-#[doc(hidden)]
-impl SpecialDrop for GribFile {
-    fn spec_drop(&mut self) {
-        //fclose() can fail in several different cases, however there is not much
-        //that we can nor we should do about it. the promise of fclose() is that
-        //the stream will be disassociated from the file after the call, therefore
-        //use of stream after the call to fclose() is undefined behaviour, so we clear it
-        let return_code;
-        unsafe {
-            if !self.pointer.is_null() {
-                return_code = libc::fclose(self.pointer);
-                if return_code != 0 {
-                    let error_val = errno();
-                    warn!(
-                "fclose() returned an error and your file might not have been correctly saved.
-                Error code: {}; Error message: {}",
-                error_val.0, error_val
-            );
-                }
-            }
-        }
-
-        self.pointer = null_mut();
-    }
-}
-
-#[doc(hidden)]
-#[cfg(feature = "experimental_index")]
-impl SpecialDrop for CodesIndex {
-    fn spec_drop(&mut self) {
-        unsafe {
-            codes_index_delete(self.pointer);
-        }
-
-        self.pointer = null_mut();
-    }
-}
-
-#[doc(hidden)]
-impl<S: Debug + SpecialDrop> Drop for CodesHandle<S> {
-    /// Executes the destructor for this type.
-    ///
-    /// Currently it is assumed that under normal circumstances this destructor never fails.
-    /// However in some edge cases fclose can return non-zero code.
-    /// In such case all pointers and file descriptors are safely deleted.
-    /// However memory leaks can still occur.
-    ///
-    /// If any function called in the destructor returns an error warning will appear in log.
-    /// If bugs occurs during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
-    fn drop(&mut self) {
-        self.source.spec_drop();
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
@@ -451,40 +402,46 @@ mod tests {
     }
 
     #[test]
-    fn codes_handle_drop() -> Result<()> {
+    fn codes_handle_drop_file() -> Result<()> {
         testing_logger::setup();
 
-        {
-            let file_path = Path::new("./data/iceland-surface.grib");
-            let product_kind = ProductKind::GRIB;
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let product_kind = ProductKind::GRIB;
 
-            let handle = CodesHandle::new_from_file(file_path, product_kind)?;
-            drop(handle);
+        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        drop(handle);
 
-            testing_logger::validate(|captured_logs| {
-                assert_eq!(captured_logs.len(), 0);
-            });
-        }
+        testing_logger::validate(|captured_logs| {
+            captured_logs
+                .iter()
+                .for_each(|clg| println!("{:?}", clg.body));
+            assert_eq!(captured_logs.len(), 0);
+        });
 
-        {
-            let product_kind = ProductKind::GRIB;
+        Ok(())
+    }
 
-            let mut f = File::open(Path::new("./data/iceland.grib"))?;
-            let mut buf = Vec::new();
-            f.read_to_end(&mut buf)?;
-            let file_data = Bytes::from(buf);
+    #[test]
+    fn codes_handle_drop_mem() -> Result<()> {
+        testing_logger::setup();
 
-            let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
-            drop(handle);
+        let product_kind = ProductKind::GRIB;
 
-            //logs from Reqwest are expected
-            testing_logger::validate(|captured_logs| {
-                for log in captured_logs {
-                    assert_ne!(log.level, Level::Warn);
-                    assert_ne!(log.level, Level::Error);
-                }
-            });
-        }
+        let mut f = File::open(Path::new("./data/iceland.grib"))?;
+        let mut buf = Vec::new();
+        f.read_to_end(&mut buf)?;
+        let file_data = Bytes::from(buf);
+
+        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
+        drop(handle);
+
+        //logs from Reqwest are expected
+        testing_logger::validate(|captured_logs| {
+            for log in captured_logs {
+                assert_ne!(log.level, Level::Warn);
+                assert_ne!(log.level, Level::Error);
+            }
+        });
 
         Ok(())
     }

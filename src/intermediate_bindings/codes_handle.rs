@@ -47,6 +47,9 @@ pub unsafe fn codes_handle_new_from_file(
 }
 
 pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> {
+    #[cfg(test)]
+    log::info!("codes_handle_delete");
+
     if handle.is_null() {
         return Ok(());
     }

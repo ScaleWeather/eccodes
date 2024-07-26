@@ -30,6 +30,9 @@ pub unsafe fn codes_grib_nearest_new(
 }
 
 pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(), CodesError> {
+    #[cfg(test)]
+    log::info!("codes_grib_nearest_delete");
+
     if nearest.is_null() {
         return Ok(());
     }
