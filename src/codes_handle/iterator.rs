@@ -1,19 +1,12 @@
+use crate::{codes_handle::HandleGenerator, errors::CodesError, CodesHandle, KeyedMessage};
 use fallible_streaming_iterator::FallibleStreamingIterator;
-
-use crate::{
-    errors::CodesError, intermediate_bindings::codes_handle_new_from_file, CodesHandle,
-    KeyedMessage,
-};
-#[cfg(feature = "experimental_index")]
-use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};
-
-use super::GribFile;
+use std::fmt::Debug;
 
 /// # Errors
 ///
 /// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
-impl FallibleStreamingIterator for CodesHandle<GribFile> {
+impl<S: HandleGenerator + Debug> FallibleStreamingIterator for CodesHandle<S> {
     type Item = KeyedMessage;
 
     type Error = CodesError;
@@ -21,40 +14,7 @@ impl FallibleStreamingIterator for CodesHandle<GribFile> {
     fn advance(&mut self) -> Result<(), Self::Error> {
         // destructor of KeyedMessage calls ecCodes
 
-        let new_eccodes_handle =
-            unsafe { codes_handle_new_from_file(self.source.pointer, self.product_kind)? };
-
-        self.current_message = if new_eccodes_handle.is_null() {
-            None
-        } else {
-            Some(KeyedMessage {
-                message_handle: new_eccodes_handle,
-            })
-        };
-
-        Ok(())
-    }
-
-    fn get(&self) -> Option<&Self::Item> {
-        self.current_message.as_ref()
-    }
-}
-
-#[cfg(feature = "experimental_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-/// # Errors
-///
-/// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
-/// when internal ecCodes function returns non-zero code.
-impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
-    type Item = KeyedMessage;
-
-    type Error = CodesError;
-
-    fn advance(&mut self) -> Result<(), Self::Error> {
-        // destructor of KeyedMessage calls ecCodes
-
-        let new_eccodes_handle = unsafe { codes_handle_new_from_index(self.source.pointer)? };
+        let new_eccodes_handle = self.source.gen_codes_handle()?;
 
         self.current_message = if new_eccodes_handle.is_null() {
             None

@@ -33,13 +33,15 @@
 //! If you have any suggestions or ideas how to improve the safety of this feature, please open an issue or a pull request.
 
 use crate::{
+    codes_handle::HandleGenerator,
     errors::CodesError,
     intermediate_bindings::{
-        codes_index_add_file, codes_index_delete, codes_index_new, codes_index_read,
-        codes_index_select_double, codes_index_select_long, codes_index_select_string,
+        codes_handle_new_from_index, codes_index_add_file, codes_index_delete, codes_index_new,
+        codes_index_read, codes_index_select_double, codes_index_select_long,
+        codes_index_select_string,
     },
 };
-use eccodes_sys::codes_index;
+use eccodes_sys::{codes_handle, codes_index};
 use std::{path::Path, ptr::null_mut};
 
 #[derive(Debug)]
@@ -252,6 +254,12 @@ impl Select<&str> for CodesIndex {
             codes_index_select_string(new_index.pointer, key, value)?;
         }
         Ok(new_index)
+    }
+}
+
+impl HandleGenerator for CodesIndex {
+    fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError> {
+        unsafe { codes_handle_new_from_index(self.pointer) }
     }
 }
 

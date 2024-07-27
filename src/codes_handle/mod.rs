@@ -3,9 +3,11 @@
 
 #[cfg(feature = "experimental_index")]
 use crate::codes_index::CodesIndex;
-use crate::{pointer_guard, CodesError, KeyedMessage};
+use crate::{
+    intermediate_bindings::codes_handle_new_from_file, pointer_guard, CodesError, KeyedMessage,
+};
 use bytes::Bytes;
-use eccodes_sys::ProductKind_PRODUCT_GRIB;
+use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
 use std::{
@@ -22,8 +24,23 @@ mod iterator;
 /// It is not intended to be used directly by the user.
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct GribFile {
+pub struct CodesFile<D> {
+    // fields dropped from top
     pointer: *mut FILE,
+    product_kind: ProductKind,
+    _data: D,
+}
+
+/// Internal trait implemented for types that can be called to generate `*mut codes_handle`.
+#[doc(hidden)]
+pub trait HandleGenerator {
+    fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError>;
+}
+
+impl<D> HandleGenerator for CodesFile<D> {
+    fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError> {
+        unsafe { codes_handle_new_from_file(self.pointer, self.product_kind) }
+    }
 }
 
 /// Structure providing access to the GRIB file which takes a full ownership of the accessed file.
@@ -103,12 +120,10 @@ pub struct GribFile {
 ///
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
-pub struct CodesHandle<SOURCE: Debug> {
+pub struct CodesHandle<S: Debug + HandleGenerator> {
     // fields are dropped from top to bottom
-    product_kind: ProductKind,
     current_message: Option<KeyedMessage>,
-    source: SOURCE,
-    _data: DataContainer,
+    source: S,
 }
 
 // 2024-07-26
@@ -125,25 +140,15 @@ pub struct CodesHandle<SOURCE: Debug> {
 // Clearing the memory is handled on ecCodes side by KeyedMessage/CodesIndex destructors
 // and on rust side by destructors of data_container we own.
 
-#[derive(Debug)]
-enum DataContainer {
-    #[allow(unused)]
-    FileBytes(Bytes),
-    #[allow(unused)]
-    FileBuffer(File),
-    #[cfg(feature = "experimental_index")]
-    Empty(),
-}
-
-///Enum representing the kind of product (file type) inside handled file.
-///Used to indicate to ecCodes how it should decode/encode messages.
+/// Enum representing the kind of product (file type) inside handled file.
+/// Used to indicate to ecCodes how it should decode/encode messages.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub enum ProductKind {
     #[allow(missing_docs)]
     GRIB = ProductKind_PRODUCT_GRIB as isize,
 }
 
-impl CodesHandle<GribFile> {
+impl CodesHandle<CodesFile<File>> {
     ///Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
@@ -178,21 +183,22 @@ impl CodesHandle<GribFile> {
     ///when the stream cannot be created from the file descriptor.
     ///
     ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///when internal [`codes_handle`] cannot be created.
     pub fn new_from_file(file_path: &Path, product_kind: ProductKind) -> Result<Self, CodesError> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
 
         Ok(Self {
-            _data: (DataContainer::FileBuffer(file)),
-            source: GribFile {
+            source: CodesFile {
+                _data: file,
                 pointer: file_pointer,
+                product_kind,
             },
-            product_kind,
             current_message: None,
         })
     }
-
+}
+impl CodesHandle<CodesFile<Bytes>> {
     ///Opens data in provided [`Bytes`] buffer as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
@@ -225,7 +231,7 @@ impl CodesHandle<GribFile> {
     ///when the file stream cannot be created.
     ///
     ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    ///when internal [`codes_handle`] cannot be created.
     pub fn new_from_memory(
         file_data: Bytes,
         product_kind: ProductKind,
@@ -233,11 +239,11 @@ impl CodesHandle<GribFile> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
         Ok(Self {
-            _data: (DataContainer::FileBytes(file_data)),
-            source: GribFile {
+            source: CodesFile {
+                _data: file_data,
+                product_kind,
                 pointer: file_pointer,
             },
-            product_kind,
             current_message: None,
         })
     }
@@ -273,12 +279,10 @@ impl CodesHandle<CodesIndex> {
     /// ## Errors
     ///
     /// Returns [`CodesError::Internal`] with error code
-    /// when internal [`codes_handle`](eccodes_sys::codes_handle) cannot be created.
+    /// when internal [`codes_handle`] cannot be created.
     pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
         let new_handle = CodesHandle {
-            _data: DataContainer::Empty(), //unused, index owns data
             source: index,
-            product_kind: ProductKind::GRIB,
             current_message: None,
         };
 
@@ -322,7 +326,7 @@ fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, DataContainer, ProductKind};
+    use crate::codes_handle::{CodesHandle, ProductKind};
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
@@ -341,12 +345,11 @@ mod tests {
 
         assert!(!handle.source.pointer.is_null());
         assert!(handle.current_message.is_none());
-        assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
+        assert_eq!(handle.source.product_kind as u32, {
+            ProductKind_PRODUCT_GRIB
+        });
 
-        match &handle._data {
-            DataContainer::FileBuffer(file) => file.metadata()?,
-            _ => panic!(),
-        };
+        handle.source._data.metadata()?;
 
         Ok(())
     }
@@ -363,12 +366,11 @@ mod tests {
         let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
         assert!(!handle.source.pointer.is_null());
         assert!(handle.current_message.is_none());
-        assert_eq!(handle.product_kind as u32, { ProductKind_PRODUCT_GRIB });
+        assert_eq!(handle.source.product_kind as u32, {
+            ProductKind_PRODUCT_GRIB
+        });
 
-        match &handle._data {
-            DataContainer::FileBytes(file) => assert!(!file.is_empty()),
-            _ => panic!(),
-        };
+        assert!(!handle.source._data.is_empty());
 
         Ok(())
     }
