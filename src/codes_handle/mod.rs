@@ -6,7 +6,6 @@ use crate::codes_index::CodesIndex;
 use crate::{
     intermediate_bindings::codes_handle_new_from_file, pointer_guard, CodesError, KeyedMessage,
 };
-use bytes::Bytes;
 use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
 use libc::{c_char, c_void, size_t, FILE};
@@ -198,8 +197,8 @@ impl CodesHandle<CodesFile<File>> {
         })
     }
 }
-impl CodesHandle<CodesFile<Bytes>> {
-    ///Opens data in provided [`Bytes`] buffer as selected [`ProductKind`] and contructs `CodesHandle`.
+impl CodesHandle<CodesFile<Vec<u8>>> {
+    ///Opens data in provided buffer as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
     ///
@@ -212,7 +211,8 @@ impl CodesHandle<CodesFile<Bytes>> {
     ///    reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
     ///        .await?
     ///        .bytes()
-    ///        .await?;
+    ///        .await?
+    ///        .to_vec();
     ///
     ///let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
     /// # Ok(())
@@ -223,7 +223,7 @@ impl CodesHandle<CodesFile<Bytes>> {
     ///represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
     ///using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html).
     ///
-    ///The constructor takes full ownership of the data inside [`Bytes`],
+    ///The constructor takes full ownership of the data inside buffer,
     ///which is safely dropped during the [`CodesHandle`] drop.
     ///
     ///## Errors
@@ -233,7 +233,7 @@ impl CodesHandle<CodesFile<Bytes>> {
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`] cannot be created.
     pub fn new_from_memory(
-        file_data: Bytes,
+        file_data: Vec<u8>,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
         let file_pointer = open_with_fmemopen(&file_data)?;
@@ -302,7 +302,7 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
-fn open_with_fmemopen(file_data: &Bytes) -> Result<*mut FILE, CodesError> {
+fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
     let file_data_ptr = file_data.as_ptr() as *mut c_void;
     pointer_guard::non_null!(file_data_ptr);
 
@@ -330,10 +330,8 @@ mod tests {
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
-    use bytes::Bytes;
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
     use fallible_streaming_iterator::FallibleStreamingIterator;
-    use log::Level;
     use std::{fs::File, io::Read, path::Path};
 
     #[test]
@@ -361,9 +359,8 @@ mod tests {
         let mut f = File::open(Path::new("./data/iceland.grib"))?;
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
-        let file_data = Bytes::from(buf);
 
-        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
+        let handle = CodesHandle::new_from_memory(buf, product_kind)?;
         assert!(!handle.source.pointer.is_null());
         assert!(handle.current_message.is_none());
         assert_eq!(handle.source.product_kind as u32, {
@@ -423,17 +420,8 @@ mod tests {
         let mut f = File::open(Path::new("./data/iceland.grib"))?;
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
-        let file_data = Bytes::from(buf);
 
-        //logs from Reqwest are expected
-        testing_logger::validate(|captured_logs| {
-            for log in captured_logs {
-                assert_ne!(log.level, Level::Warn);
-                assert_ne!(log.level, Level::Error);
-            }
-        });
-
-        let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
+        let handle = CodesHandle::new_from_memory(buf, product_kind)?;
         drop(handle);
 
         testing_logger::validate(|captured_logs| {
