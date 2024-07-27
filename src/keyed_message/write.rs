@@ -6,19 +6,81 @@ use crate::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
         codes_set_long, codes_set_long_array, codes_set_string,
     },
-    Key, KeyType, KeyedMessage,
+    KeyedMessage,
 };
+
+use super::KeyWrite;
+
+impl KeyWrite<i64> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: i64) -> Result<(), CodesError> {
+        unsafe { codes_set_long(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<f64> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: f64) -> Result<(), CodesError> {
+        unsafe { codes_set_double(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&[i64]> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &[i64]) -> Result<(), CodesError> {
+        unsafe { codes_set_long_array(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&[f64]> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &[f64]) -> Result<(), CodesError> {
+        unsafe { codes_set_double_array(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&[u8]> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &[u8]) -> Result<(), CodesError> {
+        unsafe { codes_set_bytes(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&Vec<i64>> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &Vec<i64>) -> Result<(), CodesError> {
+        unsafe { codes_set_long_array(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&Vec<f64>> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &Vec<f64>) -> Result<(), CodesError> {
+        unsafe { codes_set_double_array(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&Vec<u8>> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &Vec<u8>) -> Result<(), CodesError> {
+        unsafe { codes_set_bytes(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&str> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &str) -> Result<(), CodesError> {
+        unsafe { codes_set_string(self.message_handle, name, value) }
+    }
+}
+
+impl KeyWrite<&String> for KeyedMessage {
+    fn write_key(&mut self, name: &str, value: &String) -> Result<(), CodesError> {
+        unsafe { codes_set_string(self.message_handle, name, value) }
+    }
+}
 
 impl KeyedMessage {
     /// Function to write given `KeyedMessage` to a file at provided path.
     /// If file does not exists it will be created.
     /// If `append` is set to `true` file will be opened in append mode
     /// and no data will be overwritten (useful when writing mutiple messages to one file).
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
-    ///  use eccodes::{CodesHandle, Key, KeyType, ProductKind};
+    ///  use eccodes::{CodesHandle, KeyRead, ProductKind};
     ///  # use eccodes::errors::CodesError;
     ///  use eccodes::FallibleStreamingIterator;
     ///  # use std::path::Path;
@@ -27,11 +89,12 @@ impl KeyedMessage {
     ///  # fn main() -> anyhow::Result<(), CodesError> {
     ///  let in_path = Path::new("./data/iceland-levels.grib");
     ///  let out_path  = Path::new("./data/iceland-800hPa.grib");
-    /// 
+    ///
     ///  let mut handle = CodesHandle::new_from_file(in_path, ProductKind::GRIB)?;
-    /// 
+    ///
     ///  while let Some(msg) = handle.next()? {
-    ///      if msg.read_key("level")?.value == KeyType::Int(800) {
+    ///      let level: i64 = msg.read_key("level")?;
+    ///      if level == 800 {
     ///          msg.write_to_file(out_path, true)?;
     ///      }
     ///  }
@@ -39,12 +102,12 @@ impl KeyedMessage {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns [`CodesError::FileHandlingInterrupted`] when the file cannot be opened,
     /// created or correctly written.
-    /// 
+    ///
     /// Returns [`CodesInternal`](crate::errors::CodesInternal)
     /// when internal ecCodes function returns non-zero code.
     pub fn write_to_file(&self, file_path: &Path, append: bool) -> Result<(), CodesError> {
@@ -60,76 +123,6 @@ impl KeyedMessage {
 
         Ok(())
     }
-
-    /// Function to set specified `Key` inside the `KeyedMessage`.
-    /// This function automatically matches the `KeyType` and uses adequate
-    /// internal ecCodes function to set the key.
-    /// The message must be mutable to use this function.
-    /// 
-    /// **User must provide the `Key` with correct type**, otherwise
-    /// error will occur.
-    /// Note that not all keys can be set, for example
-    /// `"name"` and `shortName` are read-only. Trying to set such keys
-    /// will result in error. Some keys can also be set using a non-native
-    /// type (eg. `centre`), but [`read_key()`](KeyedMessage::read_key()) function will only read them
-    /// in native type.
-    /// 
-    /// Refer to [ecCodes library documentation](https://confluence.ecmwf.int/display/ECC/ecCodes+Home)
-    /// for more details.
-    /// 
-    /// # Example
-    /// 
-    /// ```
-    ///  use eccodes::{CodesHandle, Key, KeyType, ProductKind};
-    ///  # use eccodes::errors::CodesError;
-    ///  use eccodes::FallibleStreamingIterator;
-    ///  # use anyhow::Context;
-    ///  # use std::path::Path;
-    ///  #
-    ///  # fn main() -> anyhow::Result<()> {
-    ///  let file_path = Path::new("./data/iceland.grib");
-    ///  
-    ///  let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
-    ///  let mut current_message = handle.next()?.context("no message")?.try_clone()?;
-    ///  
-    ///  let new_key = Key {
-    ///      name: "centre".to_string(),
-    ///      value: KeyType::Str("cnmc".to_string()),
-    ///  };
-    ///  
-    ///  current_message.write_key(new_key)?;
-    ///  # Ok(())
-    ///  # }
-    /// ```
-    /// 
-    /// # Errors
-    /// 
-    /// This method will return [`CodesInternal`](crate::errors::CodesInternal)
-    /// when internal ecCodes function returns non-zero code.
-    pub fn write_key(&mut self, key: Key) -> Result<(), CodesError> {
-        match key.value {
-            KeyType::Float(val) => unsafe {
-                codes_set_double(self.message_handle, &key.name, val)?;
-            },
-            KeyType::Int(val) => unsafe {
-                codes_set_long(self.message_handle, &key.name, val)?;
-            },
-            KeyType::FloatArray(val) => unsafe {
-                codes_set_double_array(self.message_handle, &key.name, &val)?;
-            },
-            KeyType::IntArray(val) => unsafe {
-                codes_set_long_array(self.message_handle, &key.name, &val)?;
-            },
-            KeyType::Str(val) => unsafe {
-                codes_set_string(self.message_handle, &key.name, &val)?;
-            },
-            KeyType::Bytes(val) => unsafe {
-                codes_set_bytes(self.message_handle, &key.name, &val)?;
-            },
-        }
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -138,7 +131,7 @@ mod tests {
 
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
-        FallibleStreamingIterator, Key, KeyType,
+        DynamicKeyType, FallibleStreamingIterator, KeyWrite,
     };
     use std::{fs::remove_file, path::Path};
 
@@ -204,19 +197,14 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
-        let old_key = current_message.read_key("centre")?;
+        let old_key = current_message.read_key_dynamic("centre")?;
 
-        let new_key = Key {
-            name: "centre".to_string(),
-            value: KeyType::Str("cnmc".to_string()),
-        };
+        current_message.write_key("centre", "cnmc")?;
 
-        current_message.write_key(new_key.clone())?;
+        let read_key = current_message.read_key_dynamic("centre")?;
 
-        let read_key = current_message.read_key("centre")?;
-
-        assert_eq!(new_key, read_key);
         assert_ne!(old_key, read_key);
+        assert_eq!(read_key, DynamicKeyType::Str("cnmc".into()));
 
         Ok(())
     }
@@ -229,14 +217,9 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
 
-        let old_key = current_message.read_key("centre")?;
+        let old_key = current_message.read_key_dynamic("centre")?;
 
-        let new_key = Key {
-            name: "centre".to_string(),
-            value: KeyType::Str("cnmc".to_string()),
-        };
-
-        current_message.write_key(new_key.clone())?;
+        current_message.write_key("centre", "cnmc")?;
 
         current_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
 
@@ -245,10 +228,10 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let read_key = current_message.read_key("centre")?;
+        let read_key = current_message.read_key_dynamic("centre")?;
 
-        assert_eq!(new_key, read_key);
         assert_ne!(old_key, read_key);
+        assert_eq!(read_key, DynamicKeyType::Str("cnmc".into()));
 
         remove_file(Path::new("./data/iceland_edit.grib"))?;
 

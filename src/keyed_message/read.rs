@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{
     errors::CodesError,
     intermediate_bindings::{
@@ -5,25 +7,160 @@ use crate::{
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
         NativeKeyType,
     },
-    Key, KeyType, KeyedMessage,
+    DynamicKeyType, KeyRead, KeyedMessage,
 };
 
+impl KeyRead<i64> for KeyedMessage {
+    fn read_key(&self, key_name: &str) -> Result<i64, CodesError> {
+        match self.get_key_native_type(key_name)? {
+            NativeKeyType::Long => (),
+            _ => return Err(CodesError::WrongRequestedKeyType),
+        }
+
+        let key_size = self.get_key_size(key_name)?;
+
+        match key_size.cmp(&1) {
+            Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
+            Ordering::Less => return Err(CodesError::IncorrectKeySize),
+            Ordering::Equal => (),
+        }
+
+        self.read_key_unchecked(key_name)
+    }
+
+    fn read_key_unchecked(&self, key_name: &str) -> Result<i64, CodesError> {
+        unsafe { codes_get_long(self.message_handle, key_name) }
+    }
+}
+
+impl KeyRead<f64> for KeyedMessage {
+    fn read_key(&self, key_name: &str) -> Result<f64, CodesError> {
+        match self.get_key_native_type(key_name)? {
+            NativeKeyType::Double => (),
+            _ => return Err(CodesError::WrongRequestedKeyType),
+        }
+
+        let key_size = self.get_key_size(key_name)?;
+
+        match key_size.cmp(&1) {
+            Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
+            Ordering::Less => return Err(CodesError::IncorrectKeySize),
+            Ordering::Equal => (),
+        }
+
+        self.read_key_unchecked(key_name)
+    }
+
+    fn read_key_unchecked(&self, key_name: &str) -> Result<f64, CodesError> {
+        unsafe { codes_get_double(self.message_handle, key_name) }
+    }
+}
+
+impl KeyRead<String> for KeyedMessage {
+    fn read_key(&self, key_name: &str) -> Result<String, CodesError> {
+        match self.get_key_native_type(key_name)? {
+            NativeKeyType::Str => (),
+            _ => return Err(CodesError::WrongRequestedKeyType),
+        }
+
+        let key_size = self.get_key_size(key_name)?;
+
+        if key_size < 1 {
+            return Err(CodesError::IncorrectKeySize);
+        }
+
+        self.read_key_unchecked(key_name)
+    }
+
+    fn read_key_unchecked(&self, key_name: &str) -> Result<String, CodesError> {
+        unsafe { codes_get_string(self.message_handle, key_name) }
+    }
+}
+
+impl KeyRead<Vec<i64>> for KeyedMessage {
+    fn read_key(&self, key_name: &str) -> Result<Vec<i64>, CodesError> {
+        match self.get_key_native_type(key_name)? {
+            NativeKeyType::Long => (),
+            _ => return Err(CodesError::WrongRequestedKeyType),
+        }
+
+        let key_size = self.get_key_size(key_name)?;
+
+        if key_size < 1 {
+            return Err(CodesError::IncorrectKeySize);
+        }
+
+        self.read_key_unchecked(key_name)
+    }
+
+    fn read_key_unchecked(&self, key_name: &str) -> Result<Vec<i64>, CodesError> {
+        unsafe { codes_get_long_array(self.message_handle, key_name) }
+    }
+}
+
+impl KeyRead<Vec<f64>> for KeyedMessage {
+    fn read_key(&self, key_name: &str) -> Result<Vec<f64>, CodesError> {
+        match self.get_key_native_type(key_name)? {
+            NativeKeyType::Double => (),
+            _ => return Err(CodesError::WrongRequestedKeyType),
+        }
+
+        let key_size = self.get_key_size(key_name)?;
+
+        if key_size < 1 {
+            return Err(CodesError::IncorrectKeySize);
+        }
+
+        self.read_key_unchecked(key_name)
+    }
+
+    fn read_key_unchecked(&self, key_name: &str) -> Result<Vec<f64>, CodesError> {
+        unsafe { codes_get_double_array(self.message_handle, key_name) }
+    }
+}
+
+impl KeyRead<Vec<u8>> for KeyedMessage {
+    fn read_key(&self, key_name: &str) -> Result<Vec<u8>, CodesError> {
+        match self.get_key_native_type(key_name)? {
+            NativeKeyType::Bytes => (),
+            _ => return Err(CodesError::WrongRequestedKeyType),
+        }
+
+        let key_size = self.get_key_size(key_name)?;
+
+        if key_size < 1 {
+            return Err(CodesError::IncorrectKeySize);
+        }
+
+        self.read_key_unchecked(key_name)
+    }
+
+    fn read_key_unchecked(&self, key_name: &str) -> Result<Vec<u8>, CodesError> {
+        unsafe { codes_get_bytes(self.message_handle, key_name) }
+    }
+}
+
 impl KeyedMessage {
-    /// Method to get a [`Key`] with provided name from the `KeyedMessage`, if it exists.
-    /// 
-    /// This function check the type of requested key and tries to read it as the native type.
+    /// Method to get a value of given key with [`DynamicKeyType`] from the `KeyedMessage`, if it exists.
+    ///
+    /// In most cases you should use [`read_key()`](KeyRead::read_key) due to more predictive behaviour
+    /// and simpler interface.
+    ///
+    /// This function exists for backwards compatibility and user convienience.
+    ///
+    /// This function checks the type of requested key and tries to read it as the native type.
     /// That flow adds performance overhead, but makes the function highly unlikely to fail.
-    /// 
+    ///
     /// This function will try to retrieve the key of native string type as string even
     /// when the nul byte is not positioned at the end of key value.
-    /// 
+    ///
     /// If retrieving the key value in native type fails this function will try to read
     /// the requested key as bytes.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesHandle, KeyType};
+    ///  use eccodes::{ProductKind, CodesHandle, DynamicKeyType};
     ///  # use std::path::Path;
     ///  # use anyhow::Context;
     ///  use eccodes::FallibleStreamingIterator;
@@ -34,30 +171,30 @@ impl KeyedMessage {
     ///  
     ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
     ///  let message = handle.next()?.context("no message")?;
-    ///  let message_short_name = message.read_key("shortName")?;
-    ///  let expected_short_name = KeyType::Str("msl".to_string());
+    ///  let message_short_name = message.read_key_dynamic("shortName")?;
+    ///  let expected_short_name = DynamicKeyType::Str("msl".to_string());
     ///  
-    ///  assert_eq!(message_short_name.value, expected_short_name);
+    ///  assert_eq!(message_short_name, expected_short_name);
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns [`CodesNotFound`](crate::errors::CodesInternal::CodesNotFound)
     /// when a key of given name has not been found in the message.
-    /// 
+    ///
     /// Returns [`CodesError::MissingKey`] when a given key does not have a specified type.
-    /// 
+    ///
     /// Returns [`CodesError::Internal`] when one of internal ecCodes functions to read the key fails.
-    /// 
+    ///
     /// Returns [`CodesError::CstrUTF8`] and [`CodesError::NulChar`] when the string returned by ecCodes
     /// library cannot be parsed as valid UTF8 Rust string.
-    /// 
+    ///
     /// Returns [`CodesError::IncorrectKeySize`] when the size of given key is lower than 1. This indicates corrupted data file,
     /// bug in the crate or bug in the ecCodes library. If you encounter this error please check
     /// if your file is correct and report it on Github.
-    pub fn read_key(&self, key_name: &str) -> Result<Key, CodesError> {
+    pub fn read_key_dynamic(&self, key_name: &str) -> Result<DynamicKeyType, CodesError> {
         let key_type;
 
         unsafe {
@@ -76,7 +213,7 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::Int(val)),
+                        Ok(val) => Ok(DynamicKeyType::Int(val)),
                         Err(err) => Err(err),
                     }
                 } else if key_size >= 2 {
@@ -86,11 +223,11 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::IntArray(val)),
+                        Ok(val) => Ok(DynamicKeyType::IntArray(val)),
                         Err(err) => Err(err),
                     }
                 } else {
-                    return Err(CodesError::IncorrectKeySize)
+                    return Err(CodesError::IncorrectKeySize);
                 }
             }
             NativeKeyType::Double => {
@@ -104,7 +241,7 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::Float(val)),
+                        Ok(val) => Ok(DynamicKeyType::Float(val)),
                         Err(err) => Err(err),
                     }
                 } else if key_size >= 2 {
@@ -114,11 +251,11 @@ impl KeyedMessage {
                     }
 
                     match value {
-                        Ok(val) => Ok(KeyType::FloatArray(val)),
+                        Ok(val) => Ok(DynamicKeyType::FloatArray(val)),
                         Err(err) => Err(err),
                     }
                 } else {
-                    return Err(CodesError::IncorrectKeySize)
+                    return Err(CodesError::IncorrectKeySize);
                 }
             }
             NativeKeyType::Bytes => {
@@ -128,7 +265,7 @@ impl KeyedMessage {
                 }
 
                 match value {
-                    Ok(val) => Ok(KeyType::Bytes(val)),
+                    Ok(val) => Ok(DynamicKeyType::Bytes(val)),
                     Err(err) => Err(err),
                 }
             }
@@ -140,27 +277,21 @@ impl KeyedMessage {
                 }
 
                 match value {
-                    Ok(val) => Ok(KeyType::Str(val)),
+                    Ok(val) => Ok(DynamicKeyType::Str(val)),
                     Err(err) => Err(err),
                 }
             }
         };
 
         if let Ok(value) = key_value {
-            Ok(Key {
-                name: key_name.to_owned(),
-                value,
-            })
+            Ok(value)
         } else {
             let value;
             unsafe {
                 value = codes_get_bytes(self.message_handle, key_name)?;
             }
 
-            Ok(Key {
-                name: key_name.to_owned(),
-                value: KeyType::Bytes(value),
-            })
+            Ok(DynamicKeyType::Bytes(value))
         }
     }
 }
@@ -170,7 +301,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator, KeyType};
+    use crate::{DynamicKeyType, FallibleIterator, FallibleStreamingIterator};
     use std::path::Path;
 
     #[test]
@@ -182,46 +313,38 @@ mod tests {
 
         let current_message = handle.next()?.context("Message not some")?;
 
-        let str_key = current_message.read_key("name")?;
+        let str_key = current_message.read_key_dynamic("name")?;
 
-        match str_key.value {
-            KeyType::Str(_) => {}
+        match str_key {
+            DynamicKeyType::Str(_) => {}
             _ => panic!("Incorrect variant of string key"),
         }
 
-        assert_eq!(str_key.name, "name");
-
-        let double_key = current_message.read_key("jDirectionIncrementInDegrees")?;
-        match double_key.value {
-            KeyType::Float(_) => {}
+        let double_key = current_message.read_key_dynamic("jDirectionIncrementInDegrees")?;
+        match double_key {
+            DynamicKeyType::Float(_) => {}
             _ => panic!("Incorrect variant of double key"),
         }
 
-        assert_eq!(double_key.name, "jDirectionIncrementInDegrees");
+        let long_key = current_message.read_key_dynamic("numberOfPointsAlongAParallel")?;
 
-        let long_key = current_message.read_key("numberOfPointsAlongAParallel")?;
-
-        match long_key.value {
-            KeyType::Int(_) => {}
+        match long_key {
+            DynamicKeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
 
-        assert_eq!(long_key.name, "numberOfPointsAlongAParallel");
+        let double_arr_key = current_message.read_key_dynamic("values")?;
 
-        let double_arr_key = current_message.read_key("values")?;
-
-        match double_arr_key.value {
-            KeyType::FloatArray(_) => {}
+        match double_arr_key {
+            DynamicKeyType::FloatArray(_) => {}
             _ => panic!("Incorrect variant of double array key"),
         }
-
-        assert_eq!(double_arr_key.name, "values");
 
         Ok(())
     }
 
     #[test]
-    fn era5_keys() -> Result<()> {
+    fn era5_keys_dynamic() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -229,15 +352,16 @@ mod tests {
         let current_message = handle.next()?.context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
-        while let Some(key) = kiter.next()? {
-            assert!(!key.name.is_empty());
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
+            assert!(current_message.read_key_dynamic(&key_name).is_ok())
         }
 
         Ok(())
     }
 
     #[test]
-    fn gfs_keys() -> Result<()> {
+    fn gfs_keys_dynamic() -> Result<()> {
         let file_path = Path::new("./data/gfs.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -245,8 +369,9 @@ mod tests {
         let current_message = handle.next()?.context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
-        while let Some(key) = kiter.next()? {
-            assert!(!key.name.is_empty());
+        while let Some(key_name) = kiter.next()? {
+            assert!(!key_name.is_empty());
+            assert!(current_message.read_key_dynamic(&key_name).is_ok())
         }
 
         Ok(())
@@ -260,7 +385,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let missing_key = current_message.read_key("doesNotExist");
+        let missing_key = current_message.read_key_dynamic("doesNotExist");
 
         assert!(missing_key.is_err());
 
@@ -276,15 +401,15 @@ mod tests {
 
         let msg = handle.next()?.context("Message not some")?;
 
-        let _ = msg.read_key("dataDate")?;
-        let _ = msg.read_key("jDirectionIncrementInDegrees")?;
-        let _ = msg.read_key("values")?;
-        let _ = msg.read_key("name")?;
-        let _ = msg.read_key("section1Padding")?;
-        let _ = msg.read_key("experimentVersionNumber")?;
+        let _ = msg.read_key_dynamic("dataDate")?;
+        let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;
+        let _ = msg.read_key_dynamic("values")?;
+        let _ = msg.read_key_dynamic("name")?;
+        let _ = msg.read_key_dynamic("section1Padding")?;
+        let _ = msg.read_key_dynamic("experimentVersionNumber")?;
         let _ = msg
-            .read_key("zero")
-            .unwrap_or_else(|_| msg.read_key("zeros").unwrap());
+            .read_key_dynamic("zero")
+            .unwrap_or_else(|_| msg.read_key_dynamic("zeros").unwrap());
 
         Ok(())
     }

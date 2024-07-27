@@ -1,9 +1,9 @@
 #![cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-//! Definition of functions to convert a `KeyedMessage` to ndarray
+//! Definitions for converting a `KeyedMessage` to ndarray
 
 use ndarray::{s, Array2, Array3};
 
-use crate::{errors::MessageNdarrayError, CodesError, KeyType, KeyedMessage};
+use crate::{errors::MessageNdarrayError, CodesError, KeyRead, KeyedMessage};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
@@ -22,14 +22,14 @@ impl KeyedMessage {
     /// Converts the message to a 2D ndarray.
     ///
     /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
-    /// ie. `[lat, lon]`. 
-    /// 
-    /// Common convention for grib files on regular lon-lat grid assumes that: 
+    /// ie. `[lat, lon]`.
+    ///
+    /// Common convention for grib files on regular lon-lat grid assumes that:
     /// index `[0, 0]` is the top-left corner of the grid:
     /// x coordinates are increasing with the i index,
     /// y coordinates are decreasing with the j index.
-    /// 
-    /// This convention can be checked with `iScansNegatively` and `jScansPositively` keys - 
+    ///
+    /// This convention can be checked with `iScansNegatively` and `jScansPositively` keys -
     /// if both are false, the above convention is used.
     ///
     /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
@@ -42,29 +42,18 @@ impl KeyedMessage {
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
-        let KeyType::Int(ni) = self.read_key("Ni")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
-        };
+        let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::Int(nj) = self.read_key("Nj")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
-        };
+        let nj: i64 = self.read_key("Nj")?;
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::FloatArray(vals) = self.read_key("values")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("values".to_owned()).into());
-        };
-
+        let vals: Vec<f64> = self.read_key("values")?;
         if vals.len() != (ni * nj) {
             return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
         }
 
-        let KeyType::Int(j_scanning) = self.read_key("jPointsAreConsecutive")?.value else {
-            return Err(
-                MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
-            );
-        };
+        let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
 
         if ![0, 1].contains(&j_scanning) {
             return Err(MessageNdarrayError::UnexpectedKeyValue(
@@ -98,19 +87,13 @@ impl KeyedMessage {
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
-        let KeyType::Int(ni) = self.read_key("Ni")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Ni".to_owned()).into());
-        };
+        let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::Int(nj) = self.read_key("Nj")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("Nj".to_owned()).into());
-        };
+        let nj: i64 = self.read_key("Nj")?;
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let KeyType::FloatArray(latlonvals) = self.read_key("latLonValues")?.value else {
-            return Err(MessageNdarrayError::UnexpectedKeyType("latLonValues".to_owned()).into());
-        };
+        let latlonvals: Vec<f64> = self.read_key("latLonValues")?;
 
         if latlonvals.len() != (ni * nj * 3) {
             return Err(
@@ -118,11 +101,7 @@ impl KeyedMessage {
             );
         }
 
-        let KeyType::Int(j_scanning) = self.read_key("jPointsAreConsecutive")?.value else {
-            return Err(
-                MessageNdarrayError::UnexpectedKeyType("jPointsAreConsecutive".to_owned()).into(),
-            );
-        };
+        let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
 
         if ![0, 1].contains(&j_scanning) {
             return Err(MessageNdarrayError::UnexpectedKeyValue(
@@ -165,8 +144,8 @@ mod tests {
 
     use super::*;
     use crate::codes_handle::CodesHandle;
+    use crate::DynamicKeyType;
     use crate::FallibleStreamingIterator;
-    use crate::KeyType;
     use crate::ProductKind;
     use std::path::Path;
 
@@ -176,7 +155,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key("shortName")?.value == KeyType::Str("2d".to_string()) {
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let ndarray = msg.to_ndarray()?;
 
                 // values from xarray
@@ -202,7 +181,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key("shortName")?.value == KeyType::Str("2d".to_string()) {
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let rmsg = msg.to_lons_lats_values()?;
 
                 let vals = rmsg.values;

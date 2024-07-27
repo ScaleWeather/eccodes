@@ -44,6 +44,9 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
 }
 
 pub unsafe fn codes_index_delete(index: *mut codes_index) {
+    #[cfg(test)]
+    log::trace!("codes_index_delete");
+
     if index.is_null() {
         return;
     }

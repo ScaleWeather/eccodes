@@ -5,11 +5,14 @@ mod read;
 mod write;
 
 use eccodes_sys::codes_handle;
-use log::warn;
+use log::error;
 use std::ptr::null_mut;
 
 use crate::{
-    intermediate_bindings::{codes_handle_clone, codes_handle_delete},
+    intermediate_bindings::{
+        codes_get_native_type, codes_get_size, codes_handle_clone, codes_handle_delete,
+        NativeKeyType,
+    },
     CodesError,
 };
 
@@ -19,12 +22,11 @@ use crate::{
 ///
 /// You can think about the message as a container of data corresponding to a single variable
 /// at given date, time and level. In ecCodes the message is represented as a collection of unique
-/// key-value pairs. Each [`Key`] in the message has a unique name and a value of type [`KeyType`].
+/// key-value pairs.
 ///
-/// You can read a `Key` directly using [`read_key()`](KeyedMessage::read_key()) or iterate over
-/// all keys using [`KeysIterator`](crate::KeysIterator). You can also modify the message using
-/// [`write_key()`](KeyedMessage::write_key()). As of `0.10`, this crate can successfully read all keys
-/// from ERA5 and GFS files.
+/// You can read a `Key` with static types using [`read_key()`](KeyRead::read_key()) or with [`DynamicKeyType`] using[`read_key_dynamic()`](KeyedMessage::read_key_dynamic())
+/// To iterate over all key names use [`KeysIterator`](crate::KeysIterator). You can also modify the message using
+/// [`write_key()`](KeyWrite::write_key()). This crate can successfully read all keys from ERA5 and GFS files.
 ///
 /// If you are interested only in getting data values from the message you can use
 /// [`to_ndarray()`](KeyedMessage::to_ndarray) from the [`message_ndarray`](crate::message_ndarray) module.
@@ -49,22 +51,117 @@ pub struct KeyedMessage {
     pub(crate) message_handle: *mut codes_handle,
 }
 
-/// Structure representing a single key in the `KeyedMessage`
-#[derive(Clone, Debug, PartialEq)]
-pub struct Key {
-    #[allow(missing_docs)]
-    pub name: String,
-    #[allow(missing_docs)]
-    pub value: KeyType,
+/// Provides GRIB key reading capabilites. Implemented by [`KeyedMessage`] for all possible key types.
+pub trait KeyRead<T> {
+    /// Tries to read a key of given name from [`KeyedMessage`]. This function checks if key native type
+    /// matches the requested type (ie. you cannot read integer as string, or array as a number).
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  # use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  # let file_path = Path::new("./data/iceland.grib");
+    ///  # let product_kind = ProductKind::GRIB;
+    ///  #
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///  let message = handle.next()?.context("no message")?;
+    ///  let short_name: String = message.read_key("shortName")?;
+    ///  
+    ///  assert_eq!(short_name, "msl");
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeyType) when trying to read key in non-native type (use [`unchecked`](KeyRead::read_key_unchecked) instead).
+    ///
+    /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeySize) when trying to read array as integer.
+    ///
+    /// Returns [`IncorrectKeySize`](CodesError::IncorrectKeySize) when key size is 0. This can indicate corrupted data.
+    ///
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
+    fn read_key(&self, name: &str) -> Result<T, CodesError>;
+
+    /// Skips all the checks provided by [`read_key`](KeyRead::read_key) and directly calls ecCodes, ensuring only memory and type safety.
+    ///
+    /// This function has better perfomance than [`read_key`](KeyRead::read_key) but all error handling and (possible)
+    /// type conversions are performed directly by ecCodes.
+    ///
+    /// This function is also useful for (not usually used) keys that return incorrect native type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  # use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  # let file_path = Path::new("./data/iceland.grib");
+    ///  # let product_kind = ProductKind::GRIB;
+    ///  #
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///  let message = handle.next()?.context("no message")?;
+    ///  let short_name: String = message.read_key_unchecked("shortName")?;
+    ///  
+    ///  assert_eq!(short_name, "msl");
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
+    fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
 }
 
-/// Enum representing the value of [`Key`] from the `KeyedMessage`
+/// Provides GRIB key writing capabilites. Implemented by [`KeyedMessage`] for all possible key types.
+pub trait KeyWrite<T> {
+    /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless
+    /// the key is read-only. This function directly calls ecCodes ensuring only type and memory safety.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use eccodes::{ProductKind, CodesHandle, KeyWrite};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  # use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  # let file_path = Path::new("./data/iceland.grib");
+    ///  # let product_kind = ProductKind::GRIB;
+    ///  #
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///
+    /// // CodesHandle iterator returns immutable messages.
+    /// // To edit a message it must be cloned.
+    ///  let mut message = handle.next()?.context("no message")?.try_clone()?;
+    ///  message.write_key("level", 1)?;
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to write the key.
+    fn write_key(&mut self, name: &str, value: T) -> Result<(), CodesError>;
+}
+
+/// Enum of types GRIB key can have.
 ///
 /// Messages inside GRIB files can contain keys of arbitrary types, which are known only at runtime (after being checked).
 /// ecCodes can return several different types of key, which are represented by this enum
 /// and each variant contains the respective data type.
 #[derive(Clone, Debug, PartialEq)]
-pub enum KeyType {
+pub enum DynamicKeyType {
     #[allow(missing_docs)]
     Float(f64),
     #[allow(missing_docs)]
@@ -91,6 +188,14 @@ impl KeyedMessage {
             message_handle: new_handle,
         })
     }
+
+    fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError> {
+        unsafe { codes_get_size(self.message_handle, key_name) }
+    }
+
+    fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError> {
+        unsafe { codes_get_native_type(self.message_handle, key_name) }
+    }
 }
 
 #[doc(hidden)]
@@ -111,7 +216,7 @@ impl Drop for KeyedMessage {
     fn drop(&mut self) {
         unsafe {
             codes_handle_delete(self.message_handle).unwrap_or_else(|error| {
-                warn!("codes_handle_delete() returned an error: {:?}", &error);
+                error!("codes_handle_delete() returned an error: {:?}", &error);
             });
         }
 
@@ -135,13 +240,13 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle.next()?.context("Message not some")?;
 
-        let _ = current_message.read_key("validityDate")?;
-        let _ = current_message.read_key("validityTime")?;
-        let _ = current_message.read_key("level")?;
-        let _ = current_message.read_key("shortName")?;
-        let _ = current_message.read_key("units")?;
-        let _ = current_message.read_key("values")?;
-        let _ = current_message.read_key("typeOfLevel")?;
+        let _ = current_message.read_key_dynamic("validityDate")?;
+        let _ = current_message.read_key_dynamic("validityTime")?;
+        let _ = current_message.read_key_dynamic("level")?;
+        let _ = current_message.read_key_dynamic("shortName")?;
+        let _ = current_message.read_key_dynamic("units")?;
+        let _ = current_message.read_key_dynamic("values")?;
+        let _ = current_message.read_key_dynamic("typeOfLevel")?;
 
         Ok(())
     }
@@ -174,35 +279,44 @@ mod tests {
 
         drop(handle);
 
-        let _ = msg.read_key("dataDate")?;
-        let _ = msg.read_key("jDirectionIncrementInDegrees")?;
-        let _ = msg.read_key("values")?;
-        let _ = msg.read_key("name")?;
-        let _ = msg.read_key("section1Padding")?;
-        let _ = msg.read_key("experimentVersionNumber")?;
+        let _ = msg.read_key_dynamic("dataDate")?;
+        let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;
+        let _ = msg.read_key_dynamic("values")?;
+        let _ = msg.read_key_dynamic("name")?;
+        let _ = msg.read_key_dynamic("section1Padding")?;
+        let _ = msg.read_key_dynamic("experimentVersionNumber")?;
 
         Ok(())
     }
 
     #[test]
-    fn message_drop() -> Result<()> {
+    fn message_clone_drop() -> Result<()> {
         testing_logger::setup();
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?.try_clone()?;
-
-        let _kiter = current_message.default_keys_iterator()?;
-        let _niter = current_message.codes_nearest()?;
-
-        drop(handle);
-        drop(_kiter);
-        drop(_niter);
-        drop(current_message);
+        let _msg_ref = handle.next()?.context("Message not some")?;
+        let _msg_clone = _msg_ref.try_clone()?;
 
         testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 0);
+        });
+
+        drop(_msg_clone);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_handle_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
+
+        drop(handle);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_handle_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
         });
 
         Ok(())

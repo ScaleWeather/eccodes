@@ -4,7 +4,7 @@
 use std::ptr::null_mut;
 
 use eccodes_sys::codes_nearest;
-use log::warn;
+use log::error;
 
 use crate::{
     intermediate_bindings::{
@@ -40,9 +40,9 @@ impl KeyedMessage {
     /// Creates a new instance of [`CodesNearest`] for the `KeyedMessage`.
     /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`
     /// by calling [`find_nearest()`](crate::CodesNearest::find_nearest).
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal nearest handle cannot be created.
     pub fn codes_nearest(&self) -> Result<CodesNearest, CodesError> {
@@ -106,7 +106,7 @@ impl Drop for CodesNearest<'_> {
     fn drop(&mut self) {
         unsafe {
             codes_grib_nearest_delete(self.nearest_handle).unwrap_or_else(|error| {
-                warn!(
+                error!(
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );
@@ -147,6 +147,35 @@ mod tests {
         assert!(out1[1].lat == 64.0);
         assert!(out2[2].lon == -21.75);
         assert!(out1[0].distance > 15.0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn destructor() -> Result<()> {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let current_message = handle.next()?.context("Message not some")?;
+
+        let _nrst = current_message.codes_nearest()?;
+
+        drop(_nrst);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_grib_nearest_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
+
+        drop(handle);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_handle_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
 
         Ok(())
     }

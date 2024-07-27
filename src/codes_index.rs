@@ -33,15 +33,16 @@
 //! If you have any suggestions or ideas how to improve the safety of this feature, please open an issue or a pull request.
 
 use crate::{
-    codes_handle::SpecialDrop,
+    codes_handle::HandleGenerator,
     errors::CodesError,
     intermediate_bindings::{
-        codes_index_add_file, codes_index_new, codes_index_read, codes_index_select_double,
-        codes_index_select_long, codes_index_select_string,
+        codes_handle_new_from_index, codes_index_add_file, codes_index_delete, codes_index_new,
+        codes_index_read, codes_index_select_double, codes_index_select_long,
+        codes_index_select_string,
     },
 };
-use eccodes_sys::codes_index;
-use std::path::Path;
+use eccodes_sys::{codes_handle, codes_index};
+use std::{path::Path, ptr::null_mut};
 
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -256,21 +257,29 @@ impl Select<&str> for CodesIndex {
     }
 }
 
+impl HandleGenerator for CodesIndex {
+    fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError> {
+        unsafe { codes_handle_new_from_index(self.pointer) }
+    }
+}
+
 #[doc(hidden)]
 impl Drop for CodesIndex {
     fn drop(&mut self) {
-        self.spec_drop();
+        unsafe { codes_index_delete(self.pointer) }
+        self.pointer = null_mut();
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{bail, Result};
+    use anyhow::{bail, Context, Result};
+    use fallible_streaming_iterator::FallibleStreamingIterator;
 
     use crate::{
         codes_index::{CodesIndex, Select},
         errors::CodesInternal,
-        CodesError,
+        CodesError, CodesHandle,
     };
     use std::path::Path;
     #[test]
@@ -295,6 +304,13 @@ mod tests {
         let index = CodesIndex::new_from_keys(&keys)?;
 
         drop(index);
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "codes_index_delete");
+            assert_eq!(captured_logs[0].level, log::Level::Trace);
+        });
+
         Ok(())
     }
 
@@ -332,6 +348,42 @@ mod tests {
         } else {
             bail!("Expected CodesError::Internal(CodesInternal::CodesIoProblem)");
         }
+        Ok(())
+    }
+
+    #[test]
+    fn handle_from_index_destructor() -> Result<()> {
+        testing_logger::setup();
+        {
+            let keys = vec!["typeOfLevel", "level"];
+            let index = CodesIndex::new_from_keys(&keys)?;
+            let grib_path = Path::new("./data/iceland-levels.grib");
+            let index = index
+                .add_grib_file(grib_path)?
+                .select("typeOfLevel", "isobaricInhPa")?
+                .select("level", 600)?;
+
+            let mut handle = CodesHandle::new_from_index(index)?;
+            let _ref_msg = handle.next()?.context("no message")?;
+        }
+
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 2);
+
+            let expected_logs = vec![
+                ("codes_handle_delete", log::Level::Trace),
+                ("codes_index_delete", log::Level::Trace),
+            ];
+
+            captured_logs
+                .iter()
+                .zip(expected_logs)
+                .for_each(|(clg, elg)| {
+                    assert_eq!(clg.body, elg.0);
+                    assert_eq!(clg.level, elg.1)
+                });
+        });
+
         Ok(())
     }
 }

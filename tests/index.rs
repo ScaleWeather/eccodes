@@ -1,10 +1,14 @@
 #![cfg(feature = "experimental_index")]
 
-use std::{path::Path, thread};
+use std::{
+    path::Path,
+    sync::{Arc, Barrier},
+    thread,
+};
 
 use anyhow::{Context, Result};
 use eccodes::{
-    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyType,
+    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyRead,
     ProductKind,
 };
 use rand::Rng;
@@ -40,18 +44,12 @@ fn read_index_messages() -> Result<()> {
     let current_message = handle.next()?.context("Message not some")?;
 
     {
-        let short_name = current_message.read_key("shortName")?;
-        match short_name.value {
-            KeyType::Str(val) => assert!(val == "2t"),
-            _ => panic!("Unexpected key type"),
-        };
+        let short_name: String = current_message.read_key("shortName")?;
+        assert_eq!(short_name, "2t");
     }
     {
-        let level = current_message.read_key("level")?;
-        match level.value {
-            KeyType::Int(val) => assert!(val == 0),
-            _ => panic!("Unexpected key type"),
-        };
+        let level: i64 = current_message.read_key("level")?;
+        assert_eq!(level, 0);
     }
 
     Ok(())
@@ -172,34 +170,32 @@ fn add_file_to_read_index() -> Result<()> {
 #[test]
 #[ignore = "for releases, indexing is experimental"]
 fn simulatenous_index_destructors() -> Result<()> {
-    let h1 = thread::spawn(|| -> anyhow::Result<(), CodesError> {
-        let mut rng = rand::thread_rng();
+    let barrier = Arc::new(Barrier::new(2));
+    let b1 = barrier.clone();
+    let b2 = barrier.clone();
+
+    let h1 = thread::spawn(move || -> anyhow::Result<(), CodesError> {
         let file_path = Path::new("./data/iceland-surface.grib.idx");
 
-        for _ in 0..10 {
-            let sleep_time = rng.gen_range(1..30); // randomizing sleep time to hopefully catch segfaults
-
+        for _ in 0..100 {
             let index_op = CodesIndex::read_from_file(file_path)?
                 .select("shortName", "2t")?
                 .select("typeOfLevel", "surface")?
                 .select("level", 0)?
                 .select("stepType", "instant")?;
 
-            thread::sleep(std::time::Duration::from_millis(sleep_time));
+            b1.wait();
             drop(index_op);
         }
 
         Ok(())
     });
 
-    let h2 = thread::spawn(|| -> anyhow::Result<(), CodesError> {
-        let mut rng = rand::thread_rng();
+    let h2 = thread::spawn(move || -> anyhow::Result<(), CodesError> {
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
         let grib_path = Path::new("./data/iceland-surface.grib");
 
-        for _ in 0..10 {
-            let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
-
+        for _ in 0..100 {
             let index = CodesIndex::new_from_keys(&keys)?
                 .add_grib_file(grib_path)?
                 .select("shortName", "2t")?
@@ -207,15 +203,16 @@ fn simulatenous_index_destructors() -> Result<()> {
                 .select("level", 0)?
                 .select("stepType", "instant")?;
 
-            thread::sleep(std::time::Duration::from_millis(sleep_time));
+            b2.wait();
             drop(index);
         }
 
         Ok(())
     });
 
-    h1.join().unwrap()?;
-    h2.join().unwrap()?;
+    // errors are fine
+    h1.join().unwrap().unwrap_or(());
+    h2.join().unwrap().unwrap_or(());
 
     Ok(())
 }

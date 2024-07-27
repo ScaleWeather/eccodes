@@ -1,89 +1,34 @@
-use std::ptr;
-
+use crate::{codes_handle::HandleGenerator, errors::CodesError, CodesHandle, KeyedMessage};
 use fallible_streaming_iterator::FallibleStreamingIterator;
-
-use crate::{
-    errors::CodesError,
-    intermediate_bindings::{codes_handle_delete, codes_handle_new_from_file},
-    CodesHandle, KeyedMessage,
-};
-#[cfg(feature = "experimental_index")]
-use crate::{intermediate_bindings::codes_handle_new_from_index, CodesIndex};
-
-use super::GribFile;
+use std::fmt::Debug;
 
 /// # Errors
 ///
 /// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
-impl FallibleStreamingIterator for CodesHandle<GribFile> {
+impl<S: HandleGenerator + Debug> FallibleStreamingIterator for CodesHandle<S> {
     type Item = KeyedMessage;
 
     type Error = CodesError;
 
     fn advance(&mut self) -> Result<(), Self::Error> {
-        unsafe {
-            codes_handle_delete(self.unsafe_message.message_handle)?;
-        }
+        // destructor of KeyedMessage calls ecCodes
 
-        // nullify message handle so that destructor is harmless
-        // it might be excessive but it follows the correct pattern
-        self.unsafe_message.message_handle = ptr::null_mut();
+        let new_eccodes_handle = self.source.gen_codes_handle()?;
 
-        let new_eccodes_handle =
-            unsafe { codes_handle_new_from_file(self.source.pointer, self.product_kind)? };
-
-        self.unsafe_message = KeyedMessage {
-            message_handle: new_eccodes_handle,
+        self.current_message = if new_eccodes_handle.is_null() {
+            None
+        } else {
+            Some(KeyedMessage {
+                message_handle: new_eccodes_handle,
+            })
         };
 
         Ok(())
     }
 
     fn get(&self) -> Option<&Self::Item> {
-        if self.unsafe_message.message_handle.is_null() {
-            None
-        } else {
-            Some(&self.unsafe_message)
-        }
-    }
-}
-
-#[cfg(feature = "experimental_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-/// # Errors
-///
-/// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
-/// when internal ecCodes function returns non-zero code.
-impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
-    type Item = KeyedMessage;
-
-    type Error = CodesError;
-
-    fn advance(&mut self) -> Result<(), Self::Error> {
-        unsafe {
-            codes_handle_delete(self.unsafe_message.message_handle)?;
-        }
-
-        // nullify message handle so that destructor is harmless
-        // it might be excessive but it follows the correct pattern
-        self.unsafe_message.message_handle = ptr::null_mut();
-
-        let new_eccodes_handle = unsafe { codes_handle_new_from_index(self.source.pointer)? };
-
-        self.unsafe_message = KeyedMessage {
-            message_handle: new_eccodes_handle,
-        };
-
-        Ok(())
-    }
-
-    fn get(&self) -> Option<&Self::Item> {
-        if self.unsafe_message.message_handle.is_null() {
-            None
-        } else {
-            Some(&self.unsafe_message)
-        }
+        self.current_message.as_ref()
     }
 }
 
@@ -91,7 +36,7 @@ impl FallibleStreamingIterator for CodesHandle<CodesIndex> {
 mod tests {
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
-        KeyType,
+        DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;
@@ -104,17 +49,17 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let msg1 = handle.next()?.context("Message not some")?;
-        let key1 = msg1.read_key("typeOfLevel")?;
+        let key1 = msg1.read_key_dynamic("typeOfLevel")?;
 
         let msg2 = handle.next()?.context("Message not some")?;
-        let key2 = msg2.read_key("typeOfLevel")?;
+        let key2 = msg2.read_key_dynamic("typeOfLevel")?;
 
         let msg3 = handle.next()?.context("Message not some")?;
-        let key3 = msg3.read_key("typeOfLevel")?;
+        let key3 = msg3.read_key_dynamic("typeOfLevel")?;
 
-        assert_eq!(key1.value, KeyType::Str("isobaricInhPa".to_string()));
-        assert_eq!(key2.value, KeyType::Str("isobaricInhPa".to_string()));
-        assert_eq!(key3.value, KeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key1, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key2, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key3, DynamicKeyType::Str("isobaricInhPa".to_string()));
 
         Ok(())
     }
@@ -127,10 +72,10 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         while let Some(msg) = handle.next()? {
-            let key = msg.read_key("shortName")?;
+            let key = msg.read_key_dynamic("shortName")?;
 
-            match key.value {
-                KeyType::Str(_) => {}
+            match key {
+                DynamicKeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
@@ -151,9 +96,9 @@ mod tests {
         }
 
         for msg in handle_collected {
-            let key = msg.read_key("name")?;
-            match key.value {
-                KeyType::Str(_) => {}
+            let key: DynamicKeyType = msg.read_key_dynamic("name")?;
+            match key {
+                DynamicKeyType::Str(_) => {}
                 _ => panic!("Incorrect variant of string key"),
             }
         }
@@ -207,8 +152,9 @@ mod tests {
         let mut level = vec![];
 
         while let Some(msg) = handle.next()? {
-            if msg.read_key("shortName")?.value == KeyType::Str("msl".to_string())
-                && msg.read_key("typeOfLevel")?.value == KeyType::Str("surface".to_string())
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("msl".to_string())
+                && msg.read_key_dynamic("typeOfLevel")?
+                    == DynamicKeyType::Str("surface".to_string())
             {
                 level.push(msg.try_clone()?);
             }
@@ -218,7 +164,7 @@ mod tests {
         // Find nearest modifies internal KeyedMessage fields so we need mutable reference
         let level = &level[0];
 
-        println!("{:?}", level.read_key("shortName"));
+        println!("{:?}", level.read_key_dynamic("shortName"));
 
         // Get the four nearest gridpoints of Reykjavik
         let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89)?;
