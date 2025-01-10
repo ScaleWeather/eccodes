@@ -2,7 +2,7 @@
 name = "eccodes"
 description = "Unofficial high-level Rust bindings of the latest ecCodes release"
 repository = "https://github.com/ScaleWeather/eccodes"
-version = "0.12.0"
+version = "0.13.0"
 readme = "README.md"
 authors = ["Jakub Lewandowski <scaleweather@gmail.com>"]
 keywords = ["eccodes", "grib", "bufr", "meteorology", "weather"]
@@ -16,12 +16,12 @@ categories = [
 license = "Apache-2.0"
 edition = "2021"
 exclude = [".github/*", ".vscode/*", ".idea/*", "data/*"]
-rust-version = "1.70.0"
+rust-version = "1.82.0"
 
 [dependencies]
-eccodes-sys = { version = "0.5.2", default-features = false }
+eccodes-sys = { version = "0.6.0", default-features = false }
 libc = { version = "0.2", default-features = false }
-thiserror = { version = "1.0", default-features = false }
+thiserror = { version = "2.0", default-features = false }
 log = { version = "0.4", default-features = false }
 errno = { version = "0.3", default-features = false }
 num-derive = { version = "0.4", default-features = false }
@@ -38,7 +38,7 @@ criterion = "0.5"
 testing_logger = "0.1"
 rand = "0.8"
 anyhow = { version = "1.0", features = ["backtrace"] }
-float-cmp = "0.9"
+float-cmp = "0.10"
 
 [features]
 default = ["message_ndarray"]
