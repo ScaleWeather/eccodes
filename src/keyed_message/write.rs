@@ -110,7 +110,11 @@ impl KeyedMessage {
     ///
     /// Returns [`CodesInternal`](crate::errors::CodesInternal)
     /// when internal ecCodes function returns non-zero code.
-    pub fn write_to_file(&self, file_path: &Path, append: bool) -> Result<(), CodesError> {
+    pub fn write_to_file<P: AsRef<Path>>(
+        &self,
+        file_path: P,
+        append: bool,
+    ) -> Result<(), CodesError> {
         let msg = unsafe { codes_get_message(self.message_handle)? };
         let buf = unsafe { slice::from_raw_parts(msg.0.cast::<u8>(), msg.1) };
         let mut file = OpenOptions::new()

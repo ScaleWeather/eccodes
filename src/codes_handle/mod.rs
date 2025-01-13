@@ -183,7 +183,10 @@ impl CodesHandle<CodesFile<File>> {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`] cannot be created.
-    pub fn new_from_file(file_path: &Path, product_kind: ProductKind) -> Result<Self, CodesError> {
+    pub fn new_from_file<P: AsRef<Path>>(
+        file_path: P,
+        product_kind: ProductKind,
+    ) -> Result<Self, CodesError> {
         let file = OpenOptions::new().read(true).open(file_path)?;
         let file_pointer = open_with_fdopen(&file)?;
 

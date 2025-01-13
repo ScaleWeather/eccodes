@@ -41,7 +41,7 @@ anyhow = { version = "1.0", features = ["backtrace"] }
 float-cmp = "0.10"
 
 [features]
-default = ["message_ndarray"]
+default = ["message_ndarray", "experimental_index"]
 docs = ["eccodes-sys/docs"]
 experimental_index = []
 message_ndarray = ["dep:ndarray"]

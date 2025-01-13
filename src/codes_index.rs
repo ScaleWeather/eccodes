@@ -172,7 +172,8 @@ impl CodesIndex {
     /// This function will return [`CodesError::Internal`] if the index file is not valid or
     /// the GRIB file is not present in the same relative path as during the index file creation.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-    pub fn read_from_file(index_file_path: &Path) -> Result<CodesIndex, CodesError> {
+    pub fn read_from_file<P: AsRef<Path>>(index_file_path: P) -> Result<CodesIndex, CodesError> {
+        let index_file_path: &Path = index_file_path.as_ref();
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
         })?;
@@ -213,7 +214,11 @@ impl CodesIndex {
     /// Returns [`CodesError::Internal`] if the file cannot be added to the index.
     /// The error might be also caused by incorrectly constructed index.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-    pub fn add_grib_file(self, index_file_path: &Path) -> Result<CodesIndex, CodesError> {
+    pub fn add_grib_file<P: AsRef<Path>>(
+        self,
+        index_file_path: P,
+    ) -> Result<CodesIndex, CodesError> {
+        let index_file_path: &Path = index_file_path.as_ref();
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
         })?;
