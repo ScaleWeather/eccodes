@@ -329,13 +329,18 @@ fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, ProductKind};
+    use crate::codes_handle::{CodesFile, CodesHandle, ProductKind};
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
-    use eccodes_sys::ProductKind_PRODUCT_GRIB;
+    use eccodes_sys::{grib_handle, ProductKind_PRODUCT_GRIB};
     use fallible_streaming_iterator::FallibleStreamingIterator;
-    use std::{fs::File, io::Read, path::Path};
+    use std::{
+        fs::File,
+        io::Read,
+        path::Path,
+        sync::{Arc, Barrier, Mutex},
+    };
 
     #[test]
     fn file_constructor() -> Result<()> {
@@ -352,6 +357,68 @@ mod tests {
 
         handle.source._data.metadata()?;
 
+        Ok(())
+    }
+
+    #[derive(Debug)]
+    struct AtomicContainer {
+        _parent: Arc<CodesHandle<CodesFile<File>>>,
+        pointer: Mutex<*mut grib_handle>,
+    }
+    unsafe impl Send for AtomicContainer {}
+    unsafe impl Sync for AtomicContainer {}
+
+    impl AtomicContainer {
+        fn new(_parent: Arc<CodesHandle<CodesFile<File>>>, pointer: *mut grib_handle) -> Self {
+            Self {
+                _parent,
+                pointer: Mutex::new(pointer),
+            }
+        }
+    }
+
+    #[test]
+    fn handle_thread_safety() -> Result<()> {
+        let file_path = Path::new("./data/iceland-levels.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+
+        let handle = Arc::new(handle);
+        let barrier = Arc::new(Barrier::new(10));
+
+        let mut v = vec![];
+
+        for _ in 0..10 {
+            let fhndl = handle.clone();
+            let b = barrier.clone();
+
+            let msg_hndl = unsafe {
+                crate::intermediate_bindings::codes_handle_new_from_file(
+                    fhndl.source.pointer,
+                    handle.source.product_kind,
+                )
+                .unwrap()
+            };
+            let cntri = Arc::new(AtomicContainer::new(fhndl, msg_hndl));
+
+            let t = std::thread::spawn(move || {
+                let p = cntri.pointer.lock().unwrap();
+
+                for _ in 0..1000 {
+                    b.wait();
+                    let _ = unsafe {
+                        crate::intermediate_bindings::codes_get_size(*p, "shortName").unwrap()
+                    };
+                }
+            });
+
+            v.push(t);
+        }
+
+        v.into_iter().for_each(|th| th.join().unwrap());
+
+        assert!(false);
         Ok(())
     }
 
