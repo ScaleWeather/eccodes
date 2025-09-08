@@ -134,11 +134,11 @@ impl KeyedMessage {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
-    pub fn new_keys_iterator(
-        &self,
+    pub fn new_keys_iterator<'a>(
+        &'a self,
         flags: &[KeysIteratorFlags],
         namespace: &str,
-    ) -> Result<KeysIterator, CodesError> {
+    ) -> Result<KeysIterator<'a>, CodesError> {
         let flags = flags.iter().map(|f| *f as u32).sum();
 
         let iterator_handle =
@@ -160,7 +160,7 @@ impl KeyedMessage {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
-    pub fn default_keys_iterator(&self) -> Result<KeysIterator, CodesError> {
+    pub fn default_keys_iterator<'a>(&'a self) -> Result<KeysIterator<'a>, CodesError> {
         let iterator_handle = unsafe { codes_keys_iterator_new(self.message_handle, 0, "")? };
         let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
