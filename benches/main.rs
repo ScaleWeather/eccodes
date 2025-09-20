@@ -1,8 +1,8 @@
+use criterion::{Criterion, criterion_group, criterion_main};
 use eccodes::FallibleStreamingIterator;
-use std::path::Path;
-use std::hint::black_box;
-use criterion::{criterion_group, criterion_main, Criterion};
 use eccodes::codes_handle::{CodesHandle, ProductKind};
+use std::hint::black_box;
+use std::path::Path;
 
 pub fn key_reading(c: &mut Criterion) {
     //prepare the variables for benchmark

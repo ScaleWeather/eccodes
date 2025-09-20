@@ -281,13 +281,13 @@ impl Drop for CodesIndex {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{bail, Context, Result};
+    use anyhow::{Context, Result, bail};
     use fallible_streaming_iterator::FallibleStreamingIterator;
 
     use crate::{
+        CodesError, CodesHandle,
         codes_index::{CodesIndex, Select},
         errors::CodesInternal,
-        CodesError, CodesHandle,
     };
     use std::path::Path;
     #[test]

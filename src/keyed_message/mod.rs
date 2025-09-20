@@ -5,15 +5,15 @@ mod read;
 mod write;
 
 use eccodes_sys::codes_handle;
-use tracing::{event, instrument, Level};
 use std::ptr::null_mut;
+use tracing::{Level, event, instrument};
 
 use crate::{
-    intermediate_bindings::{
-        codes_get_native_type, codes_get_size, codes_handle_clone, codes_handle_delete,
-        NativeKeyType,
-    },
     CodesError,
+    intermediate_bindings::{
+        NativeKeyType, codes_get_native_type, codes_get_size, codes_handle_clone,
+        codes_handle_delete,
+    },
 };
 
 /// Structure that provides access to the data contained in the GRIB file, which directly corresponds to the message in the GRIB file
@@ -217,7 +217,11 @@ impl Drop for KeyedMessage {
     fn drop(&mut self) {
         unsafe {
             codes_handle_delete(self.message_handle).unwrap_or_else(|error| {
-                event!(Level::ERROR, "codes_handle_delete() returned an error: {:?}", &error);
+                event!(
+                    Level::ERROR,
+                    "codes_handle_delete() returned an error: {:?}",
+                    &error
+                );
             });
         }
 
@@ -227,8 +231,8 @@ impl Drop for KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, ProductKind};
     use crate::FallibleStreamingIterator;
+    use crate::codes_handle::{CodesHandle, ProductKind};
     use anyhow::{Context, Result};
     use std::path::Path;
     use testing_logger;

@@ -4,13 +4,13 @@
 use std::ptr::null_mut;
 
 use eccodes_sys::codes_nearest;
-use tracing::{event, instrument, Level};
+use tracing::{Level, event, instrument};
 
 use crate::{
+    CodesError, KeyedMessage,
     intermediate_bindings::{
         codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new,
     },
-    CodesError, KeyedMessage,
 };
 
 /// The structure used to find nearest gridpoints in `KeyedMessage`.
@@ -107,7 +107,8 @@ impl Drop for CodesNearest<'_> {
     fn drop(&mut self) {
         unsafe {
             codes_grib_nearest_delete(self.nearest_handle).unwrap_or_else(|error| {
-                event!(Level::ERROR,
+                event!(
+                    Level::ERROR,
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );

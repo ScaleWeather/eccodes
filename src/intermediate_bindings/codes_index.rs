@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::module_name_repetitions)]
 
-use eccodes_sys::{codes_context, codes_index, CODES_LOCK};
+use eccodes_sys::{CODES_LOCK, codes_context, codes_index};
 use num_traits::FromPrimitive;
 use std::{ffi::CString, ptr};
 
