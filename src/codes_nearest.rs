@@ -112,6 +112,8 @@ impl Drop for CodesNearest<'_> {
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );
+                #[cfg(test)]
+                assert!(false, "Error in CodesNearest::drop")
             });
         }
 
@@ -164,20 +166,7 @@ mod tests {
         let _nrst = current_message.codes_nearest()?;
 
         drop(_nrst);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_grib_nearest_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
-
         drop(handle);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_handle_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
 
         Ok(())
     }

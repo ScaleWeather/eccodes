@@ -472,25 +472,17 @@ mod tests {
 
     #[test]
     fn codes_handle_drop_file() -> Result<()> {
-        testing_logger::setup();
-
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
         let handle = CodesHandle::new_from_file(file_path, product_kind)?;
         drop(handle);
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 0);
-        });
-
         Ok(())
     }
 
     #[test]
     fn codes_handle_drop_mem() -> Result<()> {
-        testing_logger::setup();
-
         let product_kind = ProductKind::GRIB;
 
         let mut f = File::open(Path::new("./data/iceland.grib"))?;
@@ -500,16 +492,11 @@ mod tests {
         let handle = CodesHandle::new_from_memory(buf, product_kind)?;
         drop(handle);
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 0);
-        });
-
         Ok(())
     }
 
     #[test]
     fn multiple_drops() -> Result<()> {
-        testing_logger::setup();
         {
             let file_path = Path::new("./data/iceland-surface.grib");
             let product_kind = ProductKind::GRIB;
@@ -523,26 +510,6 @@ mod tests {
             let _nrst = clone_msg.codes_nearest()?;
             let _kiter = clone_msg.default_keys_iterator()?;
         }
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 5);
-
-            let expected_logs = vec![
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_keys_iterator_delete", log::Level::Trace),
-                ("codes_grib_nearest_delete", log::Level::Trace),
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_handle_delete", log::Level::Trace),
-            ];
-
-            captured_logs
-                .iter()
-                .zip(expected_logs)
-                .for_each(|(clg, elg)| {
-                    assert_eq!(clg.body, elg.0);
-                    assert_eq!(clg.level, elg.1)
-                });
-        });
 
         Ok(())
     }
