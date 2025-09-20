@@ -1,11 +1,10 @@
-#![allow(unused)]
-
 use std::sync::Arc;
 
-use eccodes_sys::codes_handle;
 use fallible_iterator::FallibleIterator;
 
-use crate::{CodesError, CodesHandle, codes_handle::ThreadSafeHandle};
+use crate::{
+    CodesError, CodesHandle, atomic_message::AtomicMessage, codes_handle::ThreadSafeHandle,
+};
 
 #[derive(Debug)]
 pub struct AtomicMessageGenerator<S: ThreadSafeHandle> {
@@ -32,19 +31,11 @@ impl<S: ThreadSafeHandle> FallibleIterator for AtomicMessageGenerator<S> {
         } else {
             Ok(Some(AtomicMessage {
                 _parent: self.codes_handle.clone(),
-                pointer: new_eccodes_handle,
+                message_handle: new_eccodes_handle,
             }))
         }
     }
 }
-
-#[derive(Debug)]
-pub struct AtomicMessage<S: ThreadSafeHandle> {
-    _parent: Arc<CodesHandle<S>>,
-    pointer: *mut codes_handle,
-}
-unsafe impl<S: ThreadSafeHandle> Send for AtomicMessage<S> {}
-unsafe impl<S: ThreadSafeHandle> Sync for AtomicMessage<S> {}
 
 #[cfg(test)]
 mod tests {
@@ -79,7 +70,7 @@ mod tests {
                 for _ in 0..1000 {
                     b.wait();
                     let _ = unsafe {
-                        crate::intermediate_bindings::codes_get_size(msg.pointer, "shortName")
+                        crate::intermediate_bindings::codes_get_size(msg.message_handle, "shortName")
                             .unwrap()
                     };
                 }

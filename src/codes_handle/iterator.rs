@@ -39,7 +39,7 @@ impl<'ch, S: HandleGenerator> FallibleIterator for KeyedMessageGenerator<'ch, S>
 #[cfg(test)]
 mod tests {
     use crate::{
-        DynamicKeyType, FallibleIterator,
+        keyed_message::DynamicKeyType, FallibleIterator,
         codes_handle::{CodesHandle, ProductKind},
     };
     use anyhow::{Context, Ok, Result};

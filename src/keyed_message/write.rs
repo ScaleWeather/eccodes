@@ -135,7 +135,7 @@ mod tests {
     use fallible_iterator::FallibleIterator;
 
     use crate::{
-        DynamicKeyType, KeyWrite,
+        keyed_message::DynamicKeyType, keyed_message::KeyWrite,
         codes_handle::{CodesHandle, ProductKind},
     };
     use std::{fs::remove_file, path::Path};
