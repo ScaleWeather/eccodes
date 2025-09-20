@@ -16,136 +16,148 @@ pub unsafe fn codes_set_long(
     handle: *mut codes_handle,
     key: &str,
     value: i64,
-) -> Result<(), CodesError> { unsafe {
-    pointer_guard::non_null!(handle);
+) -> Result<(), CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
+        let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    Ok(())
-}}
+}
 
 pub unsafe fn codes_set_double(
     handle: *mut codes_handle,
     key: &str,
     value: f64,
-) -> Result<(), CodesError> { unsafe {
-    pointer_guard::non_null!(handle);
+) -> Result<(), CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
+        let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    Ok(())
-}}
+}
 
 pub unsafe fn codes_set_long_array(
     handle: *mut codes_handle,
     key: &str,
     values: &[i64],
-) -> Result<(), CodesError> { unsafe {
-    pointer_guard::non_null!(handle);
+) -> Result<(), CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let length = values.len();
+        let length = values.len();
 
-    let error_code = eccodes_sys::codes_set_long_array(
-        handle,
-        key.as_ptr(),
-        values.as_ptr().cast::<_>(),
-        length,
-    );
+        let error_code = eccodes_sys::codes_set_long_array(
+            handle,
+            key.as_ptr(),
+            values.as_ptr().cast::<i64>(),
+            length,
+        );
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    Ok(())
-}}
+}
 
 pub unsafe fn codes_set_double_array(
     handle: *mut codes_handle,
     key: &str,
     values: &[f64],
-) -> Result<(), CodesError> { unsafe {
-    pointer_guard::non_null!(handle);
+) -> Result<(), CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let length = values.len();
+        let length = values.len();
 
-    let error_code = eccodes_sys::codes_set_double_array(
-        handle,
-        key.as_ptr(),
-        values.as_ptr().cast::<_>(),
-        length,
-    );
+        let error_code = eccodes_sys::codes_set_double_array(
+            handle,
+            key.as_ptr(),
+            values.as_ptr().cast::<f64>(),
+            length,
+        );
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    Ok(())
-}}
+}
 
 pub unsafe fn codes_set_string(
     handle: *mut codes_handle,
     key: &str,
     value: &str,
-) -> Result<(), CodesError> { unsafe {
-    pointer_guard::non_null!(handle);
+) -> Result<(), CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
-    let mut length = value.len();
-    let value = CString::new(value).unwrap();
+        let key = CString::new(key).unwrap();
+        let mut length = value.len();
+        let value = CString::new(value).unwrap();
 
-    let error_code =
-        eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &raw mut length);
+        let error_code =
+            eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &mut length);
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    Ok(())
-}}
+}
 
 pub unsafe fn codes_set_bytes(
     handle: *mut codes_handle,
     key: &str,
     values: &[u8],
-) -> Result<(), CodesError> { unsafe {
-    pointer_guard::non_null!(handle);
+) -> Result<(), CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let mut length = values.len();
+        let mut length = values.len();
 
-    let error_code = eccodes_sys::codes_set_bytes(
-        handle,
-        key.as_ptr(),
-        values.as_ptr().cast::<_>(),
-        &raw mut length,
-    );
+        let error_code = eccodes_sys::codes_set_bytes(
+            handle,
+            key.as_ptr(),
+            values.as_ptr().cast::<u8>(),
+            &mut length,
+        );
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    Ok(())
-}}
+}

@@ -1,4 +1,4 @@
-use crate::{codes_handle::HandleGenerator, errors::CodesError, CodesHandle, KeyedMessage};
+use crate::{CodesHandle, KeyedMessage, codes_handle::HandleGenerator, errors::CodesError};
 use fallible_streaming_iterator::FallibleStreamingIterator;
 use std::fmt::Debug;
 
@@ -35,8 +35,8 @@ impl<S: HandleGenerator + Debug> FallibleStreamingIterator for CodesHandle<S> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        codes_handle::{CodesHandle, ProductKind},
         DynamicKeyType,
+        codes_handle::{CodesHandle, ProductKind},
     };
     use anyhow::{Context, Ok, Result};
     use fallible_streaming_iterator::FallibleStreamingIterator;

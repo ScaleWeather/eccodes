@@ -2,16 +2,16 @@
 
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
-use tracing::{event, instrument, Level};
 use std::{marker::PhantomData, ptr::null_mut};
+use tracing::{Level, event, instrument};
 
 use crate::{
+    KeyedMessage,
     errors::CodesError,
     intermediate_bindings::{
         codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
         codes_keys_iterator_next,
     },
-    KeyedMessage,
 };
 
 /// Structure to iterate through key names in [`KeyedMessage`].
@@ -202,7 +202,8 @@ impl Drop for KeysIterator<'_> {
     fn drop(&mut self) {
         unsafe {
             codes_keys_iterator_delete(self.iterator_handle).unwrap_or_else(|error| {
-                event!(Level::ERROR,
+                event!(
+                    Level::ERROR,
                     "codes_keys_iterator_delete() returned an error: {:?}",
                     &error
                 );

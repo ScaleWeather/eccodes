@@ -8,8 +8,8 @@ use std::{
 
 use anyhow::{Context, Result};
 use eccodes::{
-    codes_index::Select, CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyRead,
-    ProductKind,
+    CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyRead, ProductKind,
+    codes_index::Select,
 };
 use rand::Rng;
 

@@ -4,18 +4,18 @@
 #[cfg(feature = "experimental_index")]
 use crate::codes_index::CodesIndex;
 use crate::{
-    intermediate_bindings::codes_handle_new_from_file, pointer_guard, CodesError, KeyedMessage,
+    CodesError, KeyedMessage, intermediate_bindings::codes_handle_new_from_file, pointer_guard,
 };
-use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
+use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle};
 use errno::errno;
-use libc::{c_char, c_void, size_t, FILE};
-use tracing::instrument;
+use libc::{FILE, c_char, c_void, size_t};
 use std::{
     fmt::Debug,
     fs::{File, OpenOptions},
     os::unix::prelude::AsRawFd,
     path::Path,
 };
+use tracing::instrument;
 
 mod iterator;
 
@@ -339,7 +339,7 @@ mod tests {
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
-    use eccodes_sys::{grib_handle, ProductKind_PRODUCT_GRIB};
+    use eccodes_sys::{ProductKind_PRODUCT_GRIB, grib_handle};
     use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::{
         fs::File,

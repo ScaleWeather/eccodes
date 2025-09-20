@@ -1,12 +1,12 @@
 use std::{fs::OpenOptions, io::Write, path::Path, slice};
 
 use crate::{
+    KeyedMessage,
     errors::CodesError,
     intermediate_bindings::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
         codes_set_long, codes_set_long_array, codes_set_string,
     },
-    KeyedMessage,
 };
 
 use super::KeyWrite;
@@ -134,8 +134,8 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::{
-        codes_handle::{CodesHandle, ProductKind},
         DynamicKeyType, FallibleStreamingIterator, KeyWrite,
+        codes_handle::{CodesHandle, ProductKind},
     };
     use std::{fs::remove_file, path::Path};
 

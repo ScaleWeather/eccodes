@@ -3,9 +3,9 @@
 
 use std::ptr::{self};
 
-use eccodes_sys::{codes_context, codes_handle};
 #[cfg(feature = "experimental_index")]
-use eccodes_sys::{codes_index, CODES_LOCK};
+use eccodes_sys::{CODES_LOCK, codes_index};
+use eccodes_sys::{codes_context, codes_handle};
 use libc::FILE;
 use num_traits::FromPrimitive;
 use tracing::instrument;
@@ -26,43 +26,47 @@ type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
 pub unsafe fn codes_handle_new_from_file(
     file_pointer: *mut FILE,
     product_kind: ProductKind,
-) -> Result<*mut codes_handle, CodesError> { unsafe {
-    pointer_guard::non_null!(file_pointer);
+) -> Result<*mut codes_handle, CodesError> {
+    unsafe {
+        pointer_guard::non_null!(file_pointer);
 
-    let context: *mut codes_context = ptr::null_mut(); //default context
+        let context: *mut codes_context = ptr::null_mut(); //default context
 
-    let mut error_code: i32 = 0;
+        let mut error_code: i32 = 0;
 
-    let file_handle = eccodes_sys::codes_handle_new_from_file(
-        context,
-        file_pointer.cast::<_>(),
-        product_kind as u32,
-        &raw mut error_code,
-    );
+        let file_handle = eccodes_sys::codes_handle_new_from_file(
+            context,
+            file_pointer.cast::<_SYS_IO_FILE>(),
+            product_kind as u32,
+            &mut error_code,
+        );
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(file_handle)
     }
-
-    Ok(file_handle)
-}}
+}
 
 #[instrument(level = "trace")]
-pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> { unsafe {
-    if handle.is_null() {
-        return Ok(());
+pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> {
+    unsafe {
+        if handle.is_null() {
+            return Ok(());
+        }
+
+        let error_code = eccodes_sys::codes_handle_delete(handle);
+
+        if error_code != 0 {
+            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
+            return Err(err.into());
+        }
+
+        Ok(())
     }
-
-    let error_code = eccodes_sys::codes_handle_delete(handle);
-
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
-    }
-
-    Ok(())
-}}
+}
 
 #[cfg(feature = "experimental_index")]
 #[instrument(level = "trace")]
