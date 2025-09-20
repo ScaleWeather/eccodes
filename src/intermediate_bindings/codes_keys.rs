@@ -16,7 +16,7 @@ pub unsafe fn codes_keys_iterator_new(
     handle: *mut codes_handle,
     flags: u32,
     namespace: &str,
-) -> Result<*mut codes_keys_iterator, CodesError> {
+) -> Result<*mut codes_keys_iterator, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let namespace = CString::new(namespace).unwrap();
@@ -28,11 +28,11 @@ pub unsafe fn codes_keys_iterator_new(
     }
 
     Ok(kiter)
-}
+}}
 
 pub unsafe fn codes_keys_iterator_delete(
     keys_iterator: *mut codes_keys_iterator,
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     #[cfg(test)]
     log::trace!("codes_keys_iterator_delete");
 
@@ -48,21 +48,21 @@ pub unsafe fn codes_keys_iterator_delete(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_keys_iterator_next(
     keys_iterator: *mut codes_keys_iterator,
-) -> Result<bool, CodesError> {
+) -> Result<bool, CodesError> { unsafe {
     pointer_guard::non_null!(keys_iterator);
 
     let next_item_exists = eccodes_sys::codes_keys_iterator_next(keys_iterator);
 
     Ok(next_item_exists == 1)
-}
+}}
 
 pub unsafe fn codes_keys_iterator_get_name(
     keys_iterator: *mut codes_keys_iterator,
-) -> Result<String, CodesError> {
+) -> Result<String, CodesError> { unsafe {
     pointer_guard::non_null!(keys_iterator);
 
     let name_pointer = eccodes_sys::codes_keys_iterator_get_name(keys_iterator);
@@ -72,4 +72,4 @@ pub unsafe fn codes_keys_iterator_get_name(
     let name_string = name_str.to_owned();
 
     Ok(name_string)
-}
+}}

@@ -18,7 +18,7 @@ use crate::{
 pub unsafe fn codes_handle_new_from_file(
     file_pointer: *mut FILE,
     product_kind: ProductKind,
-) -> Result<*mut codes_handle, CodesError> {
+) -> Result<*mut codes_handle, CodesError> { unsafe {
     pointer_guard::non_null!(file_pointer);
 
     let context: *mut codes_context = ptr::null_mut(); //default context
@@ -38,9 +38,9 @@ pub unsafe fn codes_handle_new_from_file(
     }
 
     Ok(file_handle)
-}
+}}
 
-pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> {
+pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> { unsafe {
     #[cfg(test)]
     log::trace!("codes_handle_delete");
 
@@ -56,7 +56,7 @@ pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), Codes
     }
 
     Ok(())
-}
+}}
 
 #[cfg(feature = "experimental_index")]
 pub unsafe fn codes_handle_new_from_index(

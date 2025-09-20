@@ -16,7 +16,7 @@ pub unsafe fn codes_set_long(
     handle: *mut codes_handle,
     key: &str,
     value: i64,
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -29,13 +29,13 @@ pub unsafe fn codes_set_long(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_set_double(
     handle: *mut codes_handle,
     key: &str,
     value: f64,
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -48,13 +48,13 @@ pub unsafe fn codes_set_double(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_set_long_array(
     handle: *mut codes_handle,
     key: &str,
     values: &[i64],
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -74,13 +74,13 @@ pub unsafe fn codes_set_long_array(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_set_double_array(
     handle: *mut codes_handle,
     key: &str,
     values: &[f64],
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -100,13 +100,13 @@ pub unsafe fn codes_set_double_array(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_set_string(
     handle: *mut codes_handle,
     key: &str,
     value: &str,
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -122,13 +122,13 @@ pub unsafe fn codes_set_string(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_set_bytes(
     handle: *mut codes_handle,
     key: &str,
     values: &[u8],
-) -> Result<(), CodesError> {
+) -> Result<(), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -148,4 +148,4 @@ pub unsafe fn codes_set_bytes(
     }
 
     Ok(())
-}
+}}

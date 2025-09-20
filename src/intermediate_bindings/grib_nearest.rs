@@ -14,7 +14,7 @@ use crate::{
 
 pub unsafe fn codes_grib_nearest_new(
     handle: *const codes_handle,
-) -> Result<*mut codes_nearest, CodesError> {
+) -> Result<*mut codes_nearest, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let mut error_code: i32 = 0;
@@ -27,9 +27,9 @@ pub unsafe fn codes_grib_nearest_new(
     }
 
     Ok(nearest)
-}
+}}
 
-pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(), CodesError> {
+pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(), CodesError> { unsafe {
     #[cfg(test)]
     log::trace!("codes_grib_nearest_delete");
 
@@ -45,14 +45,14 @@ pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(
     }
 
     Ok(())
-}
+}}
 
 pub unsafe fn codes_grib_nearest_find(
     handle: *const codes_handle,
     nearest: *mut codes_nearest,
     lat: f64,
     lon: f64,
-) -> Result<[NearestGridpoint; 4], CodesError> {
+) -> Result<[NearestGridpoint; 4], CodesError> { unsafe {
     pointer_guard::non_null!(handle);
     pointer_guard::non_null!(nearest);
 
@@ -98,4 +98,4 @@ pub unsafe fn codes_grib_nearest_find(
     }
 
     Ok(output)
-}
+}}
