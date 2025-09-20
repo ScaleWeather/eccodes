@@ -13,6 +13,7 @@ use crate::{
 // all index functions are safeguarded by a lock
 // because there are random errors appearing when using the index functions concurrently
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_index_new(keys: &str) -> Result<*mut codes_index, CodesError> {
     let context: *mut codes_context = ptr::null_mut(); //default context
     let mut error_code: i32 = 0;
@@ -43,6 +44,7 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
     Ok(codes_index)
 }
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_index_delete(index: *mut codes_index) {
     #[cfg(test)]
     log::trace!("codes_index_delete");

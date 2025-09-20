@@ -4,7 +4,7 @@
 use std::ptr::null_mut;
 
 use eccodes_sys::codes_nearest;
-use log::error;
+use tracing::{event, instrument, Level};
 
 use crate::{
     intermediate_bindings::{
@@ -103,10 +103,11 @@ impl CodesNearest<'_> {
 
 #[doc(hidden)]
 impl Drop for CodesNearest<'_> {
+    #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
             codes_grib_nearest_delete(self.nearest_handle).unwrap_or_else(|error| {
-                error!(
+                event!(Level::ERROR,
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );

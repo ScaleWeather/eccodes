@@ -22,7 +22,6 @@ rust-version = "1.85.0"
 eccodes-sys = { version = "0.6.0", default-features = false }
 libc = { version = "0.2", default-features = false }
 thiserror = { version = "2.0", default-features = false }
-log = { version = "0.4", default-features = false }
 errno = { version = "0.3", default-features = false }
 num-derive = { version = "0.4", default-features = false }
 num-traits = { version = "0.2", default-features = false }
@@ -31,11 +30,17 @@ fallible-streaming-iterator = { version = "0.1.9", default-features = false }
 ndarray = { version = "0.16", default-features = false, optional = true, features = [
     "std",
 ] }
+tracing = { version = "0.1", default-features = false, features = [
+    "std",
+    "attributes",
+    "log",
+] }
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["rustls-tls"] }
 criterion = "0.7"
 testing_logger = "0.1"
+log = "*"
 rand = "0.9"
 anyhow = { version = "1.0", features = ["backtrace"] }
 float-cmp = "0.10"
