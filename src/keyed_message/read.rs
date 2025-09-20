@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    DynamicKeyType, KeyRead, KeyedMessage,
+    keyed_message::DynamicKeyType, keyed_message::KeyRead, KeyedMessage,
     errors::CodesError,
     intermediate_bindings::{
         NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
@@ -300,7 +300,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{DynamicKeyType, FallibleIterator};
+    use crate::{keyed_message::DynamicKeyType, FallibleIterator};
     use std::path::Path;
 
     #[test]

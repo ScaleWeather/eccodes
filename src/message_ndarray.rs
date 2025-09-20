@@ -3,7 +3,13 @@
 
 use ndarray::{Array2, Array3, s};
 
-use crate::{CodesError, KeyRead, KeyedMessage, errors::MessageNdarrayError};
+use crate::{
+    AtomicMessage, CodesError, KeyedMessage,
+    atomic_message::{ArrayKeyRead, ScalarKeyRead},
+    codes_handle::ThreadSafeHandle,
+    errors::MessageNdarrayError,
+    keyed_message::KeyRead,
+};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
@@ -138,15 +144,135 @@ impl KeyedMessage<'_> {
     }
 }
 
+impl<S: ThreadSafeHandle> AtomicMessage<S> {
+    /// Converts the message to a 2D ndarray.
+    ///
+    /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
+    /// ie. `[lat, lon]`.
+    ///
+    /// Common convention for grib files on regular lon-lat grid assumes that:
+    /// index `[0, 0]` is the top-left corner of the grid:
+    /// x coordinates are increasing with the i index,
+    /// y coordinates are decreasing with the j index.
+    ///
+    /// This convention can be checked with `iScansNegatively` and `jScansPositively` keys -
+    /// if both are false, the above convention is used.
+    ///
+    /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
+    ///
+    /// Tested only with simple lat-lon grids.
+    ///
+    /// # Errors
+    ///
+    /// - When the required keys are not present or if their values are not of the expected type
+    /// - When the number of values mismatch with the `Ni` and `Nj` keys
+    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+    pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
+        let ni: i64 = self.read_key("Ni")?;
+        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
+
+        let nj: i64 = self.read_key("Nj")?;
+        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
+
+        let vals: Vec<f64> = self.read_key("values")?;
+        if vals.len() != (ni * nj) {
+            return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
+        }
+
+        let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
+
+        if ![0, 1].contains(&j_scanning) {
+            return Err(MessageNdarrayError::UnexpectedKeyValue(
+                "jPointsAreConsecutive".to_owned(),
+            )
+            .into());
+        }
+
+        let j_scanning = j_scanning != 0;
+
+        let shape = if j_scanning { (ni, nj) } else { (nj, ni) };
+        let vals = Array2::from_shape_vec(shape, vals).map_err(MessageNdarrayError::from)?;
+
+        if j_scanning {
+            Ok(vals.reversed_axes())
+        } else {
+            Ok(vals)
+        }
+    }
+
+    /// Same as [`KeyedMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
+    /// Fields are returned as separate arrays in [`RustyCodesMessage`].
+    ///
+    /// Compared to `to_ndarray` this method has performance overhead as returned arrays may be cloned.
+    ///
+    /// This method requires the `latLonValues`, `Ni` and `Nj` keys to be present in the message.
+    ///
+    /// # Errors
+    ///
+    /// - When the required keys are not present or if their values are not of the expected type
+    /// - When the number of values mismatch with the `Ni` and `Nj` keys
+    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+    pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
+        let ni: i64 = self.read_key("Ni")?;
+        let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
+
+        let nj: i64 = self.read_key("Nj")?;
+        let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
+
+        let latlonvals: Vec<f64> = self.read_key("latLonValues")?;
+
+        if latlonvals.len() != (ni * nj * 3) {
+            return Err(
+                MessageNdarrayError::UnexpectedValuesLength(latlonvals.len(), ni * nj * 3).into(),
+            );
+        }
+
+        let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
+
+        if ![0, 1].contains(&j_scanning) {
+            return Err(MessageNdarrayError::UnexpectedKeyValue(
+                "jPointsAreConsecutive".to_owned(),
+            )
+            .into());
+        }
+
+        let j_scanning = j_scanning != 0;
+
+        let shape = if j_scanning {
+            (ni, nj, 3_usize)
+        } else {
+            (nj, ni, 3_usize)
+        };
+
+        let mut latlonvals =
+            Array3::from_shape_vec(shape, latlonvals).map_err(MessageNdarrayError::from)?;
+
+        if j_scanning {
+            latlonvals.swap_axes(0, 1);
+        }
+
+        let (lats, lons, vals) =
+            latlonvals
+                .view_mut()
+                .multi_slice_move((s![.., .., 0], s![.., .., 1], s![.., .., 2]));
+
+        Ok(RustyCodesMessage {
+            longitudes: lons.into_owned(),
+            latitudes: lats.into_owned(),
+            values: vals.into_owned(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use fallible_iterator::FallibleIterator;
     use float_cmp::assert_approx_eq;
 
     use super::*;
-    use crate::DynamicKeyType;
     use crate::ProductKind;
     use crate::codes_handle::CodesHandle;
+    use crate::keyed_message::DynamicKeyType;
     use std::path::Path;
 
     #[test]

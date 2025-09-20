@@ -1,7 +1,7 @@
 use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
-use eccodes::{CodesHandle, DynamicKeyType, FallibleIterator, ProductKind};
+use eccodes::{CodesHandle, keyed_message::DynamicKeyType, FallibleIterator, ProductKind};
 
 #[test]
 fn thread_safety() {

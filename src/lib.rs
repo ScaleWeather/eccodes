@@ -222,6 +222,7 @@ pub mod keys_iterator;
 #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
 pub mod message_ndarray;
 mod pointer_guard;
+pub mod atomic_message;
 
 pub use codes_handle::{CodesHandle, ProductKind};
 #[cfg(feature = "experimental_index")]
@@ -230,5 +231,6 @@ pub use codes_index::CodesIndex;
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use keyed_message::{DynamicKeyType, KeyRead, KeyWrite, KeyedMessage};
+pub use keyed_message::{KeyedMessage};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
+pub use atomic_message::{AtomicMessage};
