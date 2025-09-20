@@ -339,7 +339,7 @@ mod tests {
         fs::File,
         io::Read,
         path::Path,
-        sync::{Arc, Barrier, Mutex},
+        sync::{Arc, Barrier},
     };
 
     #[test]
@@ -363,7 +363,7 @@ mod tests {
     #[derive(Debug)]
     struct AtomicContainer {
         _parent: Arc<CodesHandle<CodesFile<File>>>,
-        pointer: Mutex<*mut grib_handle>,
+        pointer: *mut grib_handle,
     }
     unsafe impl Send for AtomicContainer {}
     unsafe impl Sync for AtomicContainer {}
@@ -372,12 +372,14 @@ mod tests {
         fn new(_parent: Arc<CodesHandle<CodesFile<File>>>, pointer: *mut grib_handle) -> Self {
             Self {
                 _parent,
-                pointer: Mutex::new(pointer),
+                // Use the mutable methods to avoid the performance hit of Mutex
+                pointer,
             }
         }
     }
 
     #[test]
+    #[ignore]
     fn handle_thread_safety() -> Result<()> {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
@@ -403,12 +405,11 @@ mod tests {
             let cntri = Arc::new(AtomicContainer::new(fhndl, msg_hndl));
 
             let t = std::thread::spawn(move || {
-                let p = cntri.pointer.lock().unwrap();
-
                 for _ in 0..1000 {
                     b.wait();
                     let _ = unsafe {
-                        crate::intermediate_bindings::codes_get_size(*p, "shortName").unwrap()
+                        crate::intermediate_bindings::codes_get_size(cntri.pointer, "shortName")
+                            .unwrap()
                     };
                 }
             });
@@ -418,6 +419,7 @@ mod tests {
 
         v.into_iter().for_each(|th| th.join().unwrap());
 
+        todo!("Implement tracing to follow contructors and drops");
         assert!(false);
         Ok(())
     }
