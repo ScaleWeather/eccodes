@@ -1,7 +1,7 @@
 use eccodes::FallibleStreamingIterator;
 use std::path::Path;
-
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
+use criterion::{criterion_group, criterion_main, Criterion};
 use eccodes::codes_handle::{CodesHandle, ProductKind};
 
 pub fn key_reading(c: &mut Criterion) {
