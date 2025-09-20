@@ -15,6 +15,7 @@ use std::{
 };
 use tracing::instrument;
 
+mod atomic_iterator;
 mod iterator;
 
 /// This is an internal structure used to access provided file by `CodesHandle`.
@@ -28,6 +29,13 @@ pub struct CodesFile<D: Debug> {
     product_kind: ProductKind,
     _data: D,
 }
+
+/// Marker trait to differentiate between `CodesHandle` created from index and file/buffer.
+#[doc(hidden)]
+pub trait ThreadSafeHandle: HandleGenerator {}
+
+impl ThreadSafeHandle for CodesFile<Vec<u8>> {}
+impl ThreadSafeHandle for CodesFile<File> {}
 
 /// Internal trait implemented for types that can be called to generate `*mut codes_handle`.
 #[doc(hidden)]
@@ -321,18 +329,13 @@ fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesFile, CodesHandle, ProductKind};
+    use crate::codes_handle::{CodesHandle, ProductKind};
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
-    use eccodes_sys::{ProductKind_PRODUCT_GRIB, grib_handle};
+    use eccodes_sys::ProductKind_PRODUCT_GRIB;
     use fallible_iterator::FallibleIterator;
-    use std::{
-        fs::File,
-        io::Read,
-        path::Path,
-        sync::{Arc, Barrier},
-    };
+    use std::{fs::File, io::Read, path::Path};
 
     #[test]
     fn file_constructor() -> Result<()> {
@@ -347,68 +350,6 @@ mod tests {
         });
 
         handle.source._data.metadata()?;
-
-        Ok(())
-    }
-
-    #[derive(Debug)]
-    struct AtomicContainer {
-        _parent: Arc<CodesHandle<CodesFile<File>>>,
-        pointer: *mut grib_handle,
-    }
-    unsafe impl Send for AtomicContainer {}
-    unsafe impl Sync for AtomicContainer {}
-
-    impl AtomicContainer {
-        fn new(_parent: Arc<CodesHandle<CodesFile<File>>>, pointer: *mut grib_handle) -> Self {
-            Self {
-                _parent,
-                // Use the mutable methods to avoid the performance hit of Mutex
-                pointer,
-            }
-        }
-    }
-
-    #[test]
-    #[ignore]
-    fn handle_thread_safety() -> Result<()> {
-        let file_path = Path::new("./data/iceland-levels.grib");
-        let product_kind = ProductKind::GRIB;
-
-        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
-
-        let handle = Arc::new(handle);
-        let barrier = Arc::new(Barrier::new(10));
-
-        let mut v = vec![];
-
-        for _ in 0..10 {
-            let fhndl = handle.clone();
-            let b = barrier.clone();
-
-            let msg_hndl = unsafe {
-                crate::intermediate_bindings::codes_handle_new_from_file(
-                    fhndl.source.pointer,
-                    handle.source.product_kind,
-                )
-                .unwrap()
-            };
-            let cntri = Arc::new(AtomicContainer::new(fhndl, msg_hndl));
-
-            let t = std::thread::spawn(move || {
-                for _ in 0..1000 {
-                    b.wait();
-                    let _ = unsafe {
-                        crate::intermediate_bindings::codes_get_size(cntri.pointer, "shortName")
-                            .unwrap()
-                    };
-                }
-            });
-
-            v.push(t);
-        }
-
-        v.into_iter().for_each(|th| th.join().unwrap());
 
         Ok(())
     }

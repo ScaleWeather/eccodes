@@ -80,6 +80,34 @@ mod tests {
     }
 
     #[test]
+    fn message_lifetime_safety() -> Result<()> {
+        let file_path = Path::new("./data/iceland-levels.grib");
+        let product_kind = ProductKind::GRIB;
+        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut mgen = handle.message_generator();
+
+        let msg1 = mgen.next()?.context("Message not some")?;
+        drop(msg1);
+        let msg2 = mgen.next()?.context("Message not some")?;
+        let msg3 = mgen.next()?.context("Message not some")?;
+        drop(msg3);
+        let msg4 = mgen.next()?.context("Message not some")?;
+        let msg5 = mgen.next()?.context("Message not some")?;
+        drop(msg5);
+
+        drop(mgen);
+        // drop(handle); <- this is not allowed
+
+        let key2 = msg2.read_key_dynamic("typeOfLevel")?;
+        let key4 = msg4.read_key_dynamic("typeOfLevel")?;
+
+        assert_eq!(key2, DynamicKeyType::Str("isobaricInhPa".to_string()));
+        assert_eq!(key4, DynamicKeyType::Str("isobaricInhPa".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
     fn iterator_fn() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
@@ -127,7 +155,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         assert!(!current_message.message_handle.is_null());
 
