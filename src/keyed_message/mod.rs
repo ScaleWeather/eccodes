@@ -222,6 +222,8 @@ impl Drop for KeyedMessage {
                     "codes_handle_delete() returned an error: {:?}",
                     &error
                 );
+                #[cfg(test)]
+                assert!(false, "Error in KeyedMessage::drop")
             });
         }
 
@@ -235,7 +237,6 @@ mod tests {
     use crate::codes_handle::{CodesHandle, ProductKind};
     use anyhow::{Context, Result};
     use std::path::Path;
-    use testing_logger;
 
     #[test]
     fn check_docs_keys() -> Result<()> {
@@ -296,7 +297,6 @@ mod tests {
 
     #[test]
     fn message_clone_drop() -> Result<()> {
-        testing_logger::setup();
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -304,25 +304,8 @@ mod tests {
         let _msg_ref = handle.next()?.context("Message not some")?;
         let _msg_clone = _msg_ref.try_clone()?;
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 0);
-        });
-
-        drop(_msg_clone);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_handle_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
-
         drop(handle);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_handle_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
+        drop(_msg_clone);
 
         Ok(())
     }
