@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-impl KeyRead<i64> for KeyedMessage {
+impl KeyRead<i64> for KeyedMessage<'_> {
     fn read_key(&self, key_name: &str) -> Result<i64, CodesError> {
         match self.get_key_native_type(key_name)? {
             NativeKeyType::Long => (),
@@ -32,7 +32,7 @@ impl KeyRead<i64> for KeyedMessage {
     }
 }
 
-impl KeyRead<f64> for KeyedMessage {
+impl KeyRead<f64> for KeyedMessage<'_> {
     fn read_key(&self, key_name: &str) -> Result<f64, CodesError> {
         match self.get_key_native_type(key_name)? {
             NativeKeyType::Double => (),
@@ -55,7 +55,7 @@ impl KeyRead<f64> for KeyedMessage {
     }
 }
 
-impl KeyRead<String> for KeyedMessage {
+impl KeyRead<String> for KeyedMessage<'_> {
     fn read_key(&self, key_name: &str) -> Result<String, CodesError> {
         match self.get_key_native_type(key_name)? {
             NativeKeyType::Str => (),
@@ -76,7 +76,7 @@ impl KeyRead<String> for KeyedMessage {
     }
 }
 
-impl KeyRead<Vec<i64>> for KeyedMessage {
+impl KeyRead<Vec<i64>> for KeyedMessage<'_> {
     fn read_key(&self, key_name: &str) -> Result<Vec<i64>, CodesError> {
         match self.get_key_native_type(key_name)? {
             NativeKeyType::Long => (),
@@ -97,7 +97,7 @@ impl KeyRead<Vec<i64>> for KeyedMessage {
     }
 }
 
-impl KeyRead<Vec<f64>> for KeyedMessage {
+impl KeyRead<Vec<f64>> for KeyedMessage<'_> {
     fn read_key(&self, key_name: &str) -> Result<Vec<f64>, CodesError> {
         match self.get_key_native_type(key_name)? {
             NativeKeyType::Double => (),
@@ -118,7 +118,7 @@ impl KeyRead<Vec<f64>> for KeyedMessage {
     }
 }
 
-impl KeyRead<Vec<u8>> for KeyedMessage {
+impl KeyRead<Vec<u8>> for KeyedMessage<'_> {
     fn read_key(&self, key_name: &str) -> Result<Vec<u8>, CodesError> {
         match self.get_key_native_type(key_name)? {
             NativeKeyType::Bytes => (),
@@ -139,7 +139,7 @@ impl KeyRead<Vec<u8>> for KeyedMessage {
     }
 }
 
-impl KeyedMessage {
+impl KeyedMessage<'_> {
     /// Method to get a value of given key with [`DynamicKeyType`] from the `KeyedMessage`, if it exists.
     ///
     /// In most cases you should use [`read_key()`](KeyRead::read_key) due to more predictive behaviour
@@ -300,7 +300,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{DynamicKeyType, FallibleIterator, FallibleStreamingIterator};
+    use crate::{DynamicKeyType, FallibleIterator};
     use std::path::Path;
 
     #[test]
@@ -310,7 +310,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
 
         let str_key = current_message.read_key_dynamic("name")?;
 
@@ -348,7 +348,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
         while let Some(key_name) = kiter.next()? {
@@ -365,7 +365,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
         while let Some(key_name) = kiter.next()? {
@@ -382,7 +382,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
 
         let missing_key = current_message.read_key_dynamic("doesNotExist");
 
@@ -398,7 +398,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg = handle.next()?.context("Message not some")?;
+        let msg = handle.message_generator().next()?.context("Message not some")?;
 
         let _ = msg.read_key_dynamic("dataDate")?;
         let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;

@@ -1,5 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use eccodes::FallibleStreamingIterator;
+use eccodes::FallibleIterator;
 use eccodes::codes_handle::{CodesHandle, ProductKind};
 use std::hint::black_box;
 use std::path::Path;
@@ -11,7 +11,7 @@ pub fn key_reading(c: &mut Criterion) {
 
     let mut handle = CodesHandle::new_from_file(file_path, product_kind).unwrap();
 
-    let msg = handle.next().unwrap().unwrap();
+    let msg = handle.message_generator().next().unwrap().unwrap();
 
     c.bench_function("long reading", |b| {
         b.iter(|| msg.read_key_dynamic(black_box("dataDate")).unwrap())

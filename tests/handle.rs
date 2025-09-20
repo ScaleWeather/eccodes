@@ -1,7 +1,7 @@
 use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
-use eccodes::{CodesHandle, DynamicKeyType, FallibleStreamingIterator, ProductKind};
+use eccodes::{CodesHandle, DynamicKeyType, FallibleIterator, ProductKind};
 
 #[test]
 fn thread_safety() {
@@ -15,7 +15,10 @@ fn thread_safety_core() -> Result<()> {
             let file_path = Path::new("./data/iceland.grib");
 
             let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
-            let current_message = handle.next()?.context("Message not some")?;
+            let current_message = handle
+                .message_generator()
+                .next()?
+                .context("Message not some")?;
 
             for _ in 0..100 {
                 let _ = current_message.read_key_dynamic("name")?;
@@ -27,8 +30,6 @@ fn thread_safety_core() -> Result<()> {
                     _ => panic!("Incorrect variant of string key"),
                 }
             }
-
-            drop(handle);
         }
     });
 
@@ -36,7 +37,10 @@ fn thread_safety_core() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let long_key = current_message.read_key_dynamic("numberOfPointsAlongAParallel")?;
 
@@ -44,8 +48,6 @@ fn thread_safety_core() -> Result<()> {
             DynamicKeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
-
-        drop(handle);
     }
 
     Ok(())

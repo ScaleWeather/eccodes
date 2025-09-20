@@ -230,6 +230,5 @@ pub use codes_index::CodesIndex;
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use fallible_streaming_iterator::FallibleStreamingIterator;
 pub use keyed_message::{DynamicKeyType, KeyRead, KeyWrite, KeyedMessage};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
