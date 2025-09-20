@@ -1,45 +1,48 @@
+use fallible_iterator::FallibleIterator;
+
 use crate::{CodesHandle, KeyedMessage, codes_handle::HandleGenerator, errors::CodesError};
-use fallible_streaming_iterator::FallibleStreamingIterator;
-use std::fmt::Debug;
+use std::marker::PhantomData;
+
+#[derive(Debug)]
+pub struct KeyedMessageGenerator<'a, S: HandleGenerator> {
+    codes_handle: &'a mut CodesHandle<S>,
+}
+
+impl<S: HandleGenerator> CodesHandle<S> {
+    pub fn message_generator<'a>(&'a mut self) -> KeyedMessageGenerator<'a, S> {
+        KeyedMessageGenerator { codes_handle: self }
+    }
+}
 
 /// # Errors
 ///
-/// The `advance()` and `next()` methods will return [`CodesInternal`](crate::errors::CodesInternal)
+/// The `next()` will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
-impl<S: HandleGenerator + Debug> FallibleStreamingIterator for CodesHandle<S> {
-    type Item = KeyedMessage;
-
+impl<'ch, S: HandleGenerator> FallibleIterator for KeyedMessageGenerator<'ch, S> {
+    type Item = KeyedMessage<'ch>;
     type Error = CodesError;
 
-    fn advance(&mut self) -> Result<(), Self::Error> {
-        // destructor of KeyedMessage calls ecCodes
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        let new_eccodes_handle = self.codes_handle.source.gen_codes_handle()?;
 
-        let new_eccodes_handle = self.source.gen_codes_handle()?;
-
-        self.current_message = if new_eccodes_handle.is_null() {
-            None
+        if new_eccodes_handle.is_null() {
+            Ok(None)
         } else {
-            Some(KeyedMessage {
+            Ok(Some(KeyedMessage {
+                parent_message: PhantomData,
                 message_handle: new_eccodes_handle,
-            })
-        };
-
-        Ok(())
-    }
-
-    fn get(&self) -> Option<&Self::Item> {
-        self.current_message.as_ref()
+            }))
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        DynamicKeyType,
+        DynamicKeyType, FallibleIterator,
         codes_handle::{CodesHandle, ProductKind},
     };
     use anyhow::{Context, Ok, Result};
-    use fallible_streaming_iterator::FallibleStreamingIterator;
     use std::path::Path;
 
     #[test]
@@ -48,14 +51,26 @@ mod tests {
         let product_kind = ProductKind::GRIB;
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg1 = handle.next()?.context("Message not some")?;
+        let msg1 = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let key1 = msg1.read_key_dynamic("typeOfLevel")?;
+        drop(msg1);
 
-        let msg2 = handle.next()?.context("Message not some")?;
+        let msg2 = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let key2 = msg2.read_key_dynamic("typeOfLevel")?;
+        drop(msg2);
 
-        let msg3 = handle.next()?.context("Message not some")?;
+        let msg3 = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let key3 = msg3.read_key_dynamic("typeOfLevel")?;
+        drop(msg3);
 
         assert_eq!(key1, DynamicKeyType::Str("isobaricInhPa".to_string()));
         assert_eq!(key2, DynamicKeyType::Str("isobaricInhPa".to_string()));
@@ -71,7 +86,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.message_generator().next()? {
             let key = msg.read_key_dynamic("shortName")?;
 
             match key {
@@ -91,7 +106,7 @@ mod tests {
 
         let mut handle_collected = vec![];
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.message_generator().next()? {
             handle_collected.push(msg.try_clone()?);
         }
 
@@ -112,7 +127,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
 
         assert!(!current_message.message_handle.is_null());
 
@@ -125,17 +140,18 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut mgen = handle.message_generator();
 
-        assert!(handle.next()?.is_some());
-        assert!(handle.next()?.is_some());
-        assert!(handle.next()?.is_some());
-        assert!(handle.next()?.is_some());
-        assert!(handle.next()?.is_some());
+        assert!(mgen.next()?.is_some());
+        assert!(mgen.next()?.is_some());
+        assert!(mgen.next()?.is_some());
+        assert!(mgen.next()?.is_some());
+        assert!(mgen.next()?.is_some());
 
-        assert!(handle.next()?.is_none());
-        assert!(handle.next()?.is_none());
-        assert!(handle.next()?.is_none());
-        assert!(handle.next()?.is_none());
+        assert!(mgen.next()?.is_none());
+        assert!(mgen.next()?.is_none());
+        assert!(mgen.next()?.is_none());
+        assert!(mgen.next()?.is_none());
 
         Ok(())
     }
@@ -151,7 +167,7 @@ mod tests {
         // First, filter and collect the messages to get those that we want
         let mut level = vec![];
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("msl".to_string())
                 && msg.read_key_dynamic("typeOfLevel")?
                     == DynamicKeyType::Str("surface".to_string())

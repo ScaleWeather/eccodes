@@ -57,7 +57,8 @@ use crate::{
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct KeysIterator<'a> {
-    parent_message: PhantomData<&'a KeyedMessage>,
+    /// Same trick as in `KeyedMessage`
+    parent_message: PhantomData<&'a ()>,
     iterator_handle: *mut codes_keys_iterator,
     next_item_exists: bool,
 }
@@ -87,7 +88,7 @@ pub enum KeysIteratorFlags {
     SkipEditionSpecific = eccodes_sys::CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
-impl KeyedMessage {
+impl KeyedMessage<'_> {
     /// Creates new [`KeysIterator`] for the message with specified flags and namespace.
     ///
     /// The flags are set by providing any combination of [`KeysIteratorFlags`]
@@ -220,8 +221,8 @@ impl Drop for KeysIterator<'_> {
 mod tests {
     use anyhow::{Context, Result};
 
+    use crate::FallibleIterator;
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator};
     use std::path::Path;
 
     use super::KeysIteratorFlags;
@@ -232,7 +233,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let flags = [
             KeysIteratorFlags::AllKeys,        //0
@@ -257,7 +261,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let flags = vec![
             KeysIteratorFlags::AllKeys, //0
@@ -280,12 +287,12 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let _kiter = current_message.default_keys_iterator()?;
-
-        drop(_kiter);
-        drop(handle);
 
         Ok(())
     }

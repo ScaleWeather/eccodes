@@ -1,7 +1,7 @@
 //! Definition and associated functions of `CodesNearest`
 //! used for finding nearest gridpoints in `KeyedMessage`
 
-use std::ptr::null_mut;
+use std::{fmt::Debug, ptr::null_mut};
 
 use eccodes_sys::codes_nearest;
 use tracing::{Level, event, instrument};
@@ -17,7 +17,7 @@ use crate::{
 #[derive(Debug)]
 pub struct CodesNearest<'a> {
     nearest_handle: *mut codes_nearest,
-    parent_message: &'a KeyedMessage,
+    parent_message: &'a KeyedMessage<'a>,
 }
 
 /// The structure returned by [`CodesNearest::find_nearest()`].
@@ -36,7 +36,7 @@ pub struct NearestGridpoint {
     pub value: f64,
 }
 
-impl KeyedMessage {
+impl KeyedMessage<'_> {
     /// Creates a new instance of [`CodesNearest`] for the `KeyedMessage`.
     /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`
     /// by calling [`find_nearest()`](crate::CodesNearest::find_nearest).
@@ -126,7 +126,7 @@ mod tests {
     use std::path::Path;
 
     use anyhow::{Context, Result};
-    use fallible_streaming_iterator::FallibleStreamingIterator;
+    use fallible_iterator::FallibleIterator;
 
     use crate::{CodesHandle, ProductKind};
 
@@ -137,12 +137,18 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind)?;
-        let msg1 = handle1.next()?.context("Message not some")?;
+        let msg1 = handle1
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let nrst1 = msg1.codes_nearest()?;
         let out1 = nrst1.find_nearest(64.13, -21.89)?;
 
         let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind)?;
-        let msg2 = handle2.next()?.context("Message not some")?;
+        let msg2 = handle2
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let nrst2 = msg2.codes_nearest()?;
         let out2 = nrst2.find_nearest(64.13, -21.89)?;
 
@@ -161,12 +167,12 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let _nrst = current_message.codes_nearest()?;
-
-        drop(_nrst);
-        drop(handle);
 
         Ok(())
     }

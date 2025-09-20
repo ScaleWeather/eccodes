@@ -3,9 +3,7 @@
 
 #[cfg(feature = "experimental_index")]
 use crate::codes_index::CodesIndex;
-use crate::{
-    CodesError, KeyedMessage, intermediate_bindings::codes_handle_new_from_file, pointer_guard,
-};
+use crate::{CodesError, intermediate_bindings::codes_handle_new_from_file, pointer_guard};
 use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle};
 use errno::errno;
 use libc::{FILE, c_char, c_void, size_t};
@@ -24,7 +22,7 @@ mod iterator;
 /// It is not intended to be used directly by the user.
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct CodesFile<D> {
+pub struct CodesFile<D: Debug> {
     // fields dropped from top
     pointer: *mut FILE,
     product_kind: ProductKind,
@@ -33,11 +31,11 @@ pub struct CodesFile<D> {
 
 /// Internal trait implemented for types that can be called to generate `*mut codes_handle`.
 #[doc(hidden)]
-pub trait HandleGenerator {
+pub trait HandleGenerator: Debug {
     fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError>;
 }
 
-impl<D> HandleGenerator for CodesFile<D> {
+impl<D: Debug> HandleGenerator for CodesFile<D> {
     fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError> {
         unsafe { codes_handle_new_from_file(self.pointer, self.product_kind) }
     }
@@ -52,25 +50,17 @@ impl<D> HandleGenerator for CodesFile<D> {
 /// - From GRIB index using [`new_from_index()`](CodesHandle::new_from_index) (with `experimental_index` feature enabled)
 ///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
-/// leading to bugs. Errors encountered in the destructor are logged with [`log`].
+/// leading to bugs. Errors encountered in the destructor are logged with [`tracing`].
 ///
-/// # `FallibleStreamingIterator`
+/// # `FallibleIterator`
 ///
-/// This structure implements [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait which allows to access GRIB messages.
+/// This structure implements [`FallibleIterator`](crate::FallibleStreamingIterator) trait which allows to access GRIB messages.
 ///
 /// To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
 /// It digests the `* FILE` multiple times, each time returning the `*mut codes_handle`
-/// to a message inside the file. The behavior of previous `*mut codes_handle` after next one is generated is undefined
-/// and we assume here that it is unsafe to use "old" `*mut codes_handle`.
+/// to a message inside the file.
 ///
-/// In Rust, such pattern is best represented by a streaming iterator which returns a reference to the message,
-/// that is valid only until the next iteration. If you need to prolong the lifetime of the message, you can clone it.
-/// Internal ecCodes functions can fail, necessitating the streaming iterator to be implemented with
-/// [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
-///
-/// As of `0.10` release, none of the available streaming iterator crates utilises already stabilized GATs.
-/// This unfortunately significantly limits the number of methods available for `CodesHandle` iterator.
-/// Therefore the probably most versatile way to iterate over the messages is to use `while let` loop.
+/// This behaviour is represented in this crate by `FallibleIterator`, because generating `KeyedMessage` can fail.
 ///
 /// ```
 /// use eccodes::{ProductKind, CodesHandle, KeyRead};
@@ -120,9 +110,7 @@ impl<D> HandleGenerator for CodesFile<D> {
 ///
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
-pub struct CodesHandle<S: Debug + HandleGenerator> {
-    // fields are dropped from top to bottom
-    current_message: Option<KeyedMessage>,
+pub struct CodesHandle<S: HandleGenerator> {
     source: S,
 }
 
@@ -198,7 +186,6 @@ impl CodesHandle<CodesFile<File>> {
                 pointer: file_pointer,
                 product_kind,
             },
-            current_message: None,
         })
     }
 }
@@ -250,7 +237,6 @@ impl CodesHandle<CodesFile<Vec<u8>>> {
                 product_kind,
                 pointer: file_pointer,
             },
-            current_message: None,
         })
     }
 }
@@ -340,7 +326,7 @@ mod tests {
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
     use eccodes_sys::{ProductKind_PRODUCT_GRIB, grib_handle};
-    use fallible_streaming_iterator::FallibleStreamingIterator;
+    use fallible_iterator::FallibleIterator;
     use std::{
         fs::File,
         io::Read,
@@ -356,7 +342,6 @@ mod tests {
         let handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.current_message.is_none());
         assert_eq!(handle.source.product_kind as u32, {
             ProductKind_PRODUCT_GRIB
         });
@@ -438,7 +423,6 @@ mod tests {
 
         let handle = CodesHandle::new_from_memory(buf, product_kind)?;
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.current_message.is_none());
         assert_eq!(handle.source.product_kind as u32, {
             ProductKind_PRODUCT_GRIB
         });
@@ -503,9 +487,10 @@ mod tests {
 
             let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-            let _ref_msg = handle.next()?.context("no message")?;
+            let _ref_msg = handle.message_generator().next()?.context("no message")?;
             let clone_msg = _ref_msg.try_clone()?;
-            let _oth_ref = handle.next()?.context("no message")?;
+            drop(_ref_msg);
+            let _oth_ref = handle.message_generator().next()?.context("no message")?;
 
             let _nrst = clone_msg.codes_nearest()?;
             let _kiter = clone_msg.default_keys_iterator()?;

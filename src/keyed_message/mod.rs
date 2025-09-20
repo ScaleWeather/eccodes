@@ -5,7 +5,7 @@ mod read;
 mod write;
 
 use eccodes_sys::codes_handle;
-use std::ptr::null_mut;
+use std::{fmt::Debug, marker::PhantomData, ptr::null_mut};
 use tracing::{Level, event, instrument};
 
 use crate::{
@@ -47,7 +47,11 @@ use crate::{
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered in desctructor the are logged with [`log`].
 #[derive(Hash, Debug)]
-pub struct KeyedMessage {
+pub struct KeyedMessage<'ch> {
+    /// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
+    /// KeyedMessage and derived types with generics, because `PhantomData` is needed
+    /// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
+    pub(crate) parent_message: PhantomData<&'ch ()>,
     pub(crate) message_handle: *mut codes_handle,
 }
 
@@ -176,15 +180,16 @@ pub enum DynamicKeyType {
     Bytes(Vec<u8>),
 }
 
-impl KeyedMessage {
+impl KeyedMessage<'_> {
     /// Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
     ///
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
-    pub fn try_clone(&self) -> Result<Self, CodesError> {
+    pub fn try_clone(&self) -> Result<KeyedMessage<'static>, CodesError> {
         let new_handle = unsafe { codes_handle_clone(self.message_handle)? };
 
-        Ok(Self {
+        Ok(KeyedMessage {
+            parent_message: PhantomData,
             message_handle: new_handle,
         })
     }
@@ -199,7 +204,7 @@ impl KeyedMessage {
 }
 
 #[doc(hidden)]
-impl Drop for KeyedMessage {
+impl Drop for KeyedMessage<'_> {
     /// Executes the destructor for this type.
     /// This method calls destructor functions from ecCodes library.
     /// In some edge cases these functions can return non-zero code.
@@ -233,9 +238,9 @@ impl Drop for KeyedMessage {
 
 #[cfg(test)]
 mod tests {
-    use crate::FallibleStreamingIterator;
     use crate::codes_handle::{CodesHandle, ProductKind};
     use anyhow::{Context, Result};
+    use fallible_iterator::FallibleIterator;
     use std::path::Path;
 
     #[test]
@@ -244,7 +249,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let _ = current_message.read_key_dynamic("validityDate")?;
         let _ = current_message.read_key_dynamic("validityTime")?;
@@ -263,7 +271,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let cloned_message = current_message.try_clone()?;
 
         assert_ne!(
@@ -280,8 +291,9 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let msg = handle.next()?.context("Message not some")?.try_clone()?;
-        let _ = handle.next()?;
+        let mut mgen = handle.message_generator();
+        let msg = mgen.next()?.context("Message not some")?.try_clone()?;
+        let _ = mgen.next()?;
 
         drop(handle);
 
@@ -301,9 +313,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let _msg_ref = handle.next()?.context("Message not some")?;
+        let _msg_ref = handle.message_generator().next()?.context("Message not some")?;
         let _msg_clone = _msg_ref.try_clone()?;
 
+        drop(_msg_ref);
         drop(handle);
         drop(_msg_clone);
 

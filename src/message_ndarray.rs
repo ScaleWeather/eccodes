@@ -18,7 +18,7 @@ pub struct RustyCodesMessage {
     pub values: Array2<f64>,
 }
 
-impl KeyedMessage {
+impl KeyedMessage<'_> {
     /// Converts the message to a 2D ndarray.
     ///
     /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
@@ -140,11 +140,11 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
+    use fallible_iterator::FallibleIterator;
     use float_cmp::assert_approx_eq;
 
     use super::*;
     use crate::DynamicKeyType;
-    use crate::FallibleStreamingIterator;
     use crate::ProductKind;
     use crate::codes_handle::CodesHandle;
     use std::path::Path;
@@ -154,7 +154,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let ndarray = msg.to_ndarray()?;
 
@@ -180,7 +180,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let rmsg = msg.to_lons_lats_values()?;
 

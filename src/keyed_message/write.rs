@@ -11,67 +11,67 @@ use crate::{
 
 use super::KeyWrite;
 
-impl KeyWrite<i64> for KeyedMessage {
+impl KeyWrite<i64> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: i64) -> Result<(), CodesError> {
         unsafe { codes_set_long(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<f64> for KeyedMessage {
+impl KeyWrite<f64> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: f64) -> Result<(), CodesError> {
         unsafe { codes_set_double(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&[i64]> for KeyedMessage {
+impl KeyWrite<&[i64]> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &[i64]) -> Result<(), CodesError> {
         unsafe { codes_set_long_array(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&[f64]> for KeyedMessage {
+impl KeyWrite<&[f64]> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &[f64]) -> Result<(), CodesError> {
         unsafe { codes_set_double_array(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&[u8]> for KeyedMessage {
+impl KeyWrite<&[u8]> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &[u8]) -> Result<(), CodesError> {
         unsafe { codes_set_bytes(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&Vec<i64>> for KeyedMessage {
+impl KeyWrite<&Vec<i64>> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &Vec<i64>) -> Result<(), CodesError> {
         unsafe { codes_set_long_array(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&Vec<f64>> for KeyedMessage {
+impl KeyWrite<&Vec<f64>> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &Vec<f64>) -> Result<(), CodesError> {
         unsafe { codes_set_double_array(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&Vec<u8>> for KeyedMessage {
+impl KeyWrite<&Vec<u8>> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &Vec<u8>) -> Result<(), CodesError> {
         unsafe { codes_set_bytes(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&str> for KeyedMessage {
+impl KeyWrite<&str> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &str) -> Result<(), CodesError> {
         unsafe { codes_set_string(self.message_handle, name, value) }
     }
 }
 
-impl KeyWrite<&String> for KeyedMessage {
+impl KeyWrite<&String> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: &String) -> Result<(), CodesError> {
         unsafe { codes_set_string(self.message_handle, name, value) }
     }
 }
 
-impl KeyedMessage {
+impl KeyedMessage<'_> {
     /// Function to write given `KeyedMessage` to a file at provided path.
     /// If file does not exists it will be created.
     /// If `append` is set to `true` file will be opened in append mode
@@ -132,9 +132,10 @@ impl KeyedMessage {
 #[cfg(test)]
 mod tests {
     use anyhow::{Context, Result};
+    use fallible_iterator::FallibleIterator;
 
     use crate::{
-        DynamicKeyType, FallibleStreamingIterator, KeyWrite,
+        DynamicKeyType, KeyWrite,
         codes_handle::{CodesHandle, ProductKind},
     };
     use std::{fs::remove_file, path::Path};
@@ -146,7 +147,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
         let out_path = Path::new("./data/iceland_write.grib");
         current_message.write_to_file(out_path, false)?;
 
@@ -161,7 +162,11 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?.try_clone()?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?
+            .try_clone()?;
 
         drop(handle);
 
@@ -180,12 +185,12 @@ mod tests {
 
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
         current_message.write_to_file(out_path, false)?;
 
         let file_path = Path::new("./data/iceland-levels.grib");
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
         current_message.write_to_file(out_path, true)?;
 
         remove_file(out_path)?;
@@ -199,7 +204,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
+        let mut current_message = handle.message_generator().next()?.context("Message not some")?.try_clone()?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
@@ -219,7 +224,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.next()?.context("Message not some")?.try_clone()?;
+        let mut current_message = handle.message_generator().next()?.context("Message not some")?.try_clone()?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
@@ -230,7 +235,7 @@ mod tests {
         let file_path = Path::new("./data/iceland_edit.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let current_message = handle.message_generator().next()?.context("Message not some")?;
 
         let read_key = current_message.read_key_dynamic("centre")?;
 
