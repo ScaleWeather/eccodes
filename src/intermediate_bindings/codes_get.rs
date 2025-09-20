@@ -17,7 +17,7 @@ use super::NativeKeyType;
 pub unsafe fn codes_get_native_type(
     handle: *const codes_handle,
     key: &str,
-) -> Result<NativeKeyType, CodesError> {
+) -> Result<NativeKeyType, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -31,9 +31,9 @@ pub unsafe fn codes_get_native_type(
     }
 
     Ok(FromPrimitive::from_i32(key_type).unwrap())
-}
+}}
 
-pub unsafe fn codes_get_size(handle: *const codes_handle, key: &str) -> Result<usize, CodesError> {
+pub unsafe fn codes_get_size(handle: *const codes_handle, key: &str) -> Result<usize, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -47,9 +47,9 @@ pub unsafe fn codes_get_size(handle: *const codes_handle, key: &str) -> Result<u
     }
 
     Ok(key_size)
-}
+}}
 
-pub unsafe fn codes_get_long(handle: *const codes_handle, key: &str) -> Result<i64, CodesError> {
+pub unsafe fn codes_get_long(handle: *const codes_handle, key: &str) -> Result<i64, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -63,9 +63,9 @@ pub unsafe fn codes_get_long(handle: *const codes_handle, key: &str) -> Result<i
     }
 
     Ok(key_value)
-}
+}}
 
-pub unsafe fn codes_get_double(handle: *const codes_handle, key: &str) -> Result<f64, CodesError> {
+pub unsafe fn codes_get_double(handle: *const codes_handle, key: &str) -> Result<f64, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -79,12 +79,12 @@ pub unsafe fn codes_get_double(handle: *const codes_handle, key: &str) -> Result
     }
 
     Ok(key_value)
-}
+}}
 
 pub unsafe fn codes_get_double_array(
     handle: *const codes_handle,
     key: &str,
-) -> Result<Vec<f64>, CodesError> {
+) -> Result<Vec<f64>, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let mut key_size = codes_get_size(handle, key)?;
@@ -105,12 +105,12 @@ pub unsafe fn codes_get_double_array(
     }
 
     Ok(key_values)
-}
+}}
 
 pub unsafe fn codes_get_long_array(
     handle: *const codes_handle,
     key: &str,
-) -> Result<Vec<i64>, CodesError> {
+) -> Result<Vec<i64>, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let mut key_size = codes_get_size(handle, key)?;
@@ -131,12 +131,12 @@ pub unsafe fn codes_get_long_array(
     }
 
     Ok(key_values)
-}
+}}
 
 pub unsafe fn codes_get_length(
     handle: *const codes_handle,
     key: &str,
-) -> Result<usize, CodesError> {
+) -> Result<usize, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let key = CString::new(key).unwrap();
@@ -150,12 +150,12 @@ pub unsafe fn codes_get_length(
     }
 
     Ok(key_length)
-}
+}}
 
 pub unsafe fn codes_get_string(
     handle: *const codes_handle,
     key: &str,
-) -> Result<String, CodesError> {
+) -> Result<String, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let mut key_length = codes_get_length(handle, key)?;
@@ -188,12 +188,12 @@ pub unsafe fn codes_get_string(
     let key_message_string = key_message_cstr.to_str()?.to_string();
 
     Ok(key_message_string)
-}
+}}
 
 pub unsafe fn codes_get_bytes(
     handle: *const codes_handle,
     key: &str,
-) -> Result<Vec<u8>, CodesError> {
+) -> Result<Vec<u8>, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let mut key_size = codes_get_length(handle, key)?;
@@ -214,9 +214,9 @@ pub unsafe fn codes_get_bytes(
     }
 
     Ok(buffer)
-}
+}}
 
-pub unsafe fn codes_get_message_size(handle: *const codes_handle) -> Result<usize, CodesError> {
+pub unsafe fn codes_get_message_size(handle: *const codes_handle) -> Result<usize, CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let mut size: usize = 0;
@@ -229,11 +229,11 @@ pub unsafe fn codes_get_message_size(handle: *const codes_handle) -> Result<usiz
     }
 
     Ok(size)
-}
+}}
 
 pub unsafe fn codes_get_message(
     handle: *const codes_handle,
-) -> Result<(*const c_void, usize), CodesError> {
+) -> Result<(*const c_void, usize), CodesError> { unsafe {
     pointer_guard::non_null!(handle);
 
     let buffer_size = codes_get_message_size(handle)?;
@@ -257,4 +257,4 @@ pub unsafe fn codes_get_message(
     );
 
     Ok((buffer_ptr, message_size))
-}
+}}
