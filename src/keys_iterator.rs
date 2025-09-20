@@ -2,7 +2,7 @@
 
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
-use log::error;
+use tracing::{event, instrument, Level};
 use std::{marker::PhantomData, ptr::null_mut};
 
 use crate::{
@@ -134,6 +134,7 @@ impl KeyedMessage {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
+    #[instrument(level = "trace")]
     pub fn new_keys_iterator<'a>(
         &'a self,
         flags: &[KeysIteratorFlags],
@@ -197,10 +198,11 @@ impl FallibleIterator for KeysIterator<'_> {
 
 #[doc(hidden)]
 impl Drop for KeysIterator<'_> {
+    #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
             codes_keys_iterator_delete(self.iterator_handle).unwrap_or_else(|error| {
-                error!(
+                event!(Level::ERROR,
                     "codes_keys_iterator_delete() returned an error: {:?}",
                     &error
                 );

@@ -8,6 +8,7 @@ use eccodes_sys::{codes_context, codes_handle};
 use eccodes_sys::{codes_index, CODES_LOCK};
 use libc::FILE;
 use num_traits::FromPrimitive;
+use tracing::instrument;
 
 use crate::{
     codes_handle::ProductKind,
@@ -15,6 +16,13 @@ use crate::{
     pointer_guard,
 };
 
+#[cfg(target_os = "macos")]
+type _SYS_IO_FILE = eccodes_sys::__sFILE;
+
+#[cfg(not(target_os = "macos"))]
+type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
+
+#[instrument(level = "trace")]
 pub unsafe fn codes_handle_new_from_file(
     file_pointer: *mut FILE,
     product_kind: ProductKind,
@@ -40,10 +48,8 @@ pub unsafe fn codes_handle_new_from_file(
     Ok(file_handle)
 }}
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), CodesError> { unsafe {
-    #[cfg(test)]
-    log::trace!("codes_handle_delete");
-
     if handle.is_null() {
         return Ok(());
     }
@@ -59,6 +65,7 @@ pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), Codes
 }}
 
 #[cfg(feature = "experimental_index")]
+#[instrument(level = "trace")]
 pub unsafe fn codes_handle_new_from_index(
     index: *mut codes_index,
 ) -> Result<*mut codes_handle, CodesError> {

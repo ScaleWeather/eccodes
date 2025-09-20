@@ -5,7 +5,7 @@ mod read;
 mod write;
 
 use eccodes_sys::codes_handle;
-use log::error;
+use tracing::{event, instrument, Level};
 use std::ptr::null_mut;
 
 use crate::{
@@ -213,10 +213,11 @@ impl Drop for KeyedMessage {
     /// when other functions corrupt the inner memory of pointer, in that case memory leak is possible.
     /// In case of corrupt pointer segmentation fault will occur.
     /// The pointers are cleared at the end of drop as they are not functional regardless of result of delete functions.
+    #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
             codes_handle_delete(self.message_handle).unwrap_or_else(|error| {
-                error!("codes_handle_delete() returned an error: {:?}", &error);
+                event!(Level::ERROR, "codes_handle_delete() returned an error: {:?}", &error);
             });
         }
 

@@ -138,6 +138,7 @@ impl CodesIndex {
     ///
     /// This function will return [`CodesError::Internal`] if the index cannot be created.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+    #[instrument(level = "trace")]
     pub fn new_from_keys(keys: &[&str]) -> Result<CodesIndex, CodesError> {
         let keys = keys.join(",");
 
@@ -173,6 +174,7 @@ impl CodesIndex {
     /// This function will return [`CodesError::Internal`] if the index file is not valid or
     /// the GRIB file is not present in the same relative path as during the index file creation.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+    #[instrument(level = "trace")]
     pub fn read_from_file<P: AsRef<Path>>(index_file_path: P) -> Result<CodesIndex, CodesError> {
         let index_file_path: &Path = index_file_path.as_ref();
         let file_path = index_file_path.to_str().ok_or_else(|| {
@@ -271,6 +273,7 @@ impl HandleGenerator for CodesIndex {
 
 #[doc(hidden)]
 impl Drop for CodesIndex {
+    #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe { codes_index_delete(self.pointer) }
         self.pointer = null_mut();

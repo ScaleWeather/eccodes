@@ -6,12 +6,14 @@ use std::ffi::{CStr, CString};
 use eccodes_sys::{codes_handle, codes_keys_iterator};
 
 use num_traits::FromPrimitive;
+use tracing::instrument;
 
 use crate::{
     errors::{CodesError, CodesInternal},
     pointer_guard,
 };
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_keys_iterator_new(
     handle: *mut codes_handle,
     flags: u32,
@@ -30,11 +32,10 @@ pub unsafe fn codes_keys_iterator_new(
     Ok(kiter)
 }}
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_keys_iterator_delete(
     keys_iterator: *mut codes_keys_iterator,
 ) -> Result<(), CodesError> { unsafe {
-    #[cfg(test)]
-    log::trace!("codes_keys_iterator_delete");
 
     if keys_iterator.is_null() {
         return Ok(());

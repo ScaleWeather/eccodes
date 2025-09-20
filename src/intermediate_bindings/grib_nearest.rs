@@ -6,12 +6,14 @@ use std::ptr::addr_of_mut;
 use eccodes_sys::{codes_handle, codes_nearest, CODES_NEAREST_SAME_DATA, CODES_NEAREST_SAME_GRID};
 
 use num_traits::FromPrimitive;
+use tracing::instrument;
 
 use crate::{
     errors::{CodesError, CodesInternal},
     pointer_guard, NearestGridpoint,
 };
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_grib_nearest_new(
     handle: *const codes_handle,
 ) -> Result<*mut codes_nearest, CodesError> { unsafe {
@@ -29,10 +31,8 @@ pub unsafe fn codes_grib_nearest_new(
     Ok(nearest)
 }}
 
+#[instrument(level = "trace")]
 pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(), CodesError> { unsafe {
-    #[cfg(test)]
-    log::trace!("codes_grib_nearest_delete");
-
     if nearest.is_null() {
         return Ok(());
     }

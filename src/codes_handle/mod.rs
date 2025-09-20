@@ -8,7 +8,8 @@ use crate::{
 };
 use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
-use libc::{c_void, size_t, FILE};
+use libc::{c_char, c_void, size_t, FILE};
+use tracing::instrument;
 use std::{
     fmt::Debug,
     fs::{File, OpenOptions},
@@ -183,7 +184,8 @@ impl CodesHandle<CodesFile<File>> {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`] cannot be created.
-    pub fn new_from_file<P: AsRef<Path>>(
+    #[instrument(level = "trace")]
+    pub fn new_from_file<P: AsRef<Path> + Debug>(
         file_path: P,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
@@ -235,6 +237,7 @@ impl CodesHandle<CodesFile<Vec<u8>>> {
     ///
     ///Returns [`CodesError::Internal`] with error code
     ///when internal [`codes_handle`] cannot be created.
+    #[instrument(level = "trace")]
     pub fn new_from_memory(
         file_data: Vec<u8>,
         product_kind: ProductKind,
@@ -283,6 +286,7 @@ impl CodesHandle<CodesIndex> {
     ///
     /// Returns [`CodesError::Internal`] with error code
     /// when internal [`codes_handle`] cannot be created.
+    #[instrument(level = "trace")]
     pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
         let new_handle = CodesHandle {
             source: index,
@@ -293,6 +297,7 @@ impl CodesHandle<CodesIndex> {
     }
 }
 
+#[instrument(level = "trace")]
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
     let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<_>()) };
 
@@ -305,6 +310,7 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
     Ok(file_ptr)
 }
 
+#[instrument(level = "trace")]
 fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
     let file_data_ptr = file_data.as_ptr() as *mut c_void;
     pointer_guard::non_null!(file_data_ptr);
@@ -419,8 +425,6 @@ mod tests {
 
         v.into_iter().for_each(|th| th.join().unwrap());
 
-        todo!("Implement tracing to follow contructors and drops");
-        assert!(false);
         Ok(())
     }
 
