@@ -204,7 +204,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.message_generator().next()?.context("Message not some")?.try_clone()?;
+        let mut current_message = handle.message_generator().next()?.context("Message not some")?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
@@ -224,7 +224,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.message_generator().next()?.context("Message not some")?.try_clone()?;
+        let mut current_message = handle.message_generator().next()?.context("Message not some")?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 

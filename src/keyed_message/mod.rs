@@ -181,7 +181,11 @@ pub enum DynamicKeyType {
 }
 
 impl KeyedMessage<'_> {
-    /// Custom function to clone the `KeyedMessage`. This function comes with memory overhead.
+    /// Custom function to clone the `KeyedMessage`.
+    /// 
+    /// **Be careful of the memory overhead!** ecCodes (when reading from file) defers reading the data into memory
+    /// if possible. Simply creating `KeyedMessage` or even reading some keys will use only a little of memory.
+    /// This function **will** read the whole message into the memory, which can be of a significant size for big grids.
     ///
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.

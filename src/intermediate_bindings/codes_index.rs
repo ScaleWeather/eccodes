@@ -4,6 +4,7 @@
 use eccodes_sys::{CODES_LOCK, codes_context, codes_index};
 use num_traits::FromPrimitive;
 use std::{ffi::CString, ptr};
+use tracing::instrument;
 
 use crate::{
     errors::{CodesError, CodesInternal},
