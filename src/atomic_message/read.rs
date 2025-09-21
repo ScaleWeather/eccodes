@@ -15,44 +15,50 @@ pub trait KeyReadHelpers {
     fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError>;
     fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError>;
 }
+
 pub trait KeyRead<T>: KeyReadHelpers {
-    fn read_key_unchecked(&mut self, name: &str) -> Result<T, CodesError>;
+    fn read_key(&mut self, key_name: &str) -> Result<T, CodesError>;
+    fn read_key_unchecked(&mut self, key_name: &str) -> Result<T, CodesError>;
 }
 
-pub trait ArrayKeyRead<T>: KeyRead<T> {
-    fn read_key(&mut self, key_name: &str) -> Result<T, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Bytes => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
+macro_rules! impl_key_read {
+    ($key_sizing:ident, $ec_func:ident, $key_variant:path, $gen_type:ty) => {
+        impl<S: ThreadSafeHandle> KeyRead<$gen_type> for AtomicMessage<S> {
+            fn read_key_unchecked(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
+                unsafe { $ec_func(self.message_handle, key_name) }
+            }
+
+            fn read_key(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
+                match self.get_key_native_type(key_name)? {
+                    $key_variant => (),
+                    _ => return Err(CodesError::WrongRequestedKeyType),
+                }
+
+                let key_size = self.get_key_size(key_name)?;
+
+                key_size_check!($key_sizing, key_size);
+
+                self.read_key_unchecked(key_name)
+            }
         }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        if key_size < 1 {
-            return Err(CodesError::IncorrectKeySize);
-        }
-
-        self.read_key_unchecked(key_name)
-    }
+    };
 }
 
-pub trait ScalarKeyRead<T>: KeyRead<T> {
-    fn read_key(&mut self, key_name: &str) -> Result<T, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Long => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
-        }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        match key_size.cmp(&1) {
+macro_rules! key_size_check {
+    // size_var is needed because of macro hygiene
+    (scalar, $size_var:ident) => {
+        match $size_var.cmp(&1) {
             Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
             Ordering::Less => return Err(CodesError::IncorrectKeySize),
             Ordering::Equal => (),
         }
+    };
 
-        self.read_key_unchecked(key_name)
-    }
+    (array, $size_var:ident) => {
+        if $size_var < 1 {
+            return Err(CodesError::IncorrectKeySize);
+        }
+    };
 }
 
 impl<S: ThreadSafeHandle> KeyReadHelpers for AtomicMessage<S> {
@@ -65,46 +71,14 @@ impl<S: ThreadSafeHandle> KeyReadHelpers for AtomicMessage<S> {
     }
 }
 
-impl<S: ThreadSafeHandle> KeyRead<i64> for AtomicMessage<S> {
-    fn read_key_unchecked(&mut self, key_name: &str) -> Result<i64, CodesError> {
-        unsafe { codes_get_long(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> KeyRead<f64> for AtomicMessage<S> {
-    fn read_key_unchecked(&mut self, key_name: &str) -> Result<f64, CodesError> {
-        unsafe { codes_get_double(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> KeyRead<String> for AtomicMessage<S> {
-    fn read_key_unchecked(&mut self, key_name: &str) -> Result<String, CodesError> {
-        unsafe { codes_get_string(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> KeyRead<Vec<i64>> for AtomicMessage<S> {
-    fn read_key_unchecked(&mut self, key_name: &str) -> Result<Vec<i64>, CodesError> {
-        unsafe { codes_get_long_array(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> KeyRead<Vec<f64>> for AtomicMessage<S> {
-    fn read_key_unchecked(&mut self, key_name: &str) -> Result<Vec<f64>, CodesError> {
-        unsafe { codes_get_double_array(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> KeyRead<Vec<u8>> for AtomicMessage<S> {
-    fn read_key_unchecked(&mut self, key_name: &str) -> Result<Vec<u8>, CodesError> {
-        unsafe { codes_get_bytes(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> ScalarKeyRead<i64> for AtomicMessage<S> {}
-impl<S: ThreadSafeHandle> ScalarKeyRead<f64> for AtomicMessage<S> {}
-
-impl<S: ThreadSafeHandle> ArrayKeyRead<String> for AtomicMessage<S> {}
-impl<S: ThreadSafeHandle> ArrayKeyRead<Vec<f64>> for AtomicMessage<S> {}
-impl<S: ThreadSafeHandle> ArrayKeyRead<Vec<i64>> for AtomicMessage<S> {}
-impl<S: ThreadSafeHandle> ArrayKeyRead<Vec<u8>> for AtomicMessage<S> {}
+impl_key_read!(scalar, codes_get_long, NativeKeyType::Long, i64);
+impl_key_read!(scalar, codes_get_double, NativeKeyType::Double, f64);
+impl_key_read!(array, codes_get_string, NativeKeyType::Str, String);
+impl_key_read!(array, codes_get_bytes, NativeKeyType::Bytes, Vec<u8>);
+impl_key_read!(array, codes_get_long_array, NativeKeyType::Long, Vec<i64>);
+impl_key_read!(
+    array,
+    codes_get_double_array,
+    NativeKeyType::Double,
+    Vec<f64>
+);
