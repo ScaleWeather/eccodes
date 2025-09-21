@@ -6,7 +6,7 @@ use eccodes_sys::codes_handle;
 
 use crate::{CodesHandle, codes_handle::ThreadSafeHandle};
 
-pub use read::{KeyRead};
+pub use read::{AtomicKeyRead};
 
 /// Because standard `KeyedMessage` is not Copy or Clone it can provide access methods without
 /// requiring `&mut self`. As `AtomicMessage` implements `Send + Sync` this exclusive method access is not

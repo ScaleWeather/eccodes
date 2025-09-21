@@ -4,11 +4,8 @@
 use ndarray::{Array2, Array3, s};
 
 use crate::{
-    AtomicMessage, CodesError, KeyedMessage,
-    atomic_message::{ArrayKeyRead, ScalarKeyRead},
-    codes_handle::ThreadSafeHandle,
-    errors::MessageNdarrayError,
-    keyed_message::KeyRead,
+    AtomicMessage, CodesError, KeyedMessage, atomic_message::AtomicKeyRead,
+    codes_handle::ThreadSafeHandle, errors::MessageNdarrayError, keyed_message::KeyRead,
 };
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
@@ -167,7 +164,7 @@ impl<S: ThreadSafeHandle> AtomicMessage<S> {
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-    pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
+    pub fn to_ndarray(&mut self) -> Result<Array2<f64>, CodesError> {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
@@ -212,7 +209,7 @@ impl<S: ThreadSafeHandle> AtomicMessage<S> {
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-    pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
+    pub fn to_lons_lats_values(&mut self) -> Result<RustyCodesMessage, CodesError> {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 

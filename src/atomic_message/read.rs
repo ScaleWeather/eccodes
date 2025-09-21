@@ -16,14 +16,14 @@ pub trait KeyReadHelpers {
     fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError>;
 }
 
-pub trait KeyRead<T>: KeyReadHelpers {
+pub trait AtomicKeyRead<T>: KeyReadHelpers {
     fn read_key(&mut self, key_name: &str) -> Result<T, CodesError>;
     fn read_key_unchecked(&mut self, key_name: &str) -> Result<T, CodesError>;
 }
 
 macro_rules! impl_key_read {
     ($key_sizing:ident, $ec_func:ident, $key_variant:path, $gen_type:ty) => {
-        impl<S: ThreadSafeHandle> KeyRead<$gen_type> for AtomicMessage<S> {
+        impl<S: ThreadSafeHandle> AtomicKeyRead<$gen_type> for AtomicMessage<S> {
             fn read_key_unchecked(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
                 unsafe { $ec_func(self.message_handle, key_name) }
             }
