@@ -1,142 +1,172 @@
 use std::cmp::Ordering;
 
 use crate::{
-    keyed_message::DynamicKeyType, keyed_message::KeyRead, KeyedMessage,
+    KeyedMessage,
+    codes_handle::ThreadSafeHandle,
     errors::CodesError,
     intermediate_bindings::{
         NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
     },
+    keyed_message::AtomicMessage,
 };
 
-impl KeyRead<i64> for KeyedMessage<'_> {
-    fn read_key(&self, key_name: &str) -> Result<i64, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Long => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
+/// Provides GRIB key reading capabilites. Implemented by [`KeyedMessage`] for all possible key types.
+pub trait KeyRead<T> {
+    /// Tries to read a key of given name from [`KeyedMessage`]. This function checks if key native type
+    /// matches the requested type (ie. you cannot read integer as string, or array as a number).
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  # use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  # let file_path = Path::new("./data/iceland.grib");
+    ///  # let product_kind = ProductKind::GRIB;
+    ///  #
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///  let message = handle.next()?.context("no message")?;
+    ///  let short_name: String = message.read_key("shortName")?;
+    ///  
+    ///  assert_eq!(short_name, "msl");
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeyType) when trying to read key in non-native type (use [`unchecked`](KeyRead::read_key_unchecked) instead).
+    ///
+    /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeySize) when trying to read array as integer.
+    ///
+    /// Returns [`IncorrectKeySize`](CodesError::IncorrectKeySize) when key size is 0. This can indicate corrupted data.
+    ///
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
+    fn read_key(&self, name: &str) -> Result<T, CodesError>;
+
+    /// Skips all the checks provided by [`read_key`](KeyRead::read_key) and directly calls ecCodes, ensuring only memory and type safety.
+    ///
+    /// This function has better perfomance than [`read_key`](KeyRead::read_key) but all error handling and (possible)
+    /// type conversions are performed directly by ecCodes.
+    ///
+    /// This function is also useful for (not usually used) keys that return incorrect native type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  # use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  # let file_path = Path::new("./data/iceland.grib");
+    ///  # let product_kind = ProductKind::GRIB;
+    ///  #
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///  let message = handle.next()?.context("no message")?;
+    ///  let short_name: String = message.read_key_unchecked("shortName")?;
+    ///  
+    ///  assert_eq!(short_name, "msl");
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
+    fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
+}
+
+#[doc(hidden)]
+pub trait KeyReadHelpers {
+    fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError>;
+    fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError>;
+}
+
+impl KeyReadHelpers for KeyedMessage<'_> {
+    fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError> {
+        unsafe { codes_get_size(self.message_handle, key_name) }
+    }
+
+    fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError> {
+        unsafe { codes_get_native_type(self.message_handle, key_name) }
+    }
+}
+
+impl<S: ThreadSafeHandle> KeyReadHelpers for AtomicMessage<S> {
+    fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError> {
+        unsafe { codes_get_size(self.message_handle, key_name) }
+    }
+
+    fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError> {
+        unsafe { codes_get_native_type(self.message_handle, key_name) }
+    }
+}
+
+macro_rules! impl_key_read {
+    ($key_sizing:ident, $ec_func:ident, $key_variant:path, $gen_type:ty) => {
+        impl<S: ThreadSafeHandle> AtomicKeyRead<$gen_type> for AtomicMessage<S> {
+            fn read_key_unchecked(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
+                unsafe { $ec_func(self.message_handle, key_name) }
+            }
+
+            fn read_key(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
+                match self.get_key_native_type(key_name)? {
+                    $key_variant => (),
+                    _ => return Err(CodesError::WrongRequestedKeyType),
+                }
+
+                let key_size = self.get_key_size(key_name)?;
+
+                key_size_check!($key_sizing, key_size);
+
+                self.read_key_unchecked(key_name)
+            }
         }
+    };
+}
 
-        let key_size = self.get_key_size(key_name)?;
-
-        match key_size.cmp(&1) {
+macro_rules! key_size_check {
+    // size_var is needed because of macro hygiene
+    (scalar, $size_var:ident) => {
+        match $size_var.cmp(&1) {
             Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
             Ordering::Less => return Err(CodesError::IncorrectKeySize),
             Ordering::Equal => (),
         }
+    };
 
-        self.read_key_unchecked(key_name)
-    }
-
-    fn read_key_unchecked(&self, key_name: &str) -> Result<i64, CodesError> {
-        unsafe { codes_get_long(self.message_handle, key_name) }
-    }
-}
-
-impl KeyRead<f64> for KeyedMessage<'_> {
-    fn read_key(&self, key_name: &str) -> Result<f64, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Double => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
-        }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        match key_size.cmp(&1) {
-            Ordering::Greater => return Err(CodesError::WrongRequestedKeySize),
-            Ordering::Less => return Err(CodesError::IncorrectKeySize),
-            Ordering::Equal => (),
-        }
-
-        self.read_key_unchecked(key_name)
-    }
-
-    fn read_key_unchecked(&self, key_name: &str) -> Result<f64, CodesError> {
-        unsafe { codes_get_double(self.message_handle, key_name) }
-    }
-}
-
-impl KeyRead<String> for KeyedMessage<'_> {
-    fn read_key(&self, key_name: &str) -> Result<String, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Str => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
-        }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        if key_size < 1 {
+    (array, $size_var:ident) => {
+        if $size_var < 1 {
             return Err(CodesError::IncorrectKeySize);
         }
-
-        self.read_key_unchecked(key_name)
-    }
-
-    fn read_key_unchecked(&self, key_name: &str) -> Result<String, CodesError> {
-        unsafe { codes_get_string(self.message_handle, key_name) }
-    }
+    };
 }
 
-impl KeyRead<Vec<i64>> for KeyedMessage<'_> {
-    fn read_key(&self, key_name: &str) -> Result<Vec<i64>, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Long => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
-        }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        if key_size < 1 {
-            return Err(CodesError::IncorrectKeySize);
-        }
-
-        self.read_key_unchecked(key_name)
-    }
-
-    fn read_key_unchecked(&self, key_name: &str) -> Result<Vec<i64>, CodesError> {
-        unsafe { codes_get_long_array(self.message_handle, key_name) }
-    }
-}
-
-impl KeyRead<Vec<f64>> for KeyedMessage<'_> {
-    fn read_key(&self, key_name: &str) -> Result<Vec<f64>, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Double => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
-        }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        if key_size < 1 {
-            return Err(CodesError::IncorrectKeySize);
-        }
-
-        self.read_key_unchecked(key_name)
-    }
-
-    fn read_key_unchecked(&self, key_name: &str) -> Result<Vec<f64>, CodesError> {
-        unsafe { codes_get_double_array(self.message_handle, key_name) }
-    }
-}
-
-impl KeyRead<Vec<u8>> for KeyedMessage<'_> {
-    fn read_key(&self, key_name: &str) -> Result<Vec<u8>, CodesError> {
-        match self.get_key_native_type(key_name)? {
-            NativeKeyType::Bytes => (),
-            _ => return Err(CodesError::WrongRequestedKeyType),
-        }
-
-        let key_size = self.get_key_size(key_name)?;
-
-        if key_size < 1 {
-            return Err(CodesError::IncorrectKeySize);
-        }
-
-        self.read_key_unchecked(key_name)
-    }
-
-    fn read_key_unchecked(&self, key_name: &str) -> Result<Vec<u8>, CodesError> {
-        unsafe { codes_get_bytes(self.message_handle, key_name) }
-    }
+/// Enum of types GRIB key can have.
+///
+/// Messages inside GRIB files can contain keys of arbitrary types, which are known only at runtime (after being checked).
+/// ecCodes can return several different types of key, which are represented by this enum
+/// and each variant contains the respective data type.
+#[derive(Clone, Debug, PartialEq)]
+pub enum DynamicKeyType {
+    #[allow(missing_docs)]
+    Float(f64),
+    #[allow(missing_docs)]
+    Int(i64),
+    #[allow(missing_docs)]
+    FloatArray(Vec<f64>),
+    #[allow(missing_docs)]
+    IntArray(Vec<i64>),
+    #[allow(missing_docs)]
+    Str(String),
+    #[allow(missing_docs)]
+    Bytes(Vec<u8>),
 }
 
 impl KeyedMessage<'_> {
@@ -300,7 +330,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{keyed_message::DynamicKeyType, FallibleIterator};
+    use crate::{FallibleIterator, keyed_message::DynamicKeyType};
     use std::path::Path;
 
     #[test]
@@ -310,7 +340,10 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let current_message = handle.message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let str_key = current_message.read_key_dynamic("name")?;
 
@@ -348,7 +381,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
         while let Some(key_name) = kiter.next()? {
@@ -365,7 +401,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
 
         while let Some(key_name) = kiter.next()? {
@@ -382,7 +421,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let missing_key = current_message.read_key_dynamic("doesNotExist");
 
@@ -398,7 +440,10 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let msg = handle.message_generator().next()?.context("Message not some")?;
+        let msg = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let _ = msg.read_key_dynamic("dataDate")?;
         let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;

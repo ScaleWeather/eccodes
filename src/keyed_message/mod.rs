@@ -1,19 +1,16 @@
 //! Definition of `KeyedMessage` and its associated functions
 //! used for reading and writing data of given variable from GRIB file
 
+mod clone;
 mod read;
 mod write;
 
 use eccodes_sys::codes_handle;
-use std::{fmt::Debug, marker::PhantomData, ptr::null_mut};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::Arc};
 use tracing::{Level, event, instrument};
 
 use crate::{
-    CodesError,
-    intermediate_bindings::{
-        NativeKeyType, codes_get_native_type, codes_get_size, codes_handle_clone,
-        codes_handle_delete,
-    },
+    CodesHandle, codes_handle::ThreadSafeHandle, intermediate_bindings::codes_handle_delete,
 };
 
 /// Structure that provides access to the data contained in the GRIB file, which directly corresponds to the message in the GRIB file
@@ -46,169 +43,43 @@ use crate::{
 ///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered in desctructor the are logged with [`log`].
-#[derive(Hash, Debug)]
-pub struct KeyedMessage<'ch> {
-    /// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
-    /// KeyedMessage and derived types with generics, because `PhantomData` is needed
-    /// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
-    pub(crate) parent_message: PhantomData<&'ch ()>,
+type KeyedMessage<'ch> = CodesMessage<RefRepr<'ch>>;
+
+/// Because standard `KeyedMessage` is not Copy or Clone it can provide access methods without
+/// requiring `&mut self`. As `AtomicMessage` implements `Send + Sync` this exclusive method access is not
+/// guaranteed with just `&self`. `AtomicMessage` also implements a minimal subset of functionalities
+/// to limit the risk of some internal ecCodes functions not being thread-safe.
+type AtomicMessage<S: ThreadSafeHandle> = CodesMessage<ArcRepr<S>>;
+
+unsafe impl<S: ThreadSafeHandle> Send for AtomicMessage<S> {}
+unsafe impl<S: ThreadSafeHandle> Sync for AtomicMessage<S> {}
+
+type ClonedMessage = CodesMessage<OwnedRepr>;
+
+unsafe impl Send for ClonedMessage {}
+unsafe impl Sync for ClonedMessage {}
+
+/// All messages use this struct for operations.
+#[derive(Debug)]
+struct CodesMessage<P: Debug> {
+    pub(crate) _parent: P,
     pub(crate) message_handle: *mut codes_handle,
 }
 
-/// Provides GRIB key reading capabilites. Implemented by [`KeyedMessage`] for all possible key types.
-pub trait KeyRead<T> {
-    /// Tries to read a key of given name from [`KeyedMessage`]. This function checks if key native type
-    /// matches the requested type (ie. you cannot read integer as string, or array as a number).
-    ///
-    /// # Example
-    ///
-    /// ```
-    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
-    ///  # use std::path::Path;
-    ///  # use anyhow::Context;
-    ///  # use eccodes::FallibleStreamingIterator;
-    ///  #
-    ///  # fn main() -> anyhow::Result<()> {
-    ///  # let file_path = Path::new("./data/iceland.grib");
-    ///  # let product_kind = ProductKind::GRIB;
-    ///  #
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///  let message = handle.next()?.context("no message")?;
-    ///  let short_name: String = message.read_key("shortName")?;
-    ///  
-    ///  assert_eq!(short_name, "msl");
-    ///  # Ok(())
-    ///  # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeyType) when trying to read key in non-native type (use [`unchecked`](KeyRead::read_key_unchecked) instead).
-    ///
-    /// Returns [`WrongRequestedKeySize`](CodesError::WrongRequestedKeySize) when trying to read array as integer.
-    ///
-    /// Returns [`IncorrectKeySize`](CodesError::IncorrectKeySize) when key size is 0. This can indicate corrupted data.
-    ///
-    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
-    fn read_key(&self, name: &str) -> Result<T, CodesError>;
+#[derive(Debug, Hash, PartialEq, PartialOrd)]
+struct OwnedRepr();
 
-    /// Skips all the checks provided by [`read_key`](KeyRead::read_key) and directly calls ecCodes, ensuring only memory and type safety.
-    ///
-    /// This function has better perfomance than [`read_key`](KeyRead::read_key) but all error handling and (possible)
-    /// type conversions are performed directly by ecCodes.
-    ///
-    /// This function is also useful for (not usually used) keys that return incorrect native type.
-    ///
-    /// # Example
-    ///
-    /// ```
-    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
-    ///  # use std::path::Path;
-    ///  # use anyhow::Context;
-    ///  # use eccodes::FallibleStreamingIterator;
-    ///  #
-    ///  # fn main() -> anyhow::Result<()> {
-    ///  # let file_path = Path::new("./data/iceland.grib");
-    ///  # let product_kind = ProductKind::GRIB;
-    ///  #
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///  let message = handle.next()?.context("no message")?;
-    ///  let short_name: String = message.read_key_unchecked("shortName")?;
-    ///  
-    ///  assert_eq!(short_name, "msl");
-    ///  # Ok(())
-    ///  # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
-    fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
-}
+#[derive(Debug)]
+struct ArcRepr<S: ThreadSafeHandle>(Arc<CodesHandle<S>>);
 
-/// Provides GRIB key writing capabilites. Implemented by [`KeyedMessage`] for all possible key types.
-pub trait KeyWrite<T> {
-    /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless
-    /// the key is read-only. This function directly calls ecCodes ensuring only type and memory safety.
-    ///
-    /// # Example
-    ///
-    /// ```
-    ///  # use eccodes::{ProductKind, CodesHandle, KeyWrite};
-    ///  # use std::path::Path;
-    ///  # use anyhow::Context;
-    ///  # use eccodes::FallibleStreamingIterator;
-    ///  #
-    ///  # fn main() -> anyhow::Result<()> {
-    ///  # let file_path = Path::new("./data/iceland.grib");
-    ///  # let product_kind = ProductKind::GRIB;
-    ///  #
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///
-    /// // CodesHandle iterator returns immutable messages.
-    /// // To edit a message it must be cloned.
-    ///  let mut message = handle.next()?.context("no message")?.try_clone()?;
-    ///  message.write_key("level", 1)?;
-    ///  # Ok(())
-    ///  # }
-    /// ```
-    ///
-    /// # Errors
-    ///
-    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to write the key.
-    fn write_key(&mut self, name: &str, value: T) -> Result<(), CodesError>;
-}
-
-/// Enum of types GRIB key can have.
-///
-/// Messages inside GRIB files can contain keys of arbitrary types, which are known only at runtime (after being checked).
-/// ecCodes can return several different types of key, which are represented by this enum
-/// and each variant contains the respective data type.
-#[derive(Clone, Debug, PartialEq)]
-pub enum DynamicKeyType {
-    #[allow(missing_docs)]
-    Float(f64),
-    #[allow(missing_docs)]
-    Int(i64),
-    #[allow(missing_docs)]
-    FloatArray(Vec<f64>),
-    #[allow(missing_docs)]
-    IntArray(Vec<i64>),
-    #[allow(missing_docs)]
-    Str(String),
-    #[allow(missing_docs)]
-    Bytes(Vec<u8>),
-}
-
-impl KeyedMessage<'_> {
-    /// Custom function to clone the `KeyedMessage`.
-    /// 
-    /// **Be careful of the memory overhead!** ecCodes (when reading from file) defers reading the data into memory
-    /// if possible. Simply creating `KeyedMessage` or even reading some keys will use only a little of memory.
-    /// This function **will** read the whole message into the memory, which can be of a significant size for big grids.
-    ///
-    /// # Errors
-    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
-    pub fn try_clone(&self) -> Result<KeyedMessage<'static>, CodesError> {
-        let new_handle = unsafe { codes_handle_clone(self.message_handle)? };
-
-        Ok(KeyedMessage {
-            parent_message: PhantomData,
-            message_handle: new_handle,
-        })
-    }
-
-    fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError> {
-        unsafe { codes_get_size(self.message_handle, key_name) }
-    }
-
-    fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError> {
-        unsafe { codes_get_native_type(self.message_handle, key_name) }
-    }
-}
+/// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
+/// KeyedMessage and derived types with generics, because `PhantomData` is needed
+/// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
+#[derive(Debug, Hash, PartialEq, PartialOrd)]
+struct RefRepr<'ch>(PhantomData<&'ch ()>);
 
 #[doc(hidden)]
-impl Drop for KeyedMessage<'_> {
+impl<P: Debug> Drop for CodesMessage<P> {
     /// Executes the destructor for this type.
     /// This method calls destructor functions from ecCodes library.
     /// In some edge cases these functions can return non-zero code.
@@ -317,7 +188,10 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let _msg_ref = handle.message_generator().next()?.context("Message not some")?;
+        let _msg_ref = handle
+            .message_generator()
+            .next()?
+            .context("Message not some")?;
         let _msg_clone = _msg_ref.try_clone()?;
 
         drop(_msg_ref);

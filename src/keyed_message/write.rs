@@ -9,7 +9,38 @@ use crate::{
     },
 };
 
-use super::KeyWrite;
+/// Provides GRIB key writing capabilites. Implemented by [`KeyedMessage`] for all possible key types.
+pub trait KeyWrite<T> {
+    /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless
+    /// the key is read-only. This function directly calls ecCodes ensuring only type and memory safety.
+    ///
+    /// # Example
+    ///
+    /// ```
+    ///  # use eccodes::{ProductKind, CodesHandle, KeyWrite};
+    ///  # use std::path::Path;
+    ///  # use anyhow::Context;
+    ///  # use eccodes::FallibleStreamingIterator;
+    ///  #
+    ///  # fn main() -> anyhow::Result<()> {
+    ///  # let file_path = Path::new("./data/iceland.grib");
+    ///  # let product_kind = ProductKind::GRIB;
+    ///  #
+    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///
+    /// // CodesHandle iterator returns immutable messages.
+    /// // To edit a message it must be cloned.
+    ///  let mut message = handle.next()?.context("no message")?.try_clone()?;
+    ///  message.write_key("level", 1)?;
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to write the key.
+    fn write_key(&mut self, name: &str, value: T) -> Result<(), CodesError>;
+}
 
 impl KeyWrite<i64> for KeyedMessage<'_> {
     fn write_key(&mut self, name: &str, value: i64) -> Result<(), CodesError> {
