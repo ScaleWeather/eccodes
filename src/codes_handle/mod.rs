@@ -15,6 +15,8 @@ use std::{
 };
 use tracing::instrument;
 
+pub use iterator::KeyedMessageGenerator;
+
 mod atomic_iterator;
 mod iterator;
 

@@ -17,9 +17,11 @@
 //!
 //! This crate contains (mostly) safe high-level bindings for ecCodes library.
 //! Bindings can be considered safe mainly because all crate structures
-//! will take ownership of the data in memory before passing the raw pointer to ecCodes.
+//! take ownership of the data in memory before passing the raw pointer to the ecCodes.
 //!
-//! **Currently only reading of GRIB files is supported.**
+//! **Currently only operations on GRIB files are supported.**
+//!
+//! **Version 0.14 introduces some breaking changes, [check them below](#changes-in-version-014)!**
 //!
 //! Because of the ecCodes library API characteristics theses bindings are
 //! rather thick wrapper to make this crate safe and convenient to use.
@@ -40,10 +42,10 @@
 //! this allows the user to handle the error in the way that suits them best and not risk crashes.
 //!
 //! All error descriptions are provided in the [`errors`] module.
-//! Destructors, which cannot panic, report errors through the `log` crate.
+//! Destructors, which cannot panic, report errors through `tracing` and `log` crate.
 //!
 //! None of the functions in this crate explicitly panics.
-//! However, users should be aware that dependencies might panic in some edge cases.
+//! However, users should be aware that dependencies (eg. `ndarray`) might panic in some edge cases.
 //!
 //! ## Safety
 //!
@@ -53,36 +55,25 @@
 //! That said, neither main developer nor contributors have expertise in unsafe Rust and bugs might have
 //! slipped through. We are also not responsible for bugs in the ecCodes library.
 //!
+//! **For critical applications always perform extensive testing before using this crate in production.**
+//!
 //! If you find a bug or have a suggestion, feel free to discuss it on Github.
-//!
-//! ## Features
-//!
-//! - `message_ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
-//!   This feature is enabled by default. It is currently tested only with simple lat-lon grids.
-//!
-//! - `experimental_index` - enables support for creating and using index files for GRIB files.
-//!   **This feature is experimental** and disabled by default. If you want to use it, please read
-//!   the information provided in [`codes_index`] documentation.
-//!
-//! - `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
-//!   on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
-//!
-//! To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
-//!
-//! ```text
-//! [package.metadata.docs.rs]
-//! features = ["eccodes/docs"]
-//! ```
 //!
 //! ## Usage
 //!
 //! To access a GRIB file you need to create [`CodesHandle`] with one of provided constructors.
 //!
-//! GRIB files consist of messages which represent data fields at specific time and level.
-//! Messages are represented by the [`KeyedMessage`] structure.
+//! ecCodes represents GRIB files as a set of separate messages, each representing data fields at specific time and level.
+//! Messages are represented here by the [`KeyedMessage`] structure.
+//! 
+//! To obtain `KeyedMessage`(s) from `CodesHandle` you need to create an instance of [`KeyedMessageGenerator`](codes_handle::KeyedMessageGenerator)
+//! with [`CodesHandle::message_generator()`]. This is an analogous interface to `IterMut` and `iter_mut()` in [`std::slice`].
 //!
-//! [`CodesHandle`] implements [`FallibleStreamingIterator`](CodesHandle#impl-FallibleStreamingIterator-for-CodesHandle<GribFile>)
-//! which allows you to iterate over messages in the file. The iterator returns `&KeyedMessage` which valid is until next iteration.
+//! `KeyedMessageGenerator` implements [`FallibleIterator`](codes_handle::KeyedMessageGenerator#impl-FallibleIterator-for-KeyedMessageGenerator%3C'ch,+S%3E)
+//! which allows you to iterate over messages in the file. The iterator returns `KeyedMessage` with lifetime tied to the lifetime of `CodesHandle`,
+//! that is `KeyedMessage` cannot outlive the `CodesHandle` it was generated from. If you need to prolong its lifetime, you can use
+//! [`try_clone()`](KeyedMessage::try_clone), but that comes with performance and memory overhead.
+//! 
 //! `KeyedMessage` implements several methods to access the data as needed, most of those can be called directly on `&KeyedMessage`.
 //! You can also use [`try_clone()`](KeyedMessage::try_clone) to clone the message and prolong its lifetime.
 //!
@@ -136,7 +127,10 @@
 //! # }
 //! ```
 //!
-//! #### Example 2 - Writing GRIB files
+//! #### **New in 0.14** Example 3: Concurrent read
+//! 
+//! 
+//! #### Example 3 - Writing GRIB files
 //!
 //! ```rust
 //! // The crate provides basic support for setting `KeyedMessage` keys
@@ -207,8 +201,33 @@
 //! # Ok(())
 //! # }
 //! ```
-//!
+//! 
 
+//! 
+//! 
+//! ## Changes in version 0.14
+//! 
+//! 
+//! ## Feature Flags
+//!
+//! - `message_ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
+//!    This feature is enabled by default. It is currently tested only with simple lat-lon grids.
+//!
+//! - `experimental_index` - **⚠️ This feature is experimental and might be unsafe in some contexts ⚠️**
+//!    This flag enables support for creating and using index files for GRIB files.
+//!    If you want to use it, please read the information provided in [`codes_index`] documentation.
+//!
+//! - `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
+//!    on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
+//!
+//! To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
+//!
+//! ```text
+//! [package.metadata.docs.rs]
+//! features = ["eccodes/docs"]
+//! ```
+
+pub mod atomic_message;
 pub mod codes_handle;
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -222,8 +241,8 @@ pub mod keys_iterator;
 #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
 pub mod message_ndarray;
 mod pointer_guard;
-pub mod atomic_message;
 
+pub use atomic_message::{AtomicKeyRead, AtomicMessage};
 pub use codes_handle::{CodesHandle, ProductKind};
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -231,6 +250,5 @@ pub use codes_index::CodesIndex;
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use keyed_message::{KeyedMessage};
+pub use keyed_message::{KeyRead, KeyWrite, KeyedMessage};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
-pub use atomic_message::{AtomicMessage};

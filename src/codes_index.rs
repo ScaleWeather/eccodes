@@ -25,13 +25,42 @@
 //!
 //! The issues have been partially mitigated by implementing global mutex for `codes_index` operations.
 //! Please not that mutex is used only for `codes_index` functions to not affect performance of other not-problematic functions in this crate.
-//! This solution, eliminated tsegfaults in tests, but occasional non-zero return codes still appear. However, this is
+//! This solution, eliminated segfaults in tests, but occasional non-zero return codes still appear. However, this is
 //! not a guarantee and possbility of safety issues is non-zero!
 //!
 //! To avoid the memory issues altogether, do not use this feature at all. If you want to use it, take care to use `CodesIndex` in entirely
 //! non-concurrent environment.
 //!
 //! If you have any suggestions or ideas how to improve the safety of this feature, please open an issue or a pull request.
+//!
+//! ## Why functions are not marked unsafe?
+//!
+//! Consider this example:
+//!
+//! ```ignore
+//! thread::spawn(|| -> Result<()> {
+//!     let file_path = Path::new("./data/iceland-surface.grib.idx");
+//!     let mut index_op = CodesIndex::read_from_file(file_path)?;
+//!
+//!     loop {
+//!         index_op = index_op
+//!             .select("shortName", "2t")?
+//!             .select("typeOfLevel", "surface")?
+//!             .select("level", 0)?
+//!             .select("stepType", "instant")?;
+//!     }
+//! });
+//!
+//! let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+//! let grib_path = Path::new("./data/iceland-surface.grib");
+//! let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path);
+//! ```
+//!
+//! Each of the used functions is memory-safe when used sequentially, but when used as above memory bugs may appear.
+//! Safety issues arising from using `CodesIndex` also extend beyond this module. For example, in code above, if we
+//! created `CodesHandle` from `iceland-surface.grib` file, operations in that handle could also result in memory bugs.
+//! Thus, it is not possible to mark only some functions as `unsafe`, because use of `CodesIndex` *poisons* the whole crate.
+//!
 
 use crate::{
     codes_handle::HandleGenerator,
@@ -44,6 +73,7 @@ use crate::{
 };
 use eccodes_sys::{codes_handle, codes_index};
 use std::{path::Path, ptr::null_mut};
+use tracing::instrument;
 
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
