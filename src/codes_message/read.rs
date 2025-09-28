@@ -80,13 +80,12 @@ pub trait KeyRead<T> {
     fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
 }
 
-#[doc(hidden)]
-pub trait KeyReadHelpers {
+pub trait KeyPropertiesRead {
     fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError>;
     fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError>;
 }
 
-impl<P: Debug> KeyReadHelpers for CodesMessage<P> {
+impl<P: Debug> KeyPropertiesRead for CodesMessage<P> {
     fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError> {
         unsafe { codes_get_size(self.message_handle, key_name) }
     }
