@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use eccodes::{
-    CodesError, CodesHandle, CodesIndex, FallibleStreamingIterator, KeyRead, ProductKind,
+    CodesError, CodesHandle, CodesIndex, FallibleIterator, KeyRead, ProductKind,
     codes_index::Select,
 };
 use rand::Rng;
@@ -22,9 +22,9 @@ fn iterate_handle_from_index() -> Result<()> {
         .select("level", 0)?
         .select("stepType", "instant")?;
 
-    let handle = CodesHandle::new_from_index(index)?;
+    let mut handle = CodesHandle::new_from_index(index)?;
 
-    let counter = handle.count()?;
+    let counter = handle.ref_message_generator().count()?;
 
     assert_eq!(counter, 1);
 
@@ -41,7 +41,10 @@ fn read_index_messages() -> Result<()> {
         .select("stepType", "instant")?;
 
     let mut handle = CodesHandle::new_from_index(index)?;
-    let current_message = handle.next()?.context("Message not some")?;
+    let current_message = handle
+        .ref_message_generator()
+        .next()?
+        .context("Message not some")?;
 
     {
         let short_name: String = current_message.read_key("shortName")?;
@@ -68,11 +71,10 @@ fn collect_index_iterator() -> Result<()> {
 
     let mut handle = CodesHandle::new_from_index(index)?;
 
-    let mut levels = vec![];
-
-    while let Some(msg) = handle.next()? {
-        levels.push(msg.try_clone()?);
-    }
+    let levels = handle
+        .ref_message_generator()
+        .map(|msg| msg.try_clone())
+        .collect::<Vec<_>>()?;
 
     assert_eq!(levels.len(), 5);
 
@@ -230,12 +232,12 @@ fn index_handle_interference() -> Result<()> {
         }
     });
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
     let grib_path = Path::new("./data/iceland.grib");
 
     for _ in 0..10 {
-        let sleep_time = rng.gen_range(1..42); // randomizing sleep time to hopefully catch segfaults
+        let sleep_time = rng.random_range(1..42); // randomizing sleep time to hopefully catch segfaults
 
         let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path)?;
         let i_handle = CodesHandle::new_from_index(index);
