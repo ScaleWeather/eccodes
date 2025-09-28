@@ -52,7 +52,7 @@ pub type RefMessage<'ch> = CodesMessage<RefParent<'ch>>;
 /// requiring `&mut self`. As `AtomicMessage` implements `Send + Sync` this exclusive method access is not
 /// guaranteed with just `&self`. `AtomicMessage` also implements a minimal subset of functionalities
 /// to limit the risk of some internal ecCodes functions not being thread-safe.
-pub type ArcMessage<S: ThreadSafeHandle> = CodesMessage<ArcParent<S>>;
+pub type ArcMessage<S> = CodesMessage<ArcParent<S>>;
 
 unsafe impl<S: ThreadSafeHandle> Send for ArcMessage<S> {}
 unsafe impl<S: ThreadSafeHandle> Sync for ArcMessage<S> {}
@@ -69,11 +69,17 @@ pub struct CodesMessage<P: Debug> {
     pub(crate) message_handle: *mut codes_handle,
 }
 
+/// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
+/// KeyedMessage and derived types with generics, because `PhantomData` is needed
+/// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
 #[derive(Debug, Hash, PartialEq, PartialOrd)]
-struct BufParent();
+pub struct RefParent<'ch>(PhantomData<&'ch ()>);
+
+#[derive(Debug, Hash, PartialEq, PartialOrd)]
+pub struct BufParent();
 
 #[derive(Debug)]
-struct ArcParent<S: ThreadSafeHandle>(Arc<CodesHandle<S>>);
+pub struct ArcParent<S: ThreadSafeHandle>{_arc_handle: Arc<CodesHandle<S>>}
 
 impl RefMessage<'_> {
     pub(crate) fn new_from_gen(handle: *mut codes_handle) -> Self {
@@ -87,7 +93,7 @@ impl RefMessage<'_> {
 impl<S: ThreadSafeHandle> ArcMessage<S> {
     pub(crate) fn new_from_gen(handle: *mut codes_handle, parent: &Arc<CodesHandle<S>>) -> Self {
         ArcMessage {
-            _parent: ArcParent(parent.clone()),
+            _parent: ArcParent{_arc_handle: parent.clone()},
             message_handle: handle,
         }
     }
@@ -103,11 +109,7 @@ impl BufMessage {
     }
 }
 
-/// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
-/// KeyedMessage and derived types with generics, because `PhantomData` is needed
-/// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
-#[derive(Debug, Hash, PartialEq, PartialOrd)]
-struct RefParent<'ch>(PhantomData<&'ch ()>);
+
 
 impl<P: Debug> Drop for CodesMessage<P> {
     /// Executes the destructor for this type.
