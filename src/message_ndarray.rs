@@ -1,11 +1,10 @@
-#![cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
 //! Definitions for converting a `KeyedMessage` to ndarray
 
 use std::fmt::Debug;
 
 use ndarray::{Array2, Array3, s};
 
-use crate::{codes_message::CodesMessage, errors::MessageNdarrayError, CodesError, KeyRead};
+use crate::{CodesError, KeyRead, codes_message::CodesMessage, errors::MessageNdarrayError};
 
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
@@ -148,7 +147,7 @@ mod tests {
     use super::*;
     use crate::ProductKind;
     use crate::codes_handle::CodesHandle;
-    use crate::keyed_message::DynamicKeyType;
+    use crate::codes_message::DynamicKeyType;
     use std::path::Path;
 
     #[test]

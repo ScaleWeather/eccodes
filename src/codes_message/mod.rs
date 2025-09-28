@@ -5,12 +5,14 @@ mod clone;
 mod read;
 mod write;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+pub use crate::message_ndarray::RustyCodesMessage;
+pub use read::{DynamicKeyType, KeyPropertiesRead, KeyRead};
+pub use write::KeyWrite;
+
 use eccodes_sys::codes_handle;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::Arc};
 use tracing::{Level, event, instrument};
-
-pub use read::KeyRead;
-pub use write::KeyWrite;
 
 use crate::{
     CodesHandle, codes_handle::ThreadSafeHandle, intermediate_bindings::codes_handle_delete,
@@ -63,6 +65,7 @@ unsafe impl Send for BufMessage {}
 unsafe impl Sync for BufMessage {}
 
 /// All messages use this struct for operations.
+#[doc(hidden)]
 #[derive(Debug)]
 pub struct CodesMessage<P: Debug> {
     pub(crate) _parent: P,
@@ -73,13 +76,18 @@ pub struct CodesMessage<P: Debug> {
 /// KeyedMessage and derived types with generics, because `PhantomData` is needed
 /// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
 #[derive(Debug, Hash, PartialEq, PartialOrd)]
+#[doc(hidden)]
 pub struct RefParent<'ch>(PhantomData<&'ch ()>);
 
 #[derive(Debug, Hash, PartialEq, PartialOrd)]
+#[doc(hidden)]
 pub struct BufParent();
 
 #[derive(Debug)]
-pub struct ArcParent<S: ThreadSafeHandle>{_arc_handle: Arc<CodesHandle<S>>}
+#[doc(hidden)]
+pub struct ArcParent<S: ThreadSafeHandle> {
+    _arc_handle: Arc<CodesHandle<S>>,
+}
 
 impl RefMessage<'_> {
     pub(crate) fn new_from_gen(handle: *mut codes_handle) -> Self {
@@ -93,7 +101,9 @@ impl RefMessage<'_> {
 impl<S: ThreadSafeHandle> ArcMessage<S> {
     pub(crate) fn new_from_gen(handle: *mut codes_handle, parent: &Arc<CodesHandle<S>>) -> Self {
         ArcMessage {
-            _parent: ArcParent{_arc_handle: parent.clone()},
+            _parent: ArcParent {
+                _arc_handle: parent.clone(),
+            },
             message_handle: handle,
         }
     }
@@ -108,8 +118,6 @@ impl BufMessage {
         }
     }
 }
-
-
 
 impl<P: Debug> Drop for CodesMessage<P> {
     /// Executes the destructor for this type.
