@@ -1,14 +1,12 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt::Debug};
 
 use crate::{
-    KeyedMessage,
-    codes_handle::ThreadSafeHandle,
+    codes_message::CodesMessage,
     errors::CodesError,
     intermediate_bindings::{
         NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
     },
-    keyed_message::ArcMessage,
 };
 
 /// Provides GRIB key reading capabilites. Implemented by [`KeyedMessage`] for all possible key types.
@@ -84,38 +82,28 @@ pub trait KeyRead<T> {
 
 #[doc(hidden)]
 pub trait KeyReadHelpers {
-    fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError>;
-    fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError>;
+    fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError>;
+    fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError>;
 }
 
-impl KeyReadHelpers for KeyedMessage<'_> {
-    fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError> {
+impl<P: Debug> KeyReadHelpers for CodesMessage<P> {
+    fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError> {
         unsafe { codes_get_size(self.message_handle, key_name) }
     }
 
-    fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError> {
-        unsafe { codes_get_native_type(self.message_handle, key_name) }
-    }
-}
-
-impl<S: ThreadSafeHandle> KeyReadHelpers for ArcMessage<S> {
-    fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError> {
-        unsafe { codes_get_size(self.message_handle, key_name) }
-    }
-
-    fn get_key_native_type(&mut self, key_name: &str) -> Result<NativeKeyType, CodesError> {
+    fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError> {
         unsafe { codes_get_native_type(self.message_handle, key_name) }
     }
 }
 
 macro_rules! impl_key_read {
     ($key_sizing:ident, $ec_func:ident, $key_variant:path, $gen_type:ty) => {
-        impl<S: ThreadSafeHandle> AtomicKeyRead<$gen_type> for AtomicMessage<S> {
-            fn read_key_unchecked(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
+        impl<P: Debug> KeyRead<$gen_type> for CodesMessage<P> {
+            fn read_key_unchecked(&self, key_name: &str) -> Result<$gen_type, CodesError> {
                 unsafe { $ec_func(self.message_handle, key_name) }
             }
 
-            fn read_key(&mut self, key_name: &str) -> Result<$gen_type, CodesError> {
+            fn read_key(&self, key_name: &str) -> Result<$gen_type, CodesError> {
                 match self.get_key_native_type(key_name)? {
                     $key_variant => (),
                     _ => return Err(CodesError::WrongRequestedKeyType),
@@ -148,6 +136,18 @@ macro_rules! key_size_check {
     };
 }
 
+impl_key_read!(scalar, codes_get_long, NativeKeyType::Long, i64);
+impl_key_read!(scalar, codes_get_double, NativeKeyType::Double, f64);
+impl_key_read!(array, codes_get_string, NativeKeyType::Str, String);
+impl_key_read!(array, codes_get_bytes, NativeKeyType::Bytes, Vec<u8>);
+impl_key_read!(array, codes_get_long_array, NativeKeyType::Long, Vec<i64>);
+impl_key_read!(
+    array,
+    codes_get_double_array,
+    NativeKeyType::Double,
+    Vec<f64>
+);
+
 /// Enum of types GRIB key can have.
 ///
 /// Messages inside GRIB files can contain keys of arbitrary types, which are known only at runtime (after being checked).
@@ -169,7 +169,7 @@ pub enum DynamicKeyType {
     Bytes(Vec<u8>),
 }
 
-impl KeyedMessage<'_> {
+impl<P: Debug> CodesMessage<P> {
     /// Method to get a value of given key with [`DynamicKeyType`] from the `KeyedMessage`, if it exists.
     ///
     /// In most cases you should use [`read_key()`](KeyRead::read_key) due to more predictive behaviour
