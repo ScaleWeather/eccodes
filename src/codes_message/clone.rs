@@ -13,9 +13,8 @@ impl<P: Debug> CodesMessage<P> {
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
     fn try_clone(&self) -> Result<BufMessage, CodesError> {
-        Ok(BufMessage {
-            _parent: (),
-            message_handle: unsafe { codes_handle_clone(self.message_handle)? },
-        })
+        Ok(BufMessage::new(unsafe {
+            codes_handle_clone(self.message_handle)?
+        }))
     }
 }

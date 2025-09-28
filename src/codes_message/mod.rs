@@ -90,6 +90,16 @@ impl<S: ThreadSafeHandle> ArcMessage<S> {
     }
 }
 
+impl BufMessage {
+    /// This could be a From, but that would be less idiomatic and would expose interface that we don't want exposed.I
+    pub(crate) fn new(handle: *mut codes_handle) -> Self {
+        BufMessage {
+            _parent: BufParent(),
+            message_handle: handle,
+        }
+    }
+}
+
 /// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
 /// KeyedMessage and derived types with generics, because `PhantomData` is needed
 /// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
