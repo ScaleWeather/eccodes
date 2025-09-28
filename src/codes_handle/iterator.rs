@@ -1,7 +1,11 @@
 use fallible_iterator::FallibleIterator;
 
-use crate::{CodesHandle, codes_handle::HandleGenerator, errors::CodesError};
-use std::marker::PhantomData;
+use crate::{
+    ArcMessage, CodesHandle, RefMessage,
+    codes_handle::{HandleGenerator, ThreadSafeHandle},
+    errors::CodesError,
+};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct RefMessageGenerator<'a, S: HandleGenerator> {
@@ -28,28 +32,25 @@ impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageGenerator<'ch, S> {
         if new_eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(RefMessage {
-                parent_message: PhantomData,
-                message_handle: new_eccodes_handle,
-            }))
+            Ok(Some(RefMessage::new_from_gen(new_eccodes_handle)))
         }
     }
 }
 
 #[derive(Debug)]
-pub struct AtomicMessageGenerator<S: ThreadSafeHandle> {
+pub struct ArcMessageGenerator<S: ThreadSafeHandle> {
     codes_handle: Arc<CodesHandle<S>>,
 }
 impl<S: ThreadSafeHandle> CodesHandle<S> {
-    pub fn atomic_message_generator(self) -> AtomicMessageGenerator<S> {
-        AtomicMessageGenerator {
+    pub fn arc_message_generator(self) -> ArcMessageGenerator<S> {
+        ArcMessageGenerator {
             codes_handle: Arc::new(self),
         }
     }
 }
 
-impl<S: ThreadSafeHandle> FallibleIterator for AtomicMessageGenerator<S> {
-    type Item = AtomicMessage<S>;
+impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageGenerator<S> {
+    type Item = ArcMessage<S>;
 
     type Error = CodesError;
 
@@ -59,10 +60,10 @@ impl<S: ThreadSafeHandle> FallibleIterator for AtomicMessageGenerator<S> {
         if new_eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(AtomicMessage {
-                _parent: self.codes_handle.clone(),
-                message_handle: new_eccodes_handle,
-            }))
+            Ok(Some(ArcMessage::new_from_gen(
+                new_eccodes_handle,
+                &self.codes_handle,
+            )))
         }
     }
 }
