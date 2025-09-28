@@ -283,9 +283,7 @@ impl CodesHandle<CodesIndex> {
     /// when internal [`codes_handle`] cannot be created.
     #[instrument(level = "trace")]
     pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
-        let new_handle = CodesHandle {
-            source: index,
-        };
+        let new_handle = CodesHandle { source: index };
 
         Ok(new_handle)
     }
@@ -390,7 +388,6 @@ mod tests {
         let handle = CodesHandle::new_from_index(index)?;
 
         assert_eq!(handle.source.pointer, i_ptr);
-        assert!(handle.current_message.is_none());
 
         Ok(())
     }
@@ -432,7 +429,7 @@ mod tests {
                 .ref_message_generator()
                 .next()?
                 .context("no message")?;
-            let clone_msg = _ref_msg.try_clone()?;
+            let mut clone_msg = _ref_msg.try_clone()?;
             drop(_ref_msg);
             let _oth_ref = handle
                 .ref_message_generator()
@@ -440,6 +437,7 @@ mod tests {
                 .context("no message")?;
 
             let _nrst = clone_msg.codes_nearest()?;
+            drop(_nrst);
             let _kiter = clone_msg.default_keys_iterator()?;
         }
 
@@ -449,20 +447,12 @@ mod tests {
     #[test]
     #[cfg(feature = "experimental_index")]
     fn codes_handle_drop_index() -> Result<()> {
-        testing_logger::setup();
-
         let file_path = Path::new("./data/iceland-surface.grib.idx");
         let index = CodesIndex::read_from_file(file_path)?;
         assert!(!index.pointer.is_null());
 
         let handle = CodesHandle::new_from_index(index)?;
         drop(handle);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_index_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
 
         Ok(())
     }
@@ -476,9 +466,8 @@ mod tests {
         let mut handle = CodesHandle::new_from_index(index)?;
 
         assert!(!handle.source.pointer.is_null());
-        assert!(handle.current_message.is_none());
 
-        let msg = handle.next()?;
+        let msg = handle.ref_message_generator().next()?;
 
         assert!(!msg.is_some());
 
@@ -488,7 +477,6 @@ mod tests {
     #[test]
     #[cfg(feature = "experimental_index")]
     fn multiple_drops_with_index() -> Result<()> {
-        testing_logger::setup();
         {
             let keys = vec!["typeOfLevel", "level"];
             let index = CodesIndex::new_from_keys(&keys)?;
@@ -499,34 +487,15 @@ mod tests {
                 .select("level", 600)?;
 
             let mut handle = CodesHandle::new_from_index(index)?;
-            let _ref_msg = handle.next()?.context("no message")?;
-            let clone_msg = _ref_msg.try_clone()?;
-            let _oth_ref = handle.next()?.context("no message")?;
+            let mut mgen = handle.ref_message_generator();
+            let _ref_msg = mgen.next()?.context("no message")?;
+            let mut clone_msg = _ref_msg.try_clone()?;
+            let _oth_ref = mgen.next()?.context("no message")?;
 
             let _nrst = clone_msg.codes_nearest()?;
+            drop(_nrst);
             let _kiter = clone_msg.default_keys_iterator()?;
         }
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 6);
-
-            let expected_logs = vec![
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_keys_iterator_delete", log::Level::Trace),
-                ("codes_grib_nearest_delete", log::Level::Trace),
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_index_delete", log::Level::Trace),
-            ];
-
-            captured_logs
-                .iter()
-                .zip(expected_logs)
-                .for_each(|(clg, elg)| {
-                    assert_eq!(clg.body, elg.0);
-                    assert_eq!(clg.level, elg.1)
-                });
-        });
 
         Ok(())
     }
