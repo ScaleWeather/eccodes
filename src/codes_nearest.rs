@@ -7,7 +7,8 @@ use eccodes_sys::codes_nearest;
 use tracing::{Level, event, instrument};
 
 use crate::{
-    CodesError, KeyedMessage,
+    CodesError,
+    codes_message::CodesMessage,
     intermediate_bindings::{
         codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new,
     },
@@ -15,9 +16,9 @@ use crate::{
 
 /// The structure used to find nearest gridpoints in `KeyedMessage`.
 #[derive(Debug)]
-pub struct CodesNearest<'a> {
+pub struct CodesNearest<'a, P: Debug> {
     nearest_handle: *mut codes_nearest,
-    parent_message: &'a KeyedMessage<'a>,
+    parent_message: &'a CodesMessage<P>,
 }
 
 /// The structure returned by [`CodesNearest::find_nearest()`].
@@ -36,7 +37,7 @@ pub struct NearestGridpoint {
     pub value: f64,
 }
 
-impl KeyedMessage<'_> {
+impl<P: Debug> CodesMessage<P> {
     /// Creates a new instance of [`CodesNearest`] for the `KeyedMessage`.
     /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`
     /// by calling [`find_nearest()`](crate::CodesNearest::find_nearest).
@@ -45,7 +46,7 @@ impl KeyedMessage<'_> {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal nearest handle cannot be created.
-    pub fn codes_nearest(&self) -> Result<CodesNearest<'_>, CodesError> {
+    pub fn codes_nearest<'a>(&'a self) -> Result<CodesNearest<'a, P>, CodesError> {
         let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
 
         Ok(CodesNearest {
@@ -55,7 +56,7 @@ impl KeyedMessage<'_> {
     }
 }
 
-impl CodesNearest<'_> {
+impl<P: Debug> CodesNearest<'_, P> {
     ///Function to get four [`NearestGridpoint`]s of a point represented by requested coordinates.
     ///
     ///The inputs are latitude and longitude of requested point in respectively degrees north and
@@ -85,7 +86,7 @@ impl CodesNearest<'_> {
     ///
     ///This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     ///one of ecCodes function returns the non-zero code.
-    pub fn find_nearest(&self, lat: f64, lon: f64) -> Result<[NearestGridpoint; 4], CodesError> {
+    pub fn find_nearest(&mut self, lat: f64, lon: f64) -> Result<[NearestGridpoint; 4], CodesError> {
         let output_points;
 
         unsafe {
@@ -101,8 +102,10 @@ impl CodesNearest<'_> {
     }
 }
 
-#[doc(hidden)]
-impl Drop for CodesNearest<'_> {
+impl<P: Debug> Drop for CodesNearest<'_, P> {
+    /// # Panics
+    ///
+    /// In debug
     #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
@@ -112,8 +115,7 @@ impl Drop for CodesNearest<'_> {
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );
-                #[cfg(test)]
-                assert!(false, "Error in CodesNearest::drop")
+                debug_assert!(false, "Error in CodesNearest::drop")
             });
         }
 

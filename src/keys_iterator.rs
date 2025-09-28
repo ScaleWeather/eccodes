@@ -2,11 +2,11 @@
 
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
-use std::{marker::PhantomData, ptr::null_mut};
+use std::{fmt::Debug, marker::PhantomData, ptr::null_mut};
 use tracing::{Level, event, instrument};
 
 use crate::{
-    KeyedMessage,
+    codes_message::CodesMessage,
     errors::CodesError,
     intermediate_bindings::{
         codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
@@ -57,7 +57,7 @@ use crate::{
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct KeysIterator<'a> {
-    /// Same trick as in `KeyedMessage`
+    /// Same trick as in `RefMessage`
     parent_message: PhantomData<&'a ()>,
     iterator_handle: *mut codes_keys_iterator,
     next_item_exists: bool,
@@ -88,7 +88,7 @@ pub enum KeysIteratorFlags {
     SkipEditionSpecific = eccodes_sys::CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
-impl KeyedMessage<'_> {
+impl<P: Debug> CodesMessage<P> {
     /// Creates new [`KeysIterator`] for the message with specified flags and namespace.
     ///
     /// The flags are set by providing any combination of [`KeysIteratorFlags`]
@@ -137,7 +137,7 @@ impl KeyedMessage<'_> {
     /// internal ecCodes function returns non-zero code.
     #[instrument(level = "trace")]
     pub fn new_keys_iterator<'a>(
-        &'a self,
+        &'a mut self,
         flags: &[KeysIteratorFlags],
         namespace: &str,
     ) -> Result<KeysIterator<'a>, CodesError> {
@@ -162,7 +162,7 @@ impl KeyedMessage<'_> {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
-    pub fn default_keys_iterator(&self) -> Result<KeysIterator<'_>, CodesError> {
+    pub fn default_keys_iterator<'a>(&'a mut self) -> Result<KeysIterator<'a>, CodesError> {
         let iterator_handle = unsafe { codes_keys_iterator_new(self.message_handle, 0, "")? };
         let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
