@@ -1,9 +1,9 @@
 use crate::{
-    AtomicMessage, CodesError, KeyedMessage, codes_handle::ThreadSafeHandle,
-    intermediate_bindings::codes_handle_clone, keyed_message::BufMessage,
+    BufMessage, CodesError, codes_message::CodesMessage, intermediate_bindings::codes_handle_clone,
 };
+use std::fmt::Debug;
 
-pub trait TryClone {
+impl<P: Debug> CodesMessage<P> {
     /// Custom function to clone the `KeyedMessage` and `AtomicMessage`.
     ///
     /// **Be careful of the memory overhead!** ecCodes (when reading from file) defers reading the data into memory
@@ -12,20 +12,9 @@ pub trait TryClone {
     ///
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
-    fn try_clone(&self) -> Result<BufMessage, CodesError>;
-}
-
-impl TryClone for KeyedMessage<'_> {
     fn try_clone(&self) -> Result<BufMessage, CodesError> {
         Ok(BufMessage {
-            message_handle: unsafe { codes_handle_clone(self.message_handle)? },
-        })
-    }
-}
-
-impl<S: ThreadSafeHandle> TryClone for AtomicMessage<S> {
-    fn try_clone(&self) -> Result<BufMessage, CodesError> {
-        Ok(BufMessage {
+            _parent: (),
             message_handle: unsafe { codes_handle_clone(self.message_handle)? },
         })
     }
