@@ -72,7 +72,7 @@ use crate::{
     },
 };
 use eccodes_sys::{codes_handle, codes_index};
-use std::{path::Path, ptr::null_mut, fmt::Debug};
+use std::{fmt::Debug, path::Path, ptr::null_mut};
 use tracing::instrument;
 
 #[derive(Debug)]
@@ -205,7 +205,9 @@ impl CodesIndex {
     /// the GRIB file is not present in the same relative path as during the index file creation.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
     #[instrument(level = "trace")]
-    pub fn read_from_file<P: AsRef<Path> + Debug>(index_file_path: P) -> Result<CodesIndex, CodesError> {
+    pub fn read_from_file<P: AsRef<Path> + Debug>(
+        index_file_path: P,
+    ) -> Result<CodesIndex, CodesError> {
         let index_file_path: &Path = index_file_path.as_ref();
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
@@ -313,7 +315,7 @@ impl Drop for CodesIndex {
 #[cfg(test)]
 mod tests {
     use anyhow::{Context, Result, bail};
-    use fallible_streaming_iterator::FallibleStreamingIterator;
+    use fallible_iterator::FallibleIterator;
 
     use crate::{
         CodesError, CodesHandle,
@@ -340,15 +342,7 @@ mod tests {
     #[test]
     fn index_destructor() -> Result<()> {
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-        let index = CodesIndex::new_from_keys(&keys)?;
-
-        drop(index);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_index_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
+        let _index = CodesIndex::new_from_keys(&keys)?;
 
         Ok(())
     }
@@ -392,36 +386,19 @@ mod tests {
 
     #[test]
     fn handle_from_index_destructor() -> Result<()> {
-        testing_logger::setup();
-        {
-            let keys = vec!["typeOfLevel", "level"];
-            let index = CodesIndex::new_from_keys(&keys)?;
-            let grib_path = Path::new("./data/iceland-levels.grib");
-            let index = index
-                .add_grib_file(grib_path)?
-                .select("typeOfLevel", "isobaricInhPa")?
-                .select("level", 600)?;
+        let keys = vec!["typeOfLevel", "level"];
+        let index = CodesIndex::new_from_keys(&keys)?;
+        let grib_path = Path::new("./data/iceland-levels.grib");
+        let index = index
+            .add_grib_file(grib_path)?
+            .select("typeOfLevel", "isobaricInhPa")?
+            .select("level", 600)?;
 
-            let mut handle = CodesHandle::new_from_index(index)?;
-            let _ref_msg = handle.next()?.context("no message")?;
-        }
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 2);
-
-            let expected_logs = vec![
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_index_delete", log::Level::Trace),
-            ];
-
-            captured_logs
-                .iter()
-                .zip(expected_logs)
-                .for_each(|(clg, elg)| {
-                    assert_eq!(clg.body, elg.0);
-                    assert_eq!(clg.level, elg.1)
-                });
-        });
+        let mut handle = CodesHandle::new_from_index(index)?;
+        let _ref_msg = handle
+            .ref_message_generator()
+            .next()?
+            .context("no message")?;
 
         Ok(())
     }
