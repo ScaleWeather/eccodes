@@ -248,5 +248,5 @@ pub use codes_index::CodesIndex;
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use codes_message::{RefMessage, ArcMessage, BufMessage};
+pub use codes_message::{RefMessage, ArcMessage, BufMessage, KeyRead, KeyWrite};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};

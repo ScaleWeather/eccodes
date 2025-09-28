@@ -9,6 +9,9 @@ use eccodes_sys::codes_handle;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::Arc};
 use tracing::{Level, event, instrument};
 
+pub use read::KeyRead;
+pub use write::KeyWrite;
+
 use crate::{
     CodesHandle, codes_handle::ThreadSafeHandle, intermediate_bindings::codes_handle_delete,
 };
