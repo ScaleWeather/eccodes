@@ -65,7 +65,7 @@
 //!
 //! ecCodes represents GRIB files as a set of separate messages, each representing data fields at specific time and level.
 //! Messages are represented here by the [`KeyedMessage`] structure.
-//! 
+//!
 //! To obtain `KeyedMessage`(s) from `CodesHandle` you need to create an instance of [`KeyedMessageGenerator`](codes_handle::KeyedMessageGenerator)
 //! with [`CodesHandle::message_generator()`]. This is an analogous interface to `IterMut` and `iter_mut()` in [`std::slice`].
 //!
@@ -73,7 +73,7 @@
 //! which allows you to iterate over messages in the file. The iterator returns `KeyedMessage` with lifetime tied to the lifetime of `CodesHandle`,
 //! that is `KeyedMessage` cannot outlive the `CodesHandle` it was generated from. If you need to prolong its lifetime, you can use
 //! [`try_clone()`](KeyedMessage::try_clone), but that comes with performance and memory overhead.
-//! 
+//!
 //! `KeyedMessage` implements several methods to access the data as needed, most of those can be called directly on `&KeyedMessage`.
 //! You can also use [`try_clone()`](KeyedMessage::try_clone) to clone the message and prolong its lifetime.
 //!
@@ -128,8 +128,8 @@
 //! ```
 //!
 //! #### **New in 0.14** Example 3: Concurrent read
-//! 
-//! 
+//!
+//!
 //! #### Example 3 - Writing GRIB files
 //!
 //! ```rust
@@ -201,13 +201,13 @@
 //! # Ok(())
 //! # }
 //! ```
-//! 
+//!
 
-//! 
-//! 
+//!
+//!
 //! ## Changes in version 0.14
-//! 
-//! 
+//!
+//!
 //! ## Feature Flags
 //!
 //! - `message_ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
@@ -231,22 +231,22 @@ pub mod codes_handle;
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub mod codes_index;
+pub mod codes_message;
 pub mod codes_nearest;
 pub mod errors;
 mod intermediate_bindings;
-pub mod codes_message;
 pub mod keys_iterator;
 #[cfg(feature = "message_ndarray")]
 #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-pub mod message_ndarray;
+mod message_ndarray;
 mod pointer_guard;
 
 pub use codes_handle::{CodesHandle, ProductKind};
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub use codes_index::CodesIndex;
+pub use codes_message::{ArcMessage, BufMessage, RefMessage, KeyRead, KeyWrite};
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use codes_message::{RefMessage, ArcMessage, BufMessage, KeyRead, KeyWrite};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};
