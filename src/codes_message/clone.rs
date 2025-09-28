@@ -1,6 +1,6 @@
 use crate::{
     AtomicMessage, CodesError, KeyedMessage, codes_handle::ThreadSafeHandle,
-    intermediate_bindings::codes_handle_clone, keyed_message::ClonedMessage,
+    intermediate_bindings::codes_handle_clone, keyed_message::BufMessage,
 };
 
 pub trait TryClone {
@@ -12,20 +12,20 @@ pub trait TryClone {
     ///
     /// # Errors
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to clone the message.
-    fn try_clone(&self) -> Result<ClonedMessage, CodesError>;
+    fn try_clone(&self) -> Result<BufMessage, CodesError>;
 }
 
 impl TryClone for KeyedMessage<'_> {
-    fn try_clone(&self) -> Result<ClonedMessage, CodesError> {
-        Ok(ClonedMessage {
+    fn try_clone(&self) -> Result<BufMessage, CodesError> {
+        Ok(BufMessage {
             message_handle: unsafe { codes_handle_clone(self.message_handle)? },
         })
     }
 }
 
 impl<S: ThreadSafeHandle> TryClone for AtomicMessage<S> {
-    fn try_clone(&self) -> Result<ClonedMessage, CodesError> {
-        Ok(ClonedMessage {
+    fn try_clone(&self) -> Result<BufMessage, CodesError> {
+        Ok(BufMessage {
             message_handle: unsafe { codes_handle_clone(self.message_handle)? },
         })
     }

@@ -16,7 +16,7 @@ fn thread_safety_core() -> Result<()> {
 
             let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
             let current_message = handle
-                .message_generator()
+                .ref_message_generator()
                 .next()?
                 .context("Message not some")?;
 
@@ -38,7 +38,7 @@ fn thread_safety_core() -> Result<()> {
 
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 

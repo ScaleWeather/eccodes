@@ -8,7 +8,7 @@ use crate::{
         NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
         codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
     },
-    keyed_message::AtomicMessage,
+    keyed_message::ArcMessage,
 };
 
 /// Provides GRIB key reading capabilites. Implemented by [`KeyedMessage`] for all possible key types.
@@ -98,7 +98,7 @@ impl KeyReadHelpers for KeyedMessage<'_> {
     }
 }
 
-impl<S: ThreadSafeHandle> KeyReadHelpers for AtomicMessage<S> {
+impl<S: ThreadSafeHandle> KeyReadHelpers for ArcMessage<S> {
     fn get_key_size(&mut self, key_name: &str) -> Result<usize, CodesError> {
         unsafe { codes_get_size(self.message_handle, key_name) }
     }
@@ -341,7 +341,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 
@@ -382,7 +382,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
@@ -402,7 +402,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let mut kiter = current_message.default_keys_iterator()?;
@@ -422,7 +422,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 
@@ -441,7 +441,7 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let msg = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 

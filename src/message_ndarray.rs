@@ -277,7 +277,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
-        while let Some(msg) = handle.message_generator().next()? {
+        while let Some(msg) = handle.ref_message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let ndarray = msg.to_ndarray()?;
 
@@ -303,7 +303,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
 
-        while let Some(msg) = handle.message_generator().next()? {
+        while let Some(msg) = handle.ref_message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let rmsg = msg.to_lons_lats_values()?;
 

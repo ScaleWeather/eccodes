@@ -138,7 +138,7 @@ mod tests {
 
         let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind)?;
         let msg1 = handle1
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let nrst1 = msg1.codes_nearest()?;
@@ -146,7 +146,7 @@ mod tests {
 
         let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind)?;
         let msg2 = handle2
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let nrst2 = msg2.codes_nearest()?;
@@ -168,7 +168,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 

@@ -43,42 +43,41 @@ use crate::{
 ///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered in desctructor the are logged with [`log`].
-type KeyedMessage<'ch> = CodesMessage<RefRepr<'ch>>;
+pub type RefMessage<'ch> = CodesMessage<RefParent<'ch>>;
 
 /// Because standard `KeyedMessage` is not Copy or Clone it can provide access methods without
 /// requiring `&mut self`. As `AtomicMessage` implements `Send + Sync` this exclusive method access is not
 /// guaranteed with just `&self`. `AtomicMessage` also implements a minimal subset of functionalities
 /// to limit the risk of some internal ecCodes functions not being thread-safe.
-type AtomicMessage<S: ThreadSafeHandle> = CodesMessage<ArcRepr<S>>;
+pub type ArcMessage<S: ThreadSafeHandle> = CodesMessage<ArcParent<S>>;
 
-unsafe impl<S: ThreadSafeHandle> Send for AtomicMessage<S> {}
-unsafe impl<S: ThreadSafeHandle> Sync for AtomicMessage<S> {}
+unsafe impl<S: ThreadSafeHandle> Send for ArcMessage<S> {}
+unsafe impl<S: ThreadSafeHandle> Sync for ArcMessage<S> {}
 
-type ClonedMessage = CodesMessage<OwnedRepr>;
+pub type BufMessage = CodesMessage<BufParent>;
 
-unsafe impl Send for ClonedMessage {}
-unsafe impl Sync for ClonedMessage {}
+unsafe impl Send for BufMessage {}
+unsafe impl Sync for BufMessage {}
 
 /// All messages use this struct for operations.
 #[derive(Debug)]
-struct CodesMessage<P: Debug> {
+pub struct CodesMessage<P: Debug> {
     pub(crate) _parent: P,
     pub(crate) message_handle: *mut codes_handle,
 }
 
 #[derive(Debug, Hash, PartialEq, PartialOrd)]
-struct OwnedRepr();
+struct BufParent();
 
 #[derive(Debug)]
-struct ArcRepr<S: ThreadSafeHandle>(Arc<CodesHandle<S>>);
+struct ArcParent<S: ThreadSafeHandle>(Arc<CodesHandle<S>>);
 
 /// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
 /// KeyedMessage and derived types with generics, because `PhantomData` is needed
 /// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
 #[derive(Debug, Hash, PartialEq, PartialOrd)]
-struct RefRepr<'ch>(PhantomData<&'ch ()>);
+struct RefParent<'ch>(PhantomData<&'ch ()>);
 
-#[doc(hidden)]
 impl<P: Debug> Drop for CodesMessage<P> {
     /// Executes the destructor for this type.
     /// This method calls destructor functions from ecCodes library.
@@ -86,13 +85,17 @@ impl<P: Debug> Drop for CodesMessage<P> {
     /// In such case all pointers and file descriptors are safely deleted.
     /// However memory leaks can still occur.
     ///
-    /// If any function called in the destructor returns an error warning will appear in log.
-    /// If bugs occur during `CodesHandle` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
+    /// If any function called in the destructor returns an error warning will appear in log/tracing.
+    /// If bugs occur during `CodesMessage` drop please enable log output and post issue on [Github](https://github.com/ScaleWeather/eccodes).
     ///
     /// Technical note: delete functions in ecCodes can only fail with [`CodesInternalError`](crate::errors::CodesInternal::CodesInternalError)
     /// when other functions corrupt the inner memory of pointer, in that case memory leak is possible.
     /// In case of corrupt pointer segmentation fault will occur.
     /// The pointers are cleared at the end of drop as they are not functional regardless of result of delete functions.
+    /// 
+    /// # Panics
+    /// 
+    /// In debug
     #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
@@ -102,8 +105,7 @@ impl<P: Debug> Drop for CodesMessage<P> {
                     "codes_handle_delete() returned an error: {:?}",
                     &error
                 );
-                #[cfg(test)]
-                assert!(false, "Error in KeyedMessage::drop")
+                debug_assert!(false, "Error in KeyedMessage::drop")
             });
         }
 
@@ -125,7 +127,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 
@@ -147,7 +149,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let cloned_message = current_message.try_clone()?;
@@ -166,7 +168,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.message_generator();
+        let mut mgen = handle.ref_message_generator();
         let msg = mgen.next()?.context("Message not some")?.try_clone()?;
         let _ = mgen.next()?;
 
@@ -189,7 +191,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let _msg_ref = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let _msg_clone = _msg_ref.try_clone()?;
