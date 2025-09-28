@@ -143,7 +143,7 @@ mod tests {
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
-        let nrst1 = msg1.codes_nearest()?;
+        let mut nrst1 = msg1.codes_nearest()?;
         let out1 = nrst1.find_nearest(64.13, -21.89)?;
 
         let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind)?;
@@ -151,7 +151,7 @@ mod tests {
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
-        let nrst2 = msg2.codes_nearest()?;
+        let mut nrst2 = msg2.codes_nearest()?;
         let out2 = nrst2.find_nearest(64.13, -21.89)?;
 
         assert!(out1[0].value > 10000.0);

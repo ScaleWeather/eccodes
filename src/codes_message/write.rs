@@ -130,8 +130,7 @@ mod tests {
 
     use crate::{
         codes_handle::{CodesHandle, ProductKind},
-        keyed_message::DynamicKeyType,
-        keyed_message::KeyWrite,
+        codes_message::{DynamicKeyType, KeyWrite},
     };
     use std::{fs::remove_file, path::Path};
 
@@ -215,7 +214,7 @@ mod tests {
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        current_message.write_key("centre", "cnmc")?;
+        current_message.write_key_unchecked("centre", "cnmc")?;
 
         let read_key = current_message.read_key_dynamic("centre")?;
 
@@ -238,7 +237,7 @@ mod tests {
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        current_message.write_key("centre", "cnmc")?;
+        current_message.write_key_unchecked("centre", "cnmc")?;
 
         current_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
 

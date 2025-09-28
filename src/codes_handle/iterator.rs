@@ -73,10 +73,10 @@ mod tests {
     use crate::{
         FallibleIterator,
         codes_handle::{CodesHandle, ProductKind},
-        keyed_message::DynamicKeyType,
+        codes_message::DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
-    use std::path::Path;
+    use std::{path::Path, sync::{Arc, Barrier}};
 
     #[test]
     fn iterator_lifetimes() -> Result<()> {
@@ -264,7 +264,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.atomic_message_generator();
+        let mut mgen = handle.arc_message_generator();
         // let _ = handle.atomic_message_generator(); <- not allowed due to ownership
 
         let barrier = Arc::new(Barrier::new(10));
