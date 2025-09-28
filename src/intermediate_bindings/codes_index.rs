@@ -21,7 +21,8 @@ pub unsafe fn codes_index_new(keys: &str) -> Result<*mut codes_index, CodesError
     let keys = CString::new(keys).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
-    let codes_index = eccodes_sys::codes_index_new(context, keys.as_ptr(), &raw mut error_code);
+    let codes_index =
+        unsafe { eccodes_sys::codes_index_new(context, keys.as_ptr(), &mut error_code) };
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -36,7 +37,8 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
     let mut error_code: i32 = 0;
 
     let _g = CODES_LOCK.lock().unwrap();
-    let codes_index = eccodes_sys::codes_index_read(context, filename.as_ptr(), &raw mut error_code);
+    let codes_index =
+        unsafe { eccodes_sys::codes_index_read(context, filename.as_ptr(), &mut error_code) };
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -47,15 +49,12 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
 
 #[instrument(level = "trace")]
 pub unsafe fn codes_index_delete(index: *mut codes_index) {
-    #[cfg(test)]
-    log::trace!("codes_index_delete");
-
     if index.is_null() {
         return;
     }
 
     let _g = CODES_LOCK.lock().unwrap();
-    eccodes_sys::codes_index_delete(index);
+    unsafe { eccodes_sys::codes_index_delete(index) };
 }
 
 pub unsafe fn codes_index_add_file(
@@ -67,7 +66,7 @@ pub unsafe fn codes_index_add_file(
     let filename = CString::new(filename).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
-    let error_code = eccodes_sys::codes_index_add_file(index, filename.as_ptr());
+    let error_code = unsafe { eccodes_sys::codes_index_add_file(index, filename.as_ptr()) };
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -86,7 +85,7 @@ pub unsafe fn codes_index_select_long(
     let key = CString::new(key).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
-    let error_code = eccodes_sys::codes_index_select_long(index, key.as_ptr(), value);
+    let error_code = unsafe { eccodes_sys::codes_index_select_long(index, key.as_ptr(), value) };
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -105,7 +104,7 @@ pub unsafe fn codes_index_select_double(
     let key = CString::new(key).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
-    let error_code = eccodes_sys::codes_index_select_double(index, key.as_ptr(), value);
+    let error_code = unsafe { eccodes_sys::codes_index_select_double(index, key.as_ptr(), value) };
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -125,7 +124,8 @@ pub unsafe fn codes_index_select_string(
     let value = CString::new(value).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
-    let error_code = eccodes_sys::codes_index_select_string(index, key.as_ptr(), value.as_ptr());
+    let error_code =
+        unsafe { eccodes_sys::codes_index_select_string(index, key.as_ptr(), value.as_ptr()) };
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();

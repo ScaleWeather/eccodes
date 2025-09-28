@@ -285,7 +285,6 @@ impl CodesHandle<CodesIndex> {
     pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
         let new_handle = CodesHandle {
             source: index,
-            current_message: None,
         };
 
         Ok(new_handle)

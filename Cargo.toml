@@ -2,11 +2,7 @@
 name = "eccodes"
 description = "Unofficial high-level Rust bindings of the latest ecCodes release"
 repository = "https://github.com/ScaleWeather/eccodes"
-<<<<<<< HEAD
-version = "0.13.4"
-=======
 version = "0.14.0"
->>>>>>> 205d4a9 (update eccodes-sys, some fixes to codes_index and start doing docs)
 readme = "README.md"
 authors = ["Jakub Lewandowski <scaleweather@gmail.com>"]
 keywords = ["eccodes", "grib", "bufr", "meteorology", "weather"]

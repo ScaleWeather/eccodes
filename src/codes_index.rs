@@ -72,7 +72,7 @@ use crate::{
     },
 };
 use eccodes_sys::{codes_handle, codes_index};
-use std::{path::Path, ptr::null_mut};
+use std::{path::Path, ptr::null_mut, fmt::Debug};
 use tracing::instrument;
 
 #[derive(Debug)]
@@ -205,7 +205,7 @@ impl CodesIndex {
     /// the GRIB file is not present in the same relative path as during the index file creation.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
     #[instrument(level = "trace")]
-    pub fn read_from_file<P: AsRef<Path>>(index_file_path: P) -> Result<CodesIndex, CodesError> {
+    pub fn read_from_file<P: AsRef<Path> + Debug>(index_file_path: P) -> Result<CodesIndex, CodesError> {
         let index_file_path: &Path = index_file_path.as_ref();
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
