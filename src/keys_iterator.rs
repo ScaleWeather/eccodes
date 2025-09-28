@@ -233,7 +233,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle
+        let mut current_message = handle
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
@@ -261,7 +261,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle
+        let mut current_message = handle
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
@@ -287,7 +287,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle
+        let mut current_message = handle
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
