@@ -227,7 +227,6 @@
 //! features = ["eccodes/docs"]
 //! ```
 
-pub mod atomic_message;
 pub mod codes_handle;
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -235,14 +234,13 @@ pub mod codes_index;
 pub mod codes_nearest;
 pub mod errors;
 mod intermediate_bindings;
-pub mod keyed_message;
+pub mod codes_message;
 pub mod keys_iterator;
 #[cfg(feature = "message_ndarray")]
 #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
 pub mod message_ndarray;
 mod pointer_guard;
 
-pub use atomic_message::{AtomicKeyRead, AtomicMessage};
 pub use codes_handle::{CodesHandle, ProductKind};
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -250,5 +248,5 @@ pub use codes_index::CodesIndex;
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
-pub use keyed_message::{KeyRead, KeyWrite, KeyedMessage};
+pub use codes_message::{RefMessage, ArcMessage, BufMessage};
 pub use keys_iterator::{KeysIterator, KeysIteratorFlags};

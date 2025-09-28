@@ -251,6 +251,7 @@ pub unsafe fn codes_get_message_size(handle: *const codes_handle) -> Result<usiz
     }
 }
 
+/// Can panic in debug
 pub unsafe fn codes_get_message(
     handle: *const codes_handle,
 ) -> Result<(*const c_void, usize), CodesError> {
@@ -271,7 +272,7 @@ pub unsafe fn codes_get_message(
             return Err(err.into());
         }
 
-        assert!(
+        debug_assert!(
             buffer_size == message_size,
             "Buffer and message sizes ar not equal in codes_get_message! 
         Please report this panic on Github."

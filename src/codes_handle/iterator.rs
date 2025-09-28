@@ -1,16 +1,16 @@
 use fallible_iterator::FallibleIterator;
 
-use crate::{CodesHandle, KeyedMessage, codes_handle::HandleGenerator, errors::CodesError};
+use crate::{CodesHandle, codes_handle::HandleGenerator, errors::CodesError};
 use std::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct KeyedMessageGenerator<'a, S: HandleGenerator> {
+pub struct RefMessageGenerator<'a, S: HandleGenerator> {
     codes_handle: &'a mut CodesHandle<S>,
 }
 
 impl<S: HandleGenerator> CodesHandle<S> {
-    pub fn message_generator<'a>(&'a mut self) -> KeyedMessageGenerator<'a, S> {
-        KeyedMessageGenerator { codes_handle: self }
+    pub fn ref_message_generator<'a>(&'a mut self) -> RefMessageGenerator<'a, S> {
+        RefMessageGenerator { codes_handle: self }
     }
 }
 
@@ -18,8 +18,8 @@ impl<S: HandleGenerator> CodesHandle<S> {
 ///
 /// The `next()` will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
-impl<'ch, S: HandleGenerator> FallibleIterator for KeyedMessageGenerator<'ch, S> {
-    type Item = KeyedMessage<'ch>;
+impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageGenerator<'ch, S> {
+    type Item = RefMessage<'ch>;
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
@@ -28,8 +28,39 @@ impl<'ch, S: HandleGenerator> FallibleIterator for KeyedMessageGenerator<'ch, S>
         if new_eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(KeyedMessage {
+            Ok(Some(RefMessage {
                 parent_message: PhantomData,
+                message_handle: new_eccodes_handle,
+            }))
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct AtomicMessageGenerator<S: ThreadSafeHandle> {
+    codes_handle: Arc<CodesHandle<S>>,
+}
+impl<S: ThreadSafeHandle> CodesHandle<S> {
+    pub fn atomic_message_generator(self) -> AtomicMessageGenerator<S> {
+        AtomicMessageGenerator {
+            codes_handle: Arc::new(self),
+        }
+    }
+}
+
+impl<S: ThreadSafeHandle> FallibleIterator for AtomicMessageGenerator<S> {
+    type Item = AtomicMessage<S>;
+
+    type Error = CodesError;
+
+    fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        let new_eccodes_handle = self.codes_handle.source.gen_codes_handle()?;
+
+        if new_eccodes_handle.is_null() {
+            Ok(None)
+        } else {
+            Ok(Some(AtomicMessage {
+                _parent: self.codes_handle.clone(),
                 message_handle: new_eccodes_handle,
             }))
         }
@@ -39,8 +70,9 @@ impl<'ch, S: HandleGenerator> FallibleIterator for KeyedMessageGenerator<'ch, S>
 #[cfg(test)]
 mod tests {
     use crate::{
-        keyed_message::DynamicKeyType, FallibleIterator,
+        FallibleIterator,
         codes_handle::{CodesHandle, ProductKind},
+        keyed_message::DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
     use std::path::Path;
@@ -52,21 +84,21 @@ mod tests {
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
         let msg1 = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let key1 = msg1.read_key_dynamic("typeOfLevel")?;
         drop(msg1);
 
         let msg2 = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let key2 = msg2.read_key_dynamic("typeOfLevel")?;
         drop(msg2);
 
         let msg3 = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
         let key3 = msg3.read_key_dynamic("typeOfLevel")?;
@@ -84,7 +116,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.message_generator();
+        let mut mgen = handle.ref_message_generator();
 
         let msg1 = mgen.next()?.context("Message not some")?;
         drop(msg1);
@@ -114,7 +146,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        while let Some(msg) = handle.message_generator().next()? {
+        while let Some(msg) = handle.ref_message_generator().next()? {
             let key = msg.read_key_dynamic("shortName")?;
 
             match key {
@@ -134,7 +166,7 @@ mod tests {
 
         let mut handle_collected = vec![];
 
-        while let Some(msg) = handle.message_generator().next()? {
+        while let Some(msg) = handle.ref_message_generator().next()? {
             handle_collected.push(msg.try_clone()?);
         }
 
@@ -156,7 +188,7 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .message_generator()
+            .ref_message_generator()
             .next()?
             .context("Message not some")?;
 
@@ -171,7 +203,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.message_generator();
+        let mut mgen = handle.ref_message_generator();
 
         assert!(mgen.next()?.is_some());
         assert!(mgen.next()?.is_some());
@@ -198,7 +230,7 @@ mod tests {
         // First, filter and collect the messages to get those that we want
         let mut level = vec![];
 
-        while let Some(msg) = handle.message_generator().next()? {
+        while let Some(msg) = handle.ref_message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("msl".to_string())
                 && msg.read_key_dynamic("typeOfLevel")?
                     == DynamicKeyType::Str("surface".to_string())
@@ -221,6 +253,44 @@ mod tests {
             "value: {}, distance: {}",
             nearest_gridpoints[3].value, nearest_gridpoints[3].distance
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn atomic_thread_safety() -> Result<()> {
+        let file_path = Path::new("./data/iceland-levels.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut mgen = handle.atomic_message_generator();
+        // let _ = handle.atomic_message_generator(); <- not allowed due to ownership
+
+        let barrier = Arc::new(Barrier::new(10));
+
+        let mut v = vec![];
+
+        for _ in 0..10 {
+            let msg = Arc::new(mgen.next()?.context("No more messages")?);
+            let b = barrier.clone();
+
+            let t = std::thread::spawn(move || {
+                for _ in 0..1000 {
+                    b.wait();
+                    let _ = unsafe {
+                        crate::intermediate_bindings::codes_get_size(
+                            msg.message_handle,
+                            "shortName",
+                        )
+                        .unwrap()
+                    };
+                }
+            });
+
+            v.push(t);
+        }
+
+        v.into_iter().for_each(|th| th.join().unwrap());
 
         Ok(())
     }

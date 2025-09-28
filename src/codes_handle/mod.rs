@@ -15,9 +15,8 @@ use std::{
 };
 use tracing::instrument;
 
-pub use iterator::KeyedMessageGenerator;
+pub use iterator::RefMessageGenerator;
 
-mod atomic_iterator;
 mod iterator;
 
 /// This is an internal structure used to access provided file by `CodesHandle`.
@@ -430,10 +429,10 @@ mod tests {
 
             let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-            let _ref_msg = handle.message_generator().next()?.context("no message")?;
+            let _ref_msg = handle.ref_message_generator().next()?.context("no message")?;
             let clone_msg = _ref_msg.try_clone()?;
             drop(_ref_msg);
-            let _oth_ref = handle.message_generator().next()?.context("no message")?;
+            let _oth_ref = handle.ref_message_generator().next()?.context("no message")?;
 
             let _nrst = clone_msg.codes_nearest()?;
             let _kiter = clone_msg.default_keys_iterator()?;
