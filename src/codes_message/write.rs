@@ -1,7 +1,7 @@
-use std::{fs::OpenOptions, io::Write, path::Path, slice};
+use std::{fmt::Debug, fs::OpenOptions, io::Write, path::Path, slice};
 
 use crate::{
-    KeyedMessage,
+    codes_message::CodesMessage,
     errors::CodesError,
     intermediate_bindings::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
@@ -11,6 +11,8 @@ use crate::{
 
 /// Provides GRIB key writing capabilites. Implemented by [`KeyedMessage`] for all possible key types.
 pub trait KeyWrite<T> {
+    /// Unchecked doesn't mean it's unsafe - just that there are no checks on Rust side in comparison to
+    /// `read_key` which has such checks.
     /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless
     /// the key is read-only. This function directly calls ecCodes ensuring only type and memory safety.
     ///
@@ -39,70 +41,31 @@ pub trait KeyWrite<T> {
     /// # Errors
     ///
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to write the key.
-    fn write_key(&mut self, name: &str, value: T) -> Result<(), CodesError>;
+    fn write_key_unchecked(&mut self, name: &str, value: T) -> Result<(), CodesError>;
 }
 
-impl KeyWrite<i64> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: i64) -> Result<(), CodesError> {
-        unsafe { codes_set_long(self.message_handle, name, value) }
-    }
+macro_rules! impl_key_write {
+    ($ec_func:ident, $gen_type:ty) => {
+        impl<P: Debug> KeyWrite<$gen_type> for CodesMessage<P> {
+            fn write_key_unchecked(
+                &mut self,
+                name: &str,
+                value: $gen_type,
+            ) -> Result<(), CodesError> {
+                unsafe { $ec_func(self.message_handle, name, value) }
+            }
+        }
+    };
 }
 
-impl KeyWrite<f64> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: f64) -> Result<(), CodesError> {
-        unsafe { codes_set_double(self.message_handle, name, value) }
-    }
-}
+impl_key_write!(codes_set_long, i64);
+impl_key_write!(codes_set_double, f64);
+impl_key_write!(codes_set_long_array, &[i64]);
+impl_key_write!(codes_set_double_array, &[f64]);
+impl_key_write!(codes_set_bytes, &[u8]);
+impl_key_write!(codes_set_string, &str);
 
-impl KeyWrite<&[i64]> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &[i64]) -> Result<(), CodesError> {
-        unsafe { codes_set_long_array(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&[f64]> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &[f64]) -> Result<(), CodesError> {
-        unsafe { codes_set_double_array(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&[u8]> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &[u8]) -> Result<(), CodesError> {
-        unsafe { codes_set_bytes(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&Vec<i64>> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &Vec<i64>) -> Result<(), CodesError> {
-        unsafe { codes_set_long_array(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&Vec<f64>> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &Vec<f64>) -> Result<(), CodesError> {
-        unsafe { codes_set_double_array(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&Vec<u8>> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &Vec<u8>) -> Result<(), CodesError> {
-        unsafe { codes_set_bytes(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&str> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &str) -> Result<(), CodesError> {
-        unsafe { codes_set_string(self.message_handle, name, value) }
-    }
-}
-
-impl KeyWrite<&String> for KeyedMessage<'_> {
-    fn write_key(&mut self, name: &str, value: &String) -> Result<(), CodesError> {
-        unsafe { codes_set_string(self.message_handle, name, value) }
-    }
-}
-
-impl KeyedMessage<'_> {
+impl<PA: Debug> CodesMessage<PA> {
     /// Function to write given `KeyedMessage` to a file at provided path.
     /// If file does not exists it will be created.
     /// If `append` is set to `true` file will be opened in append mode
@@ -166,8 +129,9 @@ mod tests {
     use fallible_iterator::FallibleIterator;
 
     use crate::{
-        keyed_message::DynamicKeyType, keyed_message::KeyWrite,
         codes_handle::{CodesHandle, ProductKind},
+        keyed_message::DynamicKeyType,
+        keyed_message::KeyWrite,
     };
     use std::{fs::remove_file, path::Path};
 
@@ -178,7 +142,10 @@ mod tests {
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
 
-        let current_message = handle.ref_message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .ref_message_generator()
+            .next()?
+            .context("Message not some")?;
         let out_path = Path::new("./data/iceland_write.grib");
         current_message.write_to_file(out_path, false)?;
 
@@ -216,12 +183,18 @@ mod tests {
 
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.ref_message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .ref_message_generator()
+            .next()?
+            .context("Message not some")?;
         current_message.write_to_file(out_path, false)?;
 
         let file_path = Path::new("./data/iceland-levels.grib");
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.ref_message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .ref_message_generator()
+            .next()?
+            .context("Message not some")?;
         current_message.write_to_file(out_path, true)?;
 
         remove_file(out_path)?;
@@ -235,7 +208,10 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.ref_message_generator().next()?.context("Message not some")?;
+        let mut current_message = handle
+            .ref_message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
@@ -255,7 +231,10 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle.ref_message_generator().next()?.context("Message not some")?;
+        let mut current_message = handle
+            .ref_message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
@@ -266,7 +245,10 @@ mod tests {
         let file_path = Path::new("./data/iceland_edit.grib");
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.ref_message_generator().next()?.context("Message not some")?;
+        let current_message = handle
+            .ref_message_generator()
+            .next()?
+            .context("Message not some")?;
 
         let read_key = current_message.read_key_dynamic("centre")?;
 
