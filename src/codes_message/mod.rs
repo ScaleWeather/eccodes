@@ -72,6 +72,24 @@ struct BufParent();
 #[derive(Debug)]
 struct ArcParent<S: ThreadSafeHandle>(Arc<CodesHandle<S>>);
 
+impl RefMessage<'_> {
+    pub(crate) fn new_from_gen(handle: *mut codes_handle) -> Self {
+        RefMessage {
+            _parent: RefParent(PhantomData),
+            message_handle: handle,
+        }
+    }
+}
+
+impl<S: ThreadSafeHandle> ArcMessage<S> {
+    pub(crate) fn new_from_gen(handle: *mut codes_handle, parent: &Arc<CodesHandle<S>>) -> Self {
+        ArcMessage {
+            _parent: ArcParent(parent.clone()),
+            message_handle: handle,
+        }
+    }
+}
+
 /// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
 /// KeyedMessage and derived types with generics, because `PhantomData` is needed
 /// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
@@ -92,9 +110,9 @@ impl<P: Debug> Drop for CodesMessage<P> {
     /// when other functions corrupt the inner memory of pointer, in that case memory leak is possible.
     /// In case of corrupt pointer segmentation fault will occur.
     /// The pointers are cleared at the end of drop as they are not functional regardless of result of delete functions.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// In debug
     #[instrument(level = "trace")]
     fn drop(&mut self) {
