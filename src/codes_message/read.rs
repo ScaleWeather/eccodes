@@ -329,7 +329,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, keyed_message::DynamicKeyType};
+    use crate::{FallibleIterator, codes_message::DynamicKeyType};
     use std::path::Path;
 
     #[test]
@@ -380,16 +380,18 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle
+        let mut current_message = handle
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
-        let mut kiter = current_message.default_keys_iterator()?;
+        let key_names = current_message
+            .default_keys_iterator()?
+            .collect::<Vec<_>>()?;
 
-        while let Some(key_name) = kiter.next()? {
+        key_names.iter().for_each(|key_name| {
             assert!(!key_name.is_empty());
             assert!(current_message.read_key_dynamic(&key_name).is_ok())
-        }
+        });
 
         Ok(())
     }
@@ -400,16 +402,18 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle
+        let mut current_message = handle
             .ref_message_generator()
             .next()?
             .context("Message not some")?;
-        let mut kiter = current_message.default_keys_iterator()?;
+        let key_names = current_message
+            .default_keys_iterator()?
+            .collect::<Vec<_>>()?;
 
-        while let Some(key_name) = kiter.next()? {
+        key_names.iter().for_each(|key_name| {
             assert!(!key_name.is_empty());
             assert!(current_message.read_key_dynamic(&key_name).is_ok())
-        }
+        });
 
         Ok(())
     }
