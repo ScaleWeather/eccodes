@@ -1,6 +1,7 @@
 macro_rules! non_null {
     ($ptr:expr) => {
         if $ptr.is_null() {
+            debug_assert!(false, "Null pointer encountered");
             return Err(CodesError::NullPtr);
         }
     };
@@ -14,6 +15,7 @@ mod tests {
     use std::ptr;
 
     #[test]
+    #[should_panic]
     fn test_non_null() {
         let ptr: *mut i32 = ptr::null_mut();
         let result = simulated_function(ptr);
