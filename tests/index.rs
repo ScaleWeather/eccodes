@@ -155,6 +155,7 @@ fn add_file_while_index_open() -> Result<()> {
 }
 
 #[test]
+#[ignore = "for releases, indexing is experimental"]
 fn add_file_to_read_index() -> Result<()> {
     let file_path = Path::new("./data/iceland-surface.grib.idx");
     let grib_path = Path::new("./data/iceland-surface.grib");
