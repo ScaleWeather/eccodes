@@ -19,7 +19,7 @@ pub unsafe fn codes_grib_nearest_new(
 
     let mut error_code: i32 = 0;
 
-    let nearest = eccodes_sys::codes_grib_nearest_new(handle, &mut error_code);
+    let nearest = eccodes_sys::codes_grib_nearest_new(handle, &raw mut error_code);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -79,7 +79,7 @@ pub unsafe fn codes_grib_nearest_find(
         addr_of_mut!(output_values[0]),
         addr_of_mut!(output_distances[0]),
         addr_of_mut!(output_indexes[0]),
-        &mut length,
+        &raw mut length,
     );
 
     if error_code != 0 {
