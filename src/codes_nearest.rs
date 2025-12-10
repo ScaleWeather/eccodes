@@ -45,7 +45,7 @@ impl KeyedMessage {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal nearest handle cannot be created.
-    pub fn codes_nearest<'a>(&'a self) -> Result<CodesNearest<'a>, CodesError> {
+    pub fn codes_nearest(&self) -> Result<CodesNearest<'_>, CodesError> {
         let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
 
         Ok(CodesNearest {

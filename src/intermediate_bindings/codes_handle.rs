@@ -29,7 +29,7 @@ pub unsafe fn codes_handle_new_from_file(
         context,
         file_pointer.cast::<_>(),
         product_kind as u32,
-        &mut error_code,
+        &raw mut error_code,
     );
 
     if error_code != 0 {
@@ -67,7 +67,7 @@ pub unsafe fn codes_handle_new_from_index(
     let mut error_code: i32 = 0;
 
     let _g = CODES_LOCK.lock().unwrap();
-    let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &mut error_code);
+    let codes_handle = eccodes_sys::codes_handle_new_from_index(index, &raw mut error_code);
 
     // special case! codes_handle_new_from_index returns -43 when there are no messages left in the index
     // this is also indicated by a null pointer, which is handled upstream

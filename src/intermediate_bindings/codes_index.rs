@@ -19,7 +19,7 @@ pub unsafe fn codes_index_new(keys: &str) -> Result<*mut codes_index, CodesError
     let keys = CString::new(keys).unwrap();
 
     let _g = CODES_LOCK.lock().unwrap();
-    let codes_index = eccodes_sys::codes_index_new(context, keys.as_ptr(), &mut error_code);
+    let codes_index = eccodes_sys::codes_index_new(context, keys.as_ptr(), &raw mut error_code);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -34,7 +34,7 @@ pub unsafe fn codes_index_read(filename: &str) -> Result<*mut codes_index, Codes
     let mut error_code: i32 = 0;
 
     let _g = CODES_LOCK.lock().unwrap();
-    let codes_index = eccodes_sys::codes_index_read(context, filename.as_ptr(), &mut error_code);
+    let codes_index = eccodes_sys::codes_index_read(context, filename.as_ptr(), &raw mut error_code);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();

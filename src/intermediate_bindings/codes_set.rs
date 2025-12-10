@@ -114,7 +114,7 @@ pub unsafe fn codes_set_string(
     let value = CString::new(value).unwrap();
 
     let error_code =
-        eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &mut length);
+        eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &raw mut length);
 
     if error_code != 0 {
         let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
@@ -139,7 +139,7 @@ pub unsafe fn codes_set_bytes(
         handle,
         key.as_ptr(),
         values.as_ptr().cast::<_>(),
-        &mut length,
+        &raw mut length,
     );
 
     if error_code != 0 {
