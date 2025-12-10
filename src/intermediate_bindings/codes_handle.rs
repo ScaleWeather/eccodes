@@ -15,12 +15,6 @@ use crate::{
     pointer_guard,
 };
 
-#[cfg(target_os = "macos")]
-type _SYS_IO_FILE = eccodes_sys::__sFILE;
-
-#[cfg(not(target_os = "macos"))]
-type _SYS_IO_FILE = eccodes_sys::_IO_FILE;
-
 pub unsafe fn codes_handle_new_from_file(
     file_pointer: *mut FILE,
     product_kind: ProductKind,
@@ -33,7 +27,7 @@ pub unsafe fn codes_handle_new_from_file(
 
     let file_handle = eccodes_sys::codes_handle_new_from_file(
         context,
-        file_pointer.cast::<_SYS_IO_FILE>(),
+        file_pointer.cast::<_>(),
         product_kind as u32,
         &mut error_code,
     );

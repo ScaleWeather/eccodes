@@ -8,7 +8,7 @@ use crate::{
 };
 use eccodes_sys::{codes_handle, ProductKind_PRODUCT_GRIB};
 use errno::errno;
-use libc::{c_char, c_void, size_t, FILE};
+use libc::{c_void, size_t, FILE};
 use std::{
     fmt::Debug,
     fs::{File, OpenOptions},
@@ -294,7 +294,7 @@ impl CodesHandle<CodesIndex> {
 }
 
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
-    let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<c_char>()) };
+    let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<_>()) };
 
     if file_ptr.is_null() {
         let error_val = errno();
@@ -314,7 +314,7 @@ fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
         file_ptr = libc::fmemopen(
             file_data_ptr,
             file_data.len() as size_t,
-            "r".as_ptr().cast::<c_char>(),
+            "r".as_ptr().cast::<_>(),
         );
     }
 
