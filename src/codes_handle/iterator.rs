@@ -5,7 +5,7 @@ use crate::{
     codes_handle::{HandleGenerator, ThreadSafeHandle},
     errors::CodesError,
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct RefMessageIter<'a, S: HandleGenerator> {
@@ -39,12 +39,12 @@ impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageIter<'ch, S> {
 
 #[derive(Debug)]
 pub struct ArcMessageIter<S: ThreadSafeHandle> {
-    codes_handle: Arc<CodesFile<S>>,
+    codes_handle: Arc<Mutex<CodesFile<S>>>,
 }
 impl<S: ThreadSafeHandle> CodesFile<S> {
     pub fn arc_message_iter(self) -> ArcMessageIter<S> {
         ArcMessageIter {
-            codes_handle: Arc::new(self),
+            codes_handle: Arc::new(Mutex::new(self)),
         }
     }
 }
@@ -55,7 +55,13 @@ impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageIter<S> {
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let new_eccodes_handle = self.codes_handle.source.gen_codes_handle()?;
+        let new_eccodes_handle = self
+            .codes_handle
+            .lock()
+            // This mutex can be poisoned only when thread that holds ArcMessageIter panics, which would make using the mutex impossible")
+            .unwrap()
+            .source
+            .gen_codes_handle()?;
 
         if new_eccodes_handle.is_null() {
             Ok(None)
