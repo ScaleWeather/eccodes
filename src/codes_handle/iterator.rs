@@ -1,7 +1,7 @@
 use fallible_iterator::FallibleIterator;
 
 use crate::{
-    ArcMessage, CodesHandle, RefMessage,
+    ArcMessage, CodesFile, RefMessage,
     codes_handle::{HandleGenerator, ThreadSafeHandle},
     errors::CodesError,
 };
@@ -9,10 +9,10 @@ use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct RefMessageGenerator<'a, S: HandleGenerator> {
-    codes_handle: &'a mut CodesHandle<S>,
+    codes_handle: &'a mut CodesFile<S>,
 }
 
-impl<S: HandleGenerator> CodesHandle<S> {
+impl<S: HandleGenerator> CodesFile<S> {
     pub fn ref_message_generator<'a>(&'a mut self) -> RefMessageGenerator<'a, S> {
         RefMessageGenerator { codes_handle: self }
     }
@@ -39,9 +39,9 @@ impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageGenerator<'ch, S> {
 
 #[derive(Debug)]
 pub struct ArcMessageGenerator<S: ThreadSafeHandle> {
-    codes_handle: Arc<CodesHandle<S>>,
+    codes_handle: Arc<CodesFile<S>>,
 }
-impl<S: ThreadSafeHandle> CodesHandle<S> {
+impl<S: ThreadSafeHandle> CodesFile<S> {
     pub fn arc_message_generator(self) -> ArcMessageGenerator<S> {
         ArcMessageGenerator {
             codes_handle: Arc::new(self),
@@ -72,7 +72,7 @@ impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageGenerator<S> {
 mod tests {
     use crate::{
         FallibleIterator,
-        codes_handle::{CodesHandle, ProductKind},
+        codes_handle::{CodesFile, ProductKind},
         codes_message::DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
@@ -82,7 +82,7 @@ mod tests {
     fn iterator_lifetimes() -> Result<()> {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         let msg1 = handle
             .ref_message_generator()
@@ -116,7 +116,7 @@ mod tests {
     fn message_lifetime_safety() -> Result<()> {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut mgen = handle.ref_message_generator();
 
         let msg1 = mgen.next()?.context("Message not some")?;
@@ -145,7 +145,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         while let Some(msg) = handle.ref_message_generator().next()? {
             let key = msg.read_key_dynamic("shortName")?;
@@ -163,7 +163,7 @@ mod tests {
     fn iterator_collected() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         let mut handle_collected = vec![];
 
@@ -187,7 +187,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?
@@ -203,7 +203,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut mgen = handle.ref_message_generator();
 
         assert!(mgen.next()?.is_some());
@@ -225,7 +225,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         // Use iterator to get a Keyed message with shortName "msl" and typeOfLevel "surface"
         // First, filter and collect the messages to get those that we want
@@ -263,7 +263,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut mgen = handle.arc_message_generator();
         // let _ = handle.atomic_message_generator(); <- not allowed due to ownership
 

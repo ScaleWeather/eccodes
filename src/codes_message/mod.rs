@@ -15,7 +15,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::Arc}
 use tracing::{Level, event, instrument};
 
 use crate::{
-    CodesHandle, codes_handle::ThreadSafeHandle, intermediate_bindings::codes_handle_delete,
+    CodesFile, codes_handle::ThreadSafeHandle, intermediate_bindings::codes_handle_delete,
 };
 
 /// Structure that provides access to the data contained in the GRIB file, which directly corresponds to the message in the GRIB file
@@ -86,7 +86,7 @@ pub struct BufParent();
 #[derive(Debug)]
 #[doc(hidden)]
 pub struct ArcParent<S: ThreadSafeHandle> {
-    _arc_handle: Arc<CodesHandle<S>>,
+    _arc_handle: Arc<CodesFile<S>>,
 }
 
 impl RefMessage<'_> {
@@ -99,7 +99,7 @@ impl RefMessage<'_> {
 }
 
 impl<S: ThreadSafeHandle> ArcMessage<S> {
-    pub(crate) fn new_from_gen(handle: *mut codes_handle, parent: &Arc<CodesHandle<S>>) -> Self {
+    pub(crate) fn new_from_gen(handle: *mut codes_handle, parent: &Arc<CodesFile<S>>) -> Self {
         ArcMessage {
             _parent: ArcParent {
                 _arc_handle: parent.clone(),
@@ -156,7 +156,7 @@ impl<P: Debug> Drop for CodesMessage<P> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, ProductKind};
+    use crate::codes_handle::{CodesFile, ProductKind};
     use anyhow::{Context, Result};
     use fallible_iterator::FallibleIterator;
     use std::path::Path;
@@ -166,7 +166,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?
@@ -188,7 +188,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?
@@ -208,7 +208,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut mgen = handle.ref_message_generator();
         let msg = mgen.next()?.context("Message not some")?.try_clone()?;
         let _ = mgen.next()?;
@@ -230,7 +230,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let _msg_ref = handle
             .ref_message_generator()
             .next()?

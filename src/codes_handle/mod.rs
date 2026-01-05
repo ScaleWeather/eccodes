@@ -24,7 +24,7 @@ mod iterator;
 /// It is not intended to be used directly by the user.
 #[doc(hidden)]
 #[derive(Debug)]
-pub struct CodesFile<D: Debug> {
+pub struct CodesFileSource<D: Debug> {
     // fields dropped from top
     pointer: *mut FILE,
     product_kind: ProductKind,
@@ -35,8 +35,8 @@ pub struct CodesFile<D: Debug> {
 #[doc(hidden)]
 pub trait ThreadSafeHandle: HandleGenerator {}
 
-impl ThreadSafeHandle for CodesFile<Vec<u8>> {}
-impl ThreadSafeHandle for CodesFile<File> {}
+impl ThreadSafeHandle for CodesFileSource<Vec<u8>> {}
+impl ThreadSafeHandle for CodesFileSource<File> {}
 
 /// Internal trait implemented for types that can be called to generate `*mut codes_handle`.
 #[doc(hidden)]
@@ -44,7 +44,7 @@ pub trait HandleGenerator: Debug {
     fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError>;
 }
 
-impl<D: Debug> HandleGenerator for CodesFile<D> {
+impl<D: Debug> HandleGenerator for CodesFileSource<D> {
     fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError> {
         unsafe { codes_handle_new_from_file(self.pointer, self.product_kind) }
     }
@@ -119,7 +119,7 @@ impl<D: Debug> HandleGenerator for CodesFile<D> {
 ///
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
-pub struct CodesHandle<S: HandleGenerator> {
+pub struct CodesFile<S: HandleGenerator> {
     source: S,
 }
 
@@ -145,7 +145,7 @@ pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
 }
 
-impl CodesHandle<CodesFile<File>> {
+impl CodesFile<CodesFileSource<File>> {
     ///Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
@@ -190,7 +190,7 @@ impl CodesHandle<CodesFile<File>> {
         let file_pointer = open_with_fdopen(&file)?;
 
         Ok(Self {
-            source: CodesFile {
+            source: CodesFileSource {
                 _data: file,
                 pointer: file_pointer,
                 product_kind,
@@ -198,7 +198,7 @@ impl CodesHandle<CodesFile<File>> {
         })
     }
 }
-impl CodesHandle<CodesFile<Vec<u8>>> {
+impl CodesFile<CodesFileSource<Vec<u8>>> {
     ///Opens data in provided buffer as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
@@ -241,7 +241,7 @@ impl CodesHandle<CodesFile<Vec<u8>>> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
         Ok(Self {
-            source: CodesFile {
+            source: CodesFileSource {
                 _data: file_data,
                 product_kind,
                 pointer: file_pointer,
@@ -252,7 +252,7 @@ impl CodesHandle<CodesFile<Vec<u8>>> {
 
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-impl CodesHandle<CodesIndex> {
+impl CodesFile<CodesIndex> {
     /// Creates [`CodesHandle`] for provided [`CodesIndex`].
     ///
     /// ## Example
@@ -283,7 +283,7 @@ impl CodesHandle<CodesIndex> {
     /// when internal [`codes_handle`] cannot be created.
     #[instrument(level = "trace")]
     pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
-        let new_handle = CodesHandle { source: index };
+        let new_handle = CodesFile { source: index };
 
         Ok(new_handle)
     }
@@ -327,7 +327,7 @@ fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesHandle, ProductKind};
+    use crate::codes_handle::{CodesFile, ProductKind};
     #[cfg(feature = "experimental_index")]
     use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
@@ -340,7 +340,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         assert!(!handle.source.pointer.is_null());
         assert_eq!(handle.source.product_kind as u32, {
@@ -360,7 +360,7 @@ mod tests {
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
 
-        let handle = CodesHandle::new_from_memory(buf, product_kind)?;
+        let handle = CodesFile::new_from_memory(buf, product_kind)?;
         assert!(!handle.source.pointer.is_null());
         assert_eq!(handle.source.product_kind as u32, {
             ProductKind_PRODUCT_GRIB
@@ -385,7 +385,7 @@ mod tests {
 
         let i_ptr = index.pointer.clone();
 
-        let handle = CodesHandle::new_from_index(index)?;
+        let handle = CodesFile::new_from_index(index)?;
 
         assert_eq!(handle.source.pointer, i_ptr);
 
@@ -397,7 +397,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let handle = CodesFile::new_from_file(file_path, product_kind)?;
         drop(handle);
 
         Ok(())
@@ -411,7 +411,7 @@ mod tests {
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
 
-        let handle = CodesHandle::new_from_memory(buf, product_kind)?;
+        let handle = CodesFile::new_from_memory(buf, product_kind)?;
         drop(handle);
 
         Ok(())
@@ -423,7 +423,7 @@ mod tests {
             let file_path = Path::new("./data/iceland-surface.grib");
             let product_kind = ProductKind::GRIB;
 
-            let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+            let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
             let _ref_msg = handle
                 .ref_message_generator()
@@ -451,7 +451,7 @@ mod tests {
         let index = CodesIndex::read_from_file(file_path)?;
         assert!(!index.pointer.is_null());
 
-        let handle = CodesHandle::new_from_index(index)?;
+        let handle = CodesFile::new_from_index(index)?;
         drop(handle);
 
         Ok(())
@@ -463,7 +463,7 @@ mod tests {
         let index =
             CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level", "stepType"])?;
 
-        let mut handle = CodesHandle::new_from_index(index)?;
+        let mut handle = CodesFile::new_from_index(index)?;
 
         assert!(!handle.source.pointer.is_null());
 
@@ -486,7 +486,7 @@ mod tests {
                 .select("typeOfLevel", "isobaricInhPa")?
                 .select("level", 600)?;
 
-            let mut handle = CodesHandle::new_from_index(index)?;
+            let mut handle = CodesFile::new_from_index(index)?;
             let mut mgen = handle.ref_message_generator();
             let _ref_msg = mgen.next()?.context("no message")?;
             let mut clone_msg = _ref_msg.try_clone()?;

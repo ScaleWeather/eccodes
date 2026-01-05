@@ -129,7 +129,7 @@ mod tests {
     use fallible_iterator::FallibleIterator;
 
     use crate::{
-        codes_handle::{CodesHandle, ProductKind},
+        codes_handle::{CodesFile, ProductKind},
         codes_message::{DynamicKeyType, KeyWrite},
     };
     use std::{fs::remove_file, path::Path};
@@ -139,7 +139,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         let current_message = handle
             .ref_message_generator()
@@ -158,7 +158,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?
@@ -181,7 +181,7 @@ mod tests {
         let out_path = Path::new("./data/iceland_append.grib");
 
         let file_path = Path::new("./data/iceland-surface.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?
@@ -189,7 +189,7 @@ mod tests {
         current_message.write_to_file(out_path, false)?;
 
         let file_path = Path::new("./data/iceland-levels.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?
@@ -206,7 +206,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
         let file_path = Path::new("./data/iceland.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
             .ref_message_generator()
             .next()?
@@ -229,7 +229,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
         let file_path = Path::new("./data/iceland.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
             .ref_message_generator()
             .next()?
@@ -243,7 +243,7 @@ mod tests {
 
         let file_path = Path::new("./data/iceland_edit.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?

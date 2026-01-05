@@ -8,7 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use eccodes::{
-    CodesError, CodesHandle, CodesIndex, FallibleIterator, KeyRead, ProductKind,
+    CodesError, CodesFile, CodesIndex, FallibleIterator, KeyRead, ProductKind,
     codes_index::Select,
 };
 use rand::Rng;

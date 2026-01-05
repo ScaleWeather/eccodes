@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::cast_possible_wrap)]
-#![warn(missing_docs)]
+// #![warn(missing_docs)]
 #![warn(clippy::cargo)]
 #![warn(clippy::perf)]
 #![warn(clippy::doc_lazy_continuation)]
@@ -241,7 +241,7 @@ pub mod keys_iterator;
 mod message_ndarray;
 mod pointer_guard;
 
-pub use codes_handle::{CodesHandle, ProductKind};
+pub use codes_handle::{CodesFile, ProductKind};
 #[cfg(feature = "experimental_index")]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
 pub use codes_index::CodesIndex;

@@ -1,7 +1,7 @@
 use std::{path::Path, thread};
 
 use anyhow::{Context, Result};
-use eccodes::{CodesHandle, FallibleIterator, ProductKind, codes_message::DynamicKeyType};
+use eccodes::{CodesFile, FallibleIterator, ProductKind, codes_message::DynamicKeyType};
 
 #[test]
 fn thread_safety() {
@@ -14,7 +14,7 @@ fn thread_safety_core() -> Result<()> {
         loop {
             let file_path = Path::new("./data/iceland.grib");
 
-            let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+            let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
             let current_message = handle
                 .ref_message_generator()
                 .next()?
@@ -36,7 +36,7 @@ fn thread_safety_core() -> Result<()> {
     for _ in 0..1000 {
         let file_path = Path::new("./data/iceland.grib");
 
-        let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+        let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
         let current_message = handle
             .ref_message_generator()
             .next()?

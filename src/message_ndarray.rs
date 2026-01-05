@@ -146,14 +146,14 @@ mod tests {
 
     use super::*;
     use crate::ProductKind;
-    use crate::codes_handle::CodesHandle;
+    use crate::codes_handle::CodesFile;
     use crate::codes_message::DynamicKeyType;
     use std::path::Path;
 
     #[test]
     fn test_to_ndarray() -> Result<(), CodesError> {
         let file_path = Path::new("./data/iceland-surface.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+        let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.ref_message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn test_lons_lats() -> Result<(), CodesError> {
         let file_path = Path::new("./data/iceland-surface.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+        let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
 
         while let Some(msg) = handle.ref_message_generator().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
