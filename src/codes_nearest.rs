@@ -130,7 +130,7 @@ mod tests {
     use anyhow::{Context, Result};
     use fallible_iterator::FallibleIterator;
 
-    use crate::{CodesHandle, ProductKind};
+    use crate::{CodesFile, ProductKind};
 
     #[test]
     fn find_nearest() -> Result<()> {
@@ -138,7 +138,7 @@ mod tests {
         let file_path2 = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle1 = CodesHandle::new_from_file(file_path1, product_kind)?;
+        let mut handle1 = CodesFile::new_from_file(file_path1, product_kind)?;
         let msg1 = handle1
             .ref_message_generator()
             .next()?
@@ -146,7 +146,7 @@ mod tests {
         let mut nrst1 = msg1.codes_nearest()?;
         let out1 = nrst1.find_nearest(64.13, -21.89)?;
 
-        let mut handle2 = CodesHandle::new_from_file(file_path2, product_kind)?;
+        let mut handle2 = CodesFile::new_from_file(file_path2, product_kind)?;
         let msg2 = handle2
             .ref_message_generator()
             .next()?
@@ -168,7 +168,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
             .ref_message_generator()
             .next()?

@@ -11,7 +11,6 @@ pub(crate) use non_null;
 #[cfg(test)]
 mod tests {
     use crate::errors::CodesError;
-    use crate::pointer_guard::non_null;
     use std::ptr;
 
     #[test]

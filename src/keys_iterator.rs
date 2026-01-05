@@ -222,7 +222,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::FallibleIterator;
-    use crate::codes_handle::{CodesHandle, ProductKind};
+    use crate::codes_handle::{CodesFile, ProductKind};
     use std::path::Path;
 
     use super::KeysIteratorFlags;
@@ -232,7 +232,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
             .ref_message_generator()
             .next()?
@@ -260,7 +260,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
             .ref_message_generator()
             .next()?
@@ -286,7 +286,7 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
             .ref_message_generator()
             .next()?
