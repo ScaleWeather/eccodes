@@ -8,13 +8,13 @@ use crate::{
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct RefMessageGenerator<'a, S: HandleGenerator> {
+pub struct RefMessageIter<'a, S: HandleGenerator> {
     codes_handle: &'a mut CodesFile<S>,
 }
 
 impl<S: HandleGenerator> CodesFile<S> {
-    pub fn ref_message_generator<'a>(&'a mut self) -> RefMessageGenerator<'a, S> {
-        RefMessageGenerator { codes_handle: self }
+    pub fn ref_message_iter<'a>(&'a mut self) -> RefMessageIter<'a, S> {
+        RefMessageIter { codes_handle: self }
     }
 }
 
@@ -22,7 +22,7 @@ impl<S: HandleGenerator> CodesFile<S> {
 ///
 /// The `next()` will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
-impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageGenerator<'ch, S> {
+impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageIter<'ch, S> {
     type Item = RefMessage<'ch>;
     type Error = CodesError;
 
@@ -38,18 +38,18 @@ impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageGenerator<'ch, S> {
 }
 
 #[derive(Debug)]
-pub struct ArcMessageGenerator<S: ThreadSafeHandle> {
+pub struct ArcMessageIter<S: ThreadSafeHandle> {
     codes_handle: Arc<CodesFile<S>>,
 }
 impl<S: ThreadSafeHandle> CodesFile<S> {
-    pub fn arc_message_generator(self) -> ArcMessageGenerator<S> {
-        ArcMessageGenerator {
+    pub fn arc_message_iter(self) -> ArcMessageIter<S> {
+        ArcMessageIter {
             codes_handle: Arc::new(self),
         }
     }
 }
 
-impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageGenerator<S> {
+impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageIter<S> {
     type Item = ArcMessage<S>;
 
     type Error = CodesError;
@@ -85,21 +85,21 @@ mod tests {
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         let msg1 = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         let key1 = msg1.read_key_dynamic("typeOfLevel")?;
         drop(msg1);
 
         let msg2 = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         let key2 = msg2.read_key_dynamic("typeOfLevel")?;
         drop(msg2);
 
         let msg3 = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         let key3 = msg3.read_key_dynamic("typeOfLevel")?;
@@ -117,7 +117,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.ref_message_generator();
+        let mut mgen = handle.ref_message_iter();
 
         let msg1 = mgen.next()?.context("Message not some")?;
         drop(msg1);
@@ -147,7 +147,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
-        while let Some(msg) = handle.ref_message_generator().next()? {
+        while let Some(msg) = handle.ref_message_iter().next()? {
             let key = msg.read_key_dynamic("shortName")?;
 
             match key {
@@ -167,7 +167,7 @@ mod tests {
 
         let mut handle_collected = vec![];
 
-        while let Some(msg) = handle.ref_message_generator().next()? {
+        while let Some(msg) = handle.ref_message_iter().next()? {
             handle_collected.push(msg.try_clone()?);
         }
 
@@ -189,7 +189,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
@@ -204,7 +204,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.ref_message_generator();
+        let mut mgen = handle.ref_message_iter();
 
         assert!(mgen.next()?.is_some());
         assert!(mgen.next()?.is_some());
@@ -231,7 +231,7 @@ mod tests {
         // First, filter and collect the messages to get those that we want
         let mut level = vec![];
 
-        while let Some(msg) = handle.ref_message_generator().next()? {
+        while let Some(msg) = handle.ref_message_iter().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("msl".to_string())
                 && msg.read_key_dynamic("typeOfLevel")?
                     == DynamicKeyType::Str("surface".to_string())
@@ -264,7 +264,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.arc_message_generator();
+        let mut mgen = handle.arc_message_iter();
         // let _ = handle.atomic_message_generator(); <- not allowed due to ownership
 
         let barrier = Arc::new(Barrier::new(10));

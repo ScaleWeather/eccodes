@@ -142,7 +142,7 @@ mod tests {
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         let out_path = Path::new("./data/iceland_write.grib");
@@ -160,7 +160,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?
             .try_clone()?;
@@ -183,7 +183,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         current_message.write_to_file(out_path, false)?;
@@ -191,7 +191,7 @@ mod tests {
         let file_path = Path::new("./data/iceland-levels.grib");
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         current_message.write_to_file(out_path, true)?;
@@ -208,7 +208,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
@@ -231,7 +231,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
@@ -245,7 +245,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 

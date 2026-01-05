@@ -15,7 +15,7 @@ use std::{
 };
 use tracing::instrument;
 
-pub use iterator::{ArcMessageGenerator, RefMessageGenerator};
+pub use iterator::{ArcMessageIter, RefMessageIter};
 
 mod iterator;
 
@@ -426,13 +426,13 @@ mod tests {
             let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
             let _ref_msg = handle
-                .ref_message_generator()
+                .ref_message_iter()
                 .next()?
                 .context("no message")?;
             let mut clone_msg = _ref_msg.try_clone()?;
             drop(_ref_msg);
             let _oth_ref = handle
-                .ref_message_generator()
+                .ref_message_iter()
                 .next()?
                 .context("no message")?;
 

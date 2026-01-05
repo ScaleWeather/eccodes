@@ -234,7 +234,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
@@ -262,7 +262,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
@@ -288,7 +288,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let mut current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 

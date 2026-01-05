@@ -168,7 +168,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
@@ -190,7 +190,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let current_message = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         let cloned_message = current_message.try_clone()?;
@@ -209,7 +209,7 @@ mod tests {
         let product_kind = ProductKind::GRIB;
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.ref_message_generator();
+        let mut mgen = handle.ref_message_iter();
         let msg = mgen.next()?.context("Message not some")?.try_clone()?;
         let _ = mgen.next()?;
 
@@ -232,7 +232,7 @@ mod tests {
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
         let _msg_ref = handle
-            .ref_message_generator()
+            .ref_message_iter()
             .next()?
             .context("Message not some")?;
         let _msg_clone = _msg_ref.try_clone()?;
