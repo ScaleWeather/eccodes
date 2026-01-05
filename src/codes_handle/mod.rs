@@ -41,11 +41,11 @@ impl ThreadSafeHandle for CodesFileSource<File> {}
 /// Internal trait implemented for types that can be called to generate `*mut codes_handle`.
 #[doc(hidden)]
 pub trait HandleGenerator: Debug {
-    fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError>;
+    fn gen_codes_handle(&mut self) -> Result<*mut codes_handle, CodesError>;
 }
 
 impl<D: Debug> HandleGenerator for CodesFileSource<D> {
-    fn gen_codes_handle(&self) -> Result<*mut codes_handle, CodesError> {
+    fn gen_codes_handle(&mut self) -> Result<*mut codes_handle, CodesError> {
         unsafe { codes_handle_new_from_file(self.pointer, self.product_kind) }
     }
 }

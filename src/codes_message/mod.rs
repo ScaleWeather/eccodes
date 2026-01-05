@@ -11,7 +11,7 @@ pub use read::{DynamicKeyType, KeyPropertiesRead, KeyRead};
 pub use write::KeyWrite;
 
 use eccodes_sys::codes_handle;
-use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::Arc};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::{Arc, Mutex}};
 use tracing::{Level, event, instrument};
 
 use crate::{
@@ -86,7 +86,7 @@ pub struct BufParent();
 #[derive(Debug)]
 #[doc(hidden)]
 pub struct ArcParent<S: ThreadSafeHandle> {
-    _arc_handle: Arc<CodesFile<S>>,
+    _arc_handle: Arc<Mutex<CodesFile<S>>>,
 }
 
 impl RefMessage<'_> {
@@ -99,7 +99,7 @@ impl RefMessage<'_> {
 }
 
 impl<S: ThreadSafeHandle> ArcMessage<S> {
-    pub(crate) fn new(handle: *mut codes_handle, parent: &Arc<CodesFile<S>>) -> Self {
+    pub(crate) fn new(handle: *mut codes_handle, parent: &Arc<Mutex<CodesFile<S>>>) -> Self {
         ArcMessage {
             _parent: ArcParent {
                 _arc_handle: parent.clone(),
