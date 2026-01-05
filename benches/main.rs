@@ -11,7 +11,7 @@ pub fn key_reading(c: &mut Criterion) {
 
     let mut handle = CodesFile::new_from_file(file_path, product_kind).unwrap();
 
-    let msg = handle.ref_message_generator().next().unwrap().unwrap();
+    let msg = handle.ref_message_iter().next().unwrap().unwrap();
 
     c.bench_function("long reading", |b| {
         b.iter(|| msg.read_key_dynamic(black_box("dataDate")).unwrap())
