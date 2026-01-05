@@ -1,7 +1,7 @@
 use std::{fmt::Debug, fs::OpenOptions, io::Write, path::Path, slice};
 
 use crate::{
-    codes_message::CodesMessage,
+    codes_message::{BufMessage, CodesMessage},
     errors::CodesError,
     intermediate_bindings::{
         codes_get_message, codes_set_bytes, codes_set_double, codes_set_double_array,
@@ -46,7 +46,7 @@ pub trait KeyWrite<T> {
 
 macro_rules! impl_key_write {
     ($ec_func:ident, $gen_type:ty) => {
-        impl<P: Debug> KeyWrite<$gen_type> for CodesMessage<P> {
+        impl KeyWrite<$gen_type> for BufMessage {
             fn write_key_unchecked(
                 &mut self,
                 name: &str,
@@ -207,14 +207,16 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle
+        let current_message = handle
             .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        current_message.write_key_unchecked("centre", "cnmc")?;
+        current_message
+            .try_clone()?
+            .write_key_unchecked("centre", "cnmc")?;
 
         let read_key = current_message.read_key_dynamic("centre")?;
 
@@ -230,14 +232,16 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
 
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut current_message = handle
+        let current_message = handle
             .ref_message_iter()
             .next()?
             .context("Message not some")?;
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        current_message.write_key_unchecked("centre", "cnmc")?;
+        current_message
+            .try_clone()?
+            .write_key_unchecked("centre", "cnmc")?;
 
         current_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
 
