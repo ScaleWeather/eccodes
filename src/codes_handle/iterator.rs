@@ -32,7 +32,7 @@ impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageIter<'ch, S> {
         if new_eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(RefMessage::new_from_gen(new_eccodes_handle)))
+            Ok(Some(RefMessage::new(new_eccodes_handle)))
         }
     }
 }
@@ -60,7 +60,7 @@ impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageIter<S> {
         if new_eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(ArcMessage::new_from_gen(
+            Ok(Some(ArcMessage::new(
                 new_eccodes_handle,
                 &self.codes_handle,
             )))
@@ -76,7 +76,10 @@ mod tests {
         codes_message::DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
-    use std::{path::Path, sync::{Arc, Barrier}};
+    use std::{
+        path::Path,
+        sync::{Arc, Barrier},
+    };
 
     #[test]
     fn iterator_lifetimes() -> Result<()> {
@@ -278,13 +281,7 @@ mod tests {
             let t = std::thread::spawn(move || {
                 for _ in 0..1000 {
                     b.wait();
-                    let _ = unsafe {
-                        crate::intermediate_bindings::codes_get_size(
-                            msg.message_handle,
-                            "shortName",
-                        )
-                        .unwrap()
-                    };
+                    let _ = msg.read_key_dynamic("shortName").unwrap();
                 }
             });
 

@@ -90,7 +90,7 @@ pub struct ArcParent<S: ThreadSafeHandle> {
 }
 
 impl RefMessage<'_> {
-    pub(crate) fn new_from_gen(handle: *mut codes_handle) -> Self {
+    pub(crate) fn new(handle: *mut codes_handle) -> Self {
         RefMessage {
             _parent: RefParent(PhantomData),
             message_handle: handle,
@@ -99,7 +99,7 @@ impl RefMessage<'_> {
 }
 
 impl<S: ThreadSafeHandle> ArcMessage<S> {
-    pub(crate) fn new_from_gen(handle: *mut codes_handle, parent: &Arc<CodesFile<S>>) -> Self {
+    pub(crate) fn new(handle: *mut codes_handle, parent: &Arc<CodesFile<S>>) -> Self {
         ArcMessage {
             _parent: ArcParent {
                 _arc_handle: parent.clone(),

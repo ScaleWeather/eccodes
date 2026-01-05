@@ -18,3 +18,34 @@ impl<P: Debug> CodesMessage<P> {
         }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use anyhow::{Context, Result};
+    use fallible_iterator::FallibleIterator;
+
+    use crate::{CodesFile, ProductKind};
+
+    #[test]
+    fn check_clone_safety() -> Result<()> {
+        let file_path = Path::new("./data/iceland-levels.grib");
+        let product_kind = ProductKind::GRIB;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+
+        let msg1 = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
+        let key1 = msg1.read_key_dynamic("typeOfLevel")?;
+
+        let msg_clone = msg1.try_clone()?;
+        drop(msg1);
+        drop(handle);
+        let key1_clone = msg_clone.read_key_dynamic("typeOfLevel")?;
+        assert_eq!(key1, key1_clone);
+
+        Ok(())
+    }
+}
