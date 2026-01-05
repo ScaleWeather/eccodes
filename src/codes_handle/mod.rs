@@ -20,7 +20,7 @@ pub use iterator::{ArcMessageIter, RefMessageIter};
 mod iterator;
 
 /// This is an internal structure used to access provided file by `CodesHandle`.
-/// It also allows to differentiate between `CodesHandle` created from file and from index.
+/// It also allows to differentiate between `CodesFile` created from file and from index.
 /// It is not intended to be used directly by the user.
 #[doc(hidden)]
 #[derive(Debug)]
