@@ -5,7 +5,7 @@ use eccodes::{CodesFile, FallibleIterator, ProductKind, codes_message::DynamicKe
 
 #[test]
 fn thread_safety() {
-    // errors are fine
+    // errors are fine, segfaults are not
     thread_safety_core().unwrap_or(());
 }
 
