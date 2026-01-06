@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+#![deprecated(since = "0.14.0", note = "Feature experimental_index will be removed in 0.14, because it isn't thread-safe. Users will be able to build their own indexes.")]
 //! ⚠️ **EXPERIMENTAL FEATURE - POSSIBLY UNSAFE** ⚠️ \
 //! Definition of `CodesIndex` and associated functions
 //! used for efficient selection of messages from GRIB file
