@@ -223,104 +223,44 @@ impl<P: Debug> CodesMessage<P> {
     /// bug in the crate or bug in the ecCodes library. If you encounter this error please check
     /// if your file is correct and report it on Github.
     pub fn read_key_dynamic(&self, key_name: &str) -> Result<DynamicKeyType, CodesError> {
-        let key_type;
+        let key_type = self.get_key_native_type(key_name)?;
+        let key_size = self.get_key_size(key_name)?;
 
-        unsafe {
-            key_type = codes_get_native_type(self.message_handle, key_name)?;
-        }
-
-        let key_value = match key_type {
+        match key_type {
             NativeKeyType::Long => {
-                let key_size;
-                unsafe { key_size = codes_get_size(self.message_handle, key_name)? }
-
                 if key_size == 1 {
-                    let value;
-                    unsafe {
-                        value = codes_get_long(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(DynamicKeyType::Int(val)),
-                        Err(err) => Err(err),
-                    }
+                    self.read_key_unchecked(key_name)
+                        .map(|v| DynamicKeyType::Int(v))
                 } else if key_size >= 2 {
-                    let value;
-                    unsafe {
-                        value = codes_get_long_array(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(DynamicKeyType::IntArray(val)),
-                        Err(err) => Err(err),
-                    }
+                    self.read_key_unchecked(key_name)
+                        .map(|v| DynamicKeyType::IntArray(v))
                 } else {
                     return Err(CodesError::IncorrectKeySize);
                 }
             }
             NativeKeyType::Double => {
-                let key_size;
-                unsafe { key_size = codes_get_size(self.message_handle, key_name)? }
-
                 if key_size == 1 {
-                    let value;
-                    unsafe {
-                        value = codes_get_double(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(DynamicKeyType::Float(val)),
-                        Err(err) => Err(err),
-                    }
+                    self.read_key_unchecked(key_name)
+                        .map(|v| DynamicKeyType::Float(v))
                 } else if key_size >= 2 {
-                    let value;
-                    unsafe {
-                        value = codes_get_double_array(self.message_handle, key_name);
-                    }
-
-                    match value {
-                        Ok(val) => Ok(DynamicKeyType::FloatArray(val)),
-                        Err(err) => Err(err),
-                    }
+                    self.read_key_unchecked(key_name)
+                        .map(|v| DynamicKeyType::FloatArray(v))
                 } else {
                     return Err(CodesError::IncorrectKeySize);
                 }
             }
-            NativeKeyType::Bytes => {
-                let value;
-                unsafe {
-                    value = codes_get_bytes(self.message_handle, key_name);
-                }
-
-                match value {
-                    Ok(val) => Ok(DynamicKeyType::Bytes(val)),
-                    Err(err) => Err(err),
-                }
-            }
+            NativeKeyType::Bytes => self
+                .read_key_unchecked(key_name)
+                .map(|v| DynamicKeyType::Bytes(v)),
             NativeKeyType::Missing => return Err(CodesError::MissingKey),
-            _ => {
-                let value;
-                unsafe {
-                    value = codes_get_string(self.message_handle, key_name);
-                }
-
-                match value {
-                    Ok(val) => Ok(DynamicKeyType::Str(val)),
-                    Err(err) => Err(err),
-                }
-            }
-        };
-
-        if let Ok(value) = key_value {
-            Ok(value)
-        } else {
-            let value;
-            unsafe {
-                value = codes_get_bytes(self.message_handle, key_name)?;
-            }
-
-            Ok(DynamicKeyType::Bytes(value))
+            _ => self
+                .read_key_unchecked(key_name)
+                .map(|v| DynamicKeyType::Str(v)),
         }
+        .or_else(|_| {
+            self.read_key_unchecked(key_name)
+                .map(|v| DynamicKeyType::Bytes(v))
+        })
     }
 }
 
