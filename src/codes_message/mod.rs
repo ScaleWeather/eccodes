@@ -150,7 +150,7 @@ impl<P: Debug> Drop for CodesMessage<P> {
                     "codes_handle_delete() returned an error: {:?}",
                     &error
                 );
-                debug_assert!(false, "Error in KeyedMessage::drop")
+                debug_assert!(false, "Error in KeyedMessage::drop");
             });
         }
 
