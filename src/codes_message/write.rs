@@ -41,7 +41,7 @@ pub trait KeyWrite<T> {
     /// # Errors
     ///
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to write the key.
-    fn write_key_unchecked(&mut self, name: &str, value: T) -> Result<(), CodesError>;
+    fn write_key_unchecked(&mut self, name: &str, value: T) -> Result<&mut Self, CodesError>;
 }
 
 macro_rules! impl_key_write {
@@ -51,8 +51,11 @@ macro_rules! impl_key_write {
                 &mut self,
                 name: &str,
                 value: $gen_type,
-            ) -> Result<(), CodesError> {
-                unsafe { $ec_func(self.message_handle, name, value) }
+            ) -> Result<&mut Self, CodesError> {
+                unsafe {
+                    $ec_func(self.message_handle, name, value)?;
+                }
+                Ok(self)
             }
         }
     };
@@ -214,11 +217,11 @@ mod tests {
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        current_message
-            .try_clone()?
-            .write_key_unchecked("centre", "cnmc")?;
+        let mut cloned_message = current_message
+            .try_clone()?;
+        cloned_message.write_key_unchecked("centre", "cnmc")?;
 
-        let read_key = current_message.read_key_dynamic("centre")?;
+        let read_key = cloned_message.read_key_dynamic("centre")?;
 
         assert_ne!(old_key, read_key);
         assert_eq!(read_key, DynamicKeyType::Str("cnmc".into()));
@@ -239,11 +242,11 @@ mod tests {
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        current_message
-            .try_clone()?
-            .write_key_unchecked("centre", "cnmc")?;
+        let mut cloned_message = current_message
+            .try_clone()?;
+        cloned_message.write_key_unchecked("centre", "cnmc")?;
 
-        current_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
+        cloned_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
 
         let file_path = Path::new("./data/iceland_edit.grib");
 
