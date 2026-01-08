@@ -3,8 +3,6 @@
 
 use std::ptr::{self};
 
-#[cfg(feature = "experimental_index")]
-use eccodes_sys::{CODES_LOCK, codes_index};
 use eccodes_sys::{codes_context, codes_handle};
 use libc::FILE;
 use num_traits::FromPrimitive;
@@ -66,31 +64,6 @@ pub unsafe fn codes_handle_delete(handle: *mut codes_handle) -> Result<(), Codes
 
         Ok(())
     }
-}
-
-#[cfg(feature = "experimental_index")]
-#[instrument(level = "trace")]
-pub unsafe fn codes_handle_new_from_index(
-    index: *mut codes_index,
-) -> Result<*mut codes_handle, CodesError> {
-    pointer_guard::non_null!(index);
-
-    let mut error_code: i32 = 0;
-
-    let _g = CODES_LOCK.lock().unwrap();
-    let codes_handle = unsafe { eccodes_sys::codes_handle_new_from_index(index, &mut error_code) };
-
-    // special case! codes_handle_new_from_index returns -43 when there are no messages left in the index
-    // this is also indicated by a null pointer, which is handled upstream
-    if error_code == -43 {
-        return Ok(codes_handle);
-    }
-
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
-    }
-    Ok(codes_handle)
 }
 
 pub unsafe fn codes_handle_clone(

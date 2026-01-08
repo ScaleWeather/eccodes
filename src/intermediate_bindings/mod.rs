@@ -9,8 +9,6 @@
 
 mod codes_get;
 mod codes_handle;
-#[cfg(feature = "experimental_index")]
-mod codes_index;
 mod codes_keys;
 mod codes_set;
 mod grib_nearest;
@@ -32,14 +30,7 @@ pub use codes_get::{
     codes_get_long_array, codes_get_message, codes_get_native_type, codes_get_size,
     codes_get_string,
 };
-#[cfg(feature = "experimental_index")]
-pub use codes_handle::codes_handle_new_from_index;
 pub use codes_handle::{codes_handle_clone, codes_handle_delete, codes_handle_new_from_file};
-#[cfg(feature = "experimental_index")]
-pub use codes_index::{
-    codes_index_add_file, codes_index_delete, codes_index_new, codes_index_read,
-    codes_index_select_double, codes_index_select_long, codes_index_select_string,
-};
 pub use codes_keys::{
     codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
     codes_keys_iterator_next,
