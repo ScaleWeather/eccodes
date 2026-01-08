@@ -132,6 +132,7 @@ mod tests {
     use fallible_iterator::FallibleIterator;
 
     use crate::{
+        KeyRead,
         codes_handle::{CodesFile, ProductKind},
         codes_message::{DynamicKeyType, KeyWrite},
     };
@@ -217,8 +218,7 @@ mod tests {
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        let mut cloned_message = current_message
-            .try_clone()?;
+        let mut cloned_message = current_message.try_clone()?;
         cloned_message.write_key_unchecked("centre", "cnmc")?;
 
         let read_key = cloned_message.read_key_dynamic("centre")?;
@@ -226,6 +226,30 @@ mod tests {
         assert_ne!(old_key, read_key);
         assert_eq!(read_key, DynamicKeyType::Str("cnmc".into()));
 
+        Ok(())
+    }
+
+    #[test]
+    fn write_key_types() -> Result<()> {
+        let product_kind = ProductKind::GRIB;
+        let file_path = Path::new("./data/iceland.grib");
+
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?
+            .try_clone()?;
+
+        let mut values_array: Vec<f64> = message.read_key("values")?;
+        values_array[0] = 0.0;
+
+        message.write_key_unchecked("centre", "cnmc")?; // str
+        message.write_key_unchecked("day", 3)?; // int
+        message.write_key_unchecked("latitudeOfFirstGridPointInDegrees", 7.0)?; // float
+        message.write_key_unchecked("values", values_array.as_slice())?; //float array
+
+        // int array and bytes cannot be tested because written key must exist and must be writable
         Ok(())
     }
 
@@ -242,8 +266,7 @@ mod tests {
 
         let old_key = current_message.read_key_dynamic("centre")?;
 
-        let mut cloned_message = current_message
-            .try_clone()?;
+        let mut cloned_message = current_message.try_clone()?;
         cloned_message.write_key_unchecked("centre", "cnmc")?;
 
         cloned_message.write_to_file(Path::new("./data/iceland_edit.grib"), false)?;
