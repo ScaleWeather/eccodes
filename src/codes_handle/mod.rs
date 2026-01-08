@@ -17,37 +17,6 @@ pub use iterator::{ArcMessageIter, RefMessageIter};
 
 mod iterator;
 
-/// This is an internal structure used to access provided file by `CodesHandle`.
-/// It also allows to differentiate between `CodesFile` created from file and from index.
-/// It is not intended to be used directly by the user.
-#[doc(hidden)]
-#[derive(Debug)]
-pub struct CodesFileSource<D: Debug> {
-    // fields dropped from top
-    pointer: *mut FILE,
-    product_kind: ProductKind,
-    _data: D,
-}
-
-/// Marker trait to differentiate between `CodesHandle` created from index and file/buffer.
-#[doc(hidden)]
-pub trait ThreadSafeHandle: HandleGenerator {}
-
-impl ThreadSafeHandle for CodesFileSource<Vec<u8>> {}
-impl ThreadSafeHandle for CodesFileSource<File> {}
-
-/// Internal trait implemented for types that can be called to generate `*mut codes_handle`.
-#[doc(hidden)]
-pub trait HandleGenerator: Debug {
-    fn gen_codes_handle(&mut self) -> Result<*mut codes_handle, CodesError>;
-}
-
-impl<D: Debug> HandleGenerator for CodesFileSource<D> {
-    fn gen_codes_handle(&mut self) -> Result<*mut codes_handle, CodesError> {
-        unsafe { codes_handle_new_from_file(self.pointer, self.product_kind) }
-    }
-}
-
 /// Structure providing access to the GRIB file which takes a full ownership of the accessed file.
 ///  
 /// It can be constructed from:
@@ -117,8 +86,11 @@ impl<D: Debug> HandleGenerator for CodesFileSource<D> {
 ///
 /// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
 #[derive(Debug)]
-pub struct CodesFile<S: HandleGenerator> {
-    source: S,
+pub struct CodesFile<D: Debug> {
+    // fields are dropped from top
+    pointer: *mut FILE,
+    product_kind: ProductKind,
+    _data: D,
 }
 
 // 2024-07-26
@@ -135,6 +107,12 @@ pub struct CodesFile<S: HandleGenerator> {
 // Clearing the memory is handled on ecCodes side by KeyedMessage/CodesIndex destructors
 // and on rust side by destructors of data_container we own.
 
+impl<D: Debug> CodesFile<D> {
+    fn generate_codes_handle(&mut self) -> Result<*mut codes_handle, CodesError> {
+        unsafe { codes_handle_new_from_file(self.pointer, self.product_kind) }
+    }
+}
+
 /// Enum representing the kind of product (file type) inside handled file.
 /// Used to indicate to ecCodes how it should decode/encode messages.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
@@ -143,7 +121,7 @@ pub enum ProductKind {
     GRIB = ProductKind_PRODUCT_GRIB as isize,
 }
 
-impl CodesFile<CodesFileSource<File>> {
+impl CodesFile<File> {
     ///Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
@@ -188,15 +166,13 @@ impl CodesFile<CodesFileSource<File>> {
         let file_pointer = open_with_fdopen(&file)?;
 
         Ok(Self {
-            source: CodesFileSource {
-                _data: file,
-                pointer: file_pointer,
-                product_kind,
-            },
+            _data: file,
+            pointer: file_pointer,
+            product_kind,
         })
     }
 }
-impl CodesFile<CodesFileSource<Vec<u8>>> {
+impl CodesFile<Vec<u8>> {
     ///Opens data in provided buffer as selected [`ProductKind`] and contructs `CodesHandle`.
     ///
     ///## Example
@@ -239,11 +215,9 @@ impl CodesFile<CodesFileSource<Vec<u8>>> {
         let file_pointer = open_with_fmemopen(&file_data)?;
 
         Ok(Self {
-            source: CodesFileSource {
-                _data: file_data,
-                product_kind,
-                pointer: file_pointer,
-            },
+            _data: file_data,
+            product_kind,
+            pointer: file_pointer,
         })
     }
 }
@@ -297,14 +271,14 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let codes_file = CodesFile::new_from_file(file_path, product_kind)?;
 
-        assert!(!handle.source.pointer.is_null());
-        assert_eq!(handle.source.product_kind as u32, {
+        assert!(!codes_file.pointer.is_null());
+        assert_eq!(codes_file.product_kind as u32, {
             ProductKind_PRODUCT_GRIB
         });
 
-        handle.source._data.metadata()?;
+        codes_file._data.metadata()?;
 
         Ok(())
     }
@@ -317,13 +291,13 @@ mod tests {
         let mut buf = Vec::new();
         f.read_to_end(&mut buf)?;
 
-        let handle = CodesFile::new_from_memory(buf, product_kind)?;
-        assert!(!handle.source.pointer.is_null());
-        assert_eq!(handle.source.product_kind as u32, {
+        let codes_file = CodesFile::new_from_memory(buf, product_kind)?;
+        assert!(!codes_file.pointer.is_null());
+        assert_eq!(codes_file.product_kind as u32, {
             ProductKind_PRODUCT_GRIB
         });
 
-        assert!(!handle.source._data.is_empty());
+        assert!(!codes_file._data.is_empty());
 
         Ok(())
     }

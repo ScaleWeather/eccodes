@@ -11,12 +11,16 @@ pub use read::{DynamicKeyType, KeyPropertiesRead, KeyRead};
 pub use write::KeyWrite;
 
 use eccodes_sys::codes_handle;
-use std::{fmt::Debug, hash::Hash, marker::PhantomData, ptr::null_mut, sync::{Arc, Mutex}};
+use std::{
+    fmt::Debug,
+    hash::Hash,
+    marker::PhantomData,
+    ptr::null_mut,
+    sync::{Arc, Mutex},
+};
 use tracing::{Level, event, instrument};
 
-use crate::{
-    CodesFile, codes_handle::ThreadSafeHandle, intermediate_bindings::codes_handle_delete,
-};
+use crate::{CodesFile, intermediate_bindings::codes_handle_delete};
 
 /// Structure that provides access to the data contained in the GRIB file, which directly corresponds to the message in the GRIB file
 ///
@@ -54,10 +58,10 @@ pub type RefMessage<'ch> = CodesMessage<RefParent<'ch>>;
 /// requiring `&mut self`. As `AtomicMessage` implements `Send + Sync` this exclusive method access is not
 /// guaranteed with just `&self`. `AtomicMessage` also implements a minimal subset of functionalities
 /// to limit the risk of some internal ecCodes functions not being thread-safe.
-pub type ArcMessage<S> = CodesMessage<ArcParent<S>>;
+pub type ArcMessage<D> = CodesMessage<ArcParent<D>>;
 
-unsafe impl<S: ThreadSafeHandle> Send for ArcMessage<S> {}
-unsafe impl<S: ThreadSafeHandle> Sync for ArcMessage<S> {}
+unsafe impl<D: Debug> Send for ArcMessage<D> {}
+unsafe impl<D: Debug> Sync for ArcMessage<D> {}
 
 pub type BufMessage = CodesMessage<BufParent>;
 
@@ -85,8 +89,8 @@ pub struct BufParent();
 
 #[derive(Debug)]
 #[doc(hidden)]
-pub struct ArcParent<S: ThreadSafeHandle> {
-    _arc_handle: Arc<Mutex<CodesFile<S>>>,
+pub struct ArcParent<D: Debug> {
+    _arc_handle: Arc<Mutex<CodesFile<D>>>,
 }
 
 impl RefMessage<'_> {
@@ -98,8 +102,8 @@ impl RefMessage<'_> {
     }
 }
 
-impl<S: ThreadSafeHandle> ArcMessage<S> {
-    pub(crate) fn new(handle: *mut codes_handle, parent: &Arc<Mutex<CodesFile<S>>>) -> Self {
+impl<D: Debug> ArcMessage<D> {
+    pub(crate) fn new(handle: *mut codes_handle, parent: &Arc<Mutex<CodesFile<D>>>) -> Self {
         ArcMessage {
             _parent: ArcParent {
                 _arc_handle: parent.clone(),

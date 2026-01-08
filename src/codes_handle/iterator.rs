@@ -1,20 +1,17 @@
 use fallible_iterator::FallibleIterator;
 
-use crate::{
-    ArcMessage, CodesFile, RefMessage,
-    codes_handle::{HandleGenerator, ThreadSafeHandle},
-    errors::CodesError,
-};
+use crate::{ArcMessage, CodesFile, RefMessage, errors::CodesError};
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
-pub struct RefMessageIter<'a, S: HandleGenerator> {
-    codes_handle: &'a mut CodesFile<S>,
+pub struct RefMessageIter<'a, D: Debug> {
+    codes_file: &'a mut CodesFile<D>,
 }
 
-impl<S: HandleGenerator> CodesFile<S> {
-    pub fn ref_message_iter<'a>(&'a mut self) -> RefMessageIter<'a, S> {
-        RefMessageIter { codes_handle: self }
+impl<D: Debug> CodesFile<D> {
+    pub fn ref_message_iter<'a>(&'a mut self) -> RefMessageIter<'a, D> {
+        RefMessageIter { codes_file: self }
     }
 }
 
@@ -22,54 +19,50 @@ impl<S: HandleGenerator> CodesFile<S> {
 ///
 /// The `next()` will return [`CodesInternal`](crate::errors::CodesInternal)
 /// when internal ecCodes function returns non-zero code.
-impl<'ch, S: HandleGenerator> FallibleIterator for RefMessageIter<'ch, S> {
+impl<'ch, D: Debug> FallibleIterator for RefMessageIter<'ch, D> {
     type Item = RefMessage<'ch>;
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let new_eccodes_handle = self.codes_handle.source.gen_codes_handle()?;
+        let eccodes_handle = self.codes_file.generate_codes_handle()?;
 
-        if new_eccodes_handle.is_null() {
+        if eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(RefMessage::new(new_eccodes_handle)))
+            Ok(Some(RefMessage::new(eccodes_handle)))
         }
     }
 }
 
 #[derive(Debug)]
-pub struct ArcMessageIter<S: ThreadSafeHandle> {
-    codes_handle: Arc<Mutex<CodesFile<S>>>,
+pub struct ArcMessageIter<D: Debug> {
+    codes_file: Arc<Mutex<CodesFile<D>>>,
 }
-impl<S: ThreadSafeHandle> CodesFile<S> {
-    pub fn arc_message_iter(self) -> ArcMessageIter<S> {
+impl<D: Debug> CodesFile<D> {
+    pub fn arc_message_iter(self) -> ArcMessageIter<D> {
         ArcMessageIter {
-            codes_handle: Arc::new(Mutex::new(self)),
+            codes_file: Arc::new(Mutex::new(self)),
         }
     }
 }
 
-impl<S: ThreadSafeHandle> FallibleIterator for ArcMessageIter<S> {
-    type Item = ArcMessage<S>;
+impl<D: Debug> FallibleIterator for ArcMessageIter<D> {
+    type Item = ArcMessage<D>;
 
     type Error = CodesError;
 
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
-        let new_eccodes_handle = self
-            .codes_handle
+        let eccodes_handle = self
+            .codes_file
             .lock()
             // This mutex can be poisoned only when thread that holds ArcMessageIter panics, which would make using the mutex impossible")
             .unwrap()
-            .source
-            .gen_codes_handle()?;
+            .generate_codes_handle()?;
 
-        if new_eccodes_handle.is_null() {
+        if eccodes_handle.is_null() {
             Ok(None)
         } else {
-            Ok(Some(ArcMessage::new(
-                new_eccodes_handle,
-                &self.codes_handle,
-            )))
+            Ok(Some(ArcMessage::new(eccodes_handle, &self.codes_file)))
         }
     }
 }
