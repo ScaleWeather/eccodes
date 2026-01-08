@@ -388,10 +388,10 @@ mod tests {
             .default_keys_iterator()?
             .collect::<Vec<_>>()?;
 
-        key_names.iter().for_each(|key_name| {
+        for key_name in &key_names {
             assert!(!key_name.is_empty());
-            assert!(current_message.read_key_dynamic(&key_name).is_ok())
-        });
+            assert!(current_message.read_key_dynamic(key_name).is_ok());
+        }
 
         Ok(())
     }
@@ -410,10 +410,10 @@ mod tests {
             .default_keys_iterator()?
             .collect::<Vec<_>>()?;
 
-        key_names.iter().for_each(|key_name| {
+        for key_name in &key_names {
             assert!(!key_name.is_empty());
-            assert!(current_message.read_key_dynamic(&key_name).is_ok())
-        });
+            assert!(current_message.read_key_dynamic(key_name).is_ok());
+        }
 
         Ok(())
     }

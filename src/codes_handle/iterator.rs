@@ -119,18 +119,21 @@ mod tests {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
         let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-        let mut mgen = handle.ref_message_iter();
+        let msg2;
+        let msg4;
 
-        let msg1 = mgen.next()?.context("Message not some")?;
-        drop(msg1);
-        let msg2 = mgen.next()?.context("Message not some")?;
-        let msg3 = mgen.next()?.context("Message not some")?;
-        drop(msg3);
-        let msg4 = mgen.next()?.context("Message not some")?;
-        let msg5 = mgen.next()?.context("Message not some")?;
-        drop(msg5);
+        {
+            let mut mgen = handle.ref_message_iter();
 
-        drop(mgen);
+            let msg1 = mgen.next()?.context("Message not some")?;
+            drop(msg1);
+            msg2 = mgen.next()?.context("Message not some")?;
+            let msg3 = mgen.next()?.context("Message not some")?;
+            drop(msg3);
+            msg4 = mgen.next()?.context("Message not some")?;
+            let msg5 = mgen.next()?.context("Message not some")?;
+            drop(msg5);
+        }
         // drop(handle); <- this is not allowed
 
         let key2 = msg2.read_key_dynamic("typeOfLevel")?;
@@ -287,7 +290,7 @@ mod tests {
             v.push(t);
         }
 
-        v.into_iter().for_each(|th| th.join().unwrap());
+        for th in v { th.join().unwrap(); }
 
         Ok(())
     }
