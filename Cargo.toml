@@ -45,11 +45,10 @@ float-cmp = "0.10"
 [features]
 default = ["message_ndarray"]
 docs = ["eccodes-sys/docs"]
-experimental_index = []
 message_ndarray = ["dep:ndarray"]
 
 [package.metadata.docs.rs]
-features = ["docs", "experimental_index", "message_ndarray"]
+features = ["docs", "message_ndarray"]
 
 [[bench]]
 name = "main"

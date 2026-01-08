@@ -228,9 +228,6 @@
 //! ```
 
 pub mod codes_handle;
-#[cfg(feature = "experimental_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-pub mod codes_index;
 pub mod codes_message;
 pub mod codes_nearest;
 pub mod errors;
@@ -242,10 +239,7 @@ mod message_ndarray;
 mod pointer_guard;
 
 pub use codes_handle::{CodesFile, ProductKind};
-#[cfg(feature = "experimental_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-pub use codes_index::CodesIndex;
-pub use codes_message::{ArcMessage, BufMessage, RefMessage, KeyRead, KeyWrite};
+pub use codes_message::{ArcMessage, BufMessage, KeyRead, KeyWrite, RefMessage};
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};

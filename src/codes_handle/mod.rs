@@ -1,8 +1,6 @@
 //! Definition and constructors of `CodesHandle`
 //! used for accessing GRIB files
 
-#[cfg(feature = "experimental_index")]
-use crate::codes_index::CodesIndex;
 use crate::{CodesError, intermediate_bindings::codes_handle_new_from_file, pointer_guard};
 use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle};
 use errno::errno;
@@ -250,45 +248,6 @@ impl CodesFile<CodesFileSource<Vec<u8>>> {
     }
 }
 
-#[cfg(feature = "experimental_index")]
-#[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-impl CodesFile<CodesIndex> {
-    /// Creates [`CodesHandle`] for provided [`CodesIndex`].
-    ///
-    /// ## Example
-    ///
-    /// ```
-    /// # fn run() -> anyhow::Result<()> {
-    /// # use eccodes::{CodesHandle, CodesIndex};
-    /// #
-    /// let index = CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level"])?;
-    /// let handle = CodesHandle::new_from_index(index)?;
-    ///
-    /// Ok(())
-    /// # }
-    /// ```
-    ///
-    /// The function takes ownership of the provided [`CodesIndex`] which owns
-    /// the GRIB data. [`CodesHandle`] created from [`CodesIndex`] is of different type
-    /// than the one created from file or memory buffer, because it internally uses
-    /// different functions to access messages. But it can be used in the same way.
-    ///
-    /// ⚠️ Warning: This function may interfere with other functions in concurrent context,
-    /// due to ecCodes issues with thread-safety for indexes. More information can be found
-    /// in [`codes_index`](crate::codes_index) module documentation.
-    ///
-    /// ## Errors
-    ///
-    /// Returns [`CodesError::Internal`] with error code
-    /// when internal [`codes_handle`] cannot be created.
-    #[instrument(level = "trace")]
-    pub fn new_from_index(index: CodesIndex) -> Result<Self, CodesError> {
-        let new_handle = CodesFile { source: index };
-
-        Ok(new_handle)
-    }
-}
-
 #[instrument(level = "trace")]
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
     let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<_>()) };
@@ -328,8 +287,6 @@ fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
 #[cfg(test)]
 mod tests {
     use crate::codes_handle::{CodesFile, ProductKind};
-    #[cfg(feature = "experimental_index")]
-    use crate::codes_index::{CodesIndex, Select};
     use anyhow::{Context, Result};
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
     use fallible_iterator::FallibleIterator;
@@ -372,27 +329,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "experimental_index")]
-    fn index_constructor_and_destructor() -> Result<()> {
-        use anyhow::Ok;
-
-        let file_path = Path::new("./data/iceland-surface.grib.idx");
-        let index = CodesIndex::read_from_file(file_path)?
-            .select("shortName", "2t")?
-            .select("typeOfLevel", "surface")?
-            .select("level", 0)?
-            .select("stepType", "instant")?;
-
-        let i_ptr = index.pointer.clone();
-
-        let handle = CodesFile::new_from_index(index)?;
-
-        assert_eq!(handle.source.pointer, i_ptr);
-
-        Ok(())
-    }
-
-    #[test]
     fn codes_handle_drop_file() -> Result<()> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let product_kind = ProductKind::GRIB;
@@ -425,72 +361,10 @@ mod tests {
 
             let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 
-            let _ref_msg = handle
-                .ref_message_iter()
-                .next()?
-                .context("no message")?;
+            let _ref_msg = handle.ref_message_iter().next()?.context("no message")?;
             let mut clone_msg = _ref_msg.try_clone()?;
             drop(_ref_msg);
-            let _oth_ref = handle
-                .ref_message_iter()
-                .next()?
-                .context("no message")?;
-
-            let _nrst = clone_msg.codes_nearest()?;
-            drop(_nrst);
-            let _kiter = clone_msg.default_keys_iterator()?;
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    #[cfg(feature = "experimental_index")]
-    fn codes_handle_drop_index() -> Result<()> {
-        let file_path = Path::new("./data/iceland-surface.grib.idx");
-        let index = CodesIndex::read_from_file(file_path)?;
-        assert!(!index.pointer.is_null());
-
-        let handle = CodesFile::new_from_index(index)?;
-        drop(handle);
-
-        Ok(())
-    }
-
-    #[test]
-    #[cfg(feature = "experimental_index")]
-    fn empty_index_constructor() -> Result<()> {
-        let index =
-            CodesIndex::new_from_keys(&vec!["shortName", "typeOfLevel", "level", "stepType"])?;
-
-        let mut handle = CodesFile::new_from_index(index)?;
-
-        assert!(!handle.source.pointer.is_null());
-
-        let msg = handle.ref_message_generator().next()?;
-
-        assert!(!msg.is_some());
-
-        Ok(())
-    }
-
-    #[test]
-    #[cfg(feature = "experimental_index")]
-    fn multiple_drops_with_index() -> Result<()> {
-        {
-            let keys = vec!["typeOfLevel", "level"];
-            let index = CodesIndex::new_from_keys(&keys)?;
-            let grib_path = Path::new("./data/iceland-levels.grib");
-            let index = index
-                .add_grib_file(grib_path)?
-                .select("typeOfLevel", "isobaricInhPa")?
-                .select("level", 600)?;
-
-            let mut handle = CodesFile::new_from_index(index)?;
-            let mut mgen = handle.ref_message_generator();
-            let _ref_msg = mgen.next()?.context("no message")?;
-            let mut clone_msg = _ref_msg.try_clone()?;
-            let _oth_ref = mgen.next()?.context("no message")?;
+            let _oth_ref = handle.ref_message_iter().next()?.context("no message")?;
 
             let _nrst = clone_msg.codes_nearest()?;
             drop(_nrst);
