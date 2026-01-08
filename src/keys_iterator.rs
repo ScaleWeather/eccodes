@@ -209,7 +209,7 @@ impl Drop for KeysIterator<'_> {
                     &error
                 );
                 #[cfg(test)]
-                assert!(false, "Error in KeysIterator::drop")
+                panic!("Error in KeysIterator::drop");
             });
         }
 

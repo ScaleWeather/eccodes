@@ -86,7 +86,11 @@ impl<P: Debug> CodesNearest<'_, P> {
     ///
     ///This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     ///one of ecCodes function returns the non-zero code.
-    pub fn find_nearest(&mut self, lat: f64, lon: f64) -> Result<[NearestGridpoint; 4], CodesError> {
+    pub fn find_nearest(
+        &mut self,
+        lat: f64,
+        lon: f64,
+    ) -> Result<[NearestGridpoint; 4], CodesError> {
         let output_points;
 
         unsafe {
@@ -156,8 +160,8 @@ mod tests {
 
         assert!(out1[0].value > 10000.0);
         assert!(out2[3].index == 551);
-        assert!(out1[1].lat == 64.0);
-        assert!(out2[2].lon == -21.75);
+        assert!((out1[1].lat - 64.0).abs() < f64::EPSILON);
+        assert!((out2[2].lon - -21.75).abs() < f64::EPSILON);
         assert!(out1[0].distance > 15.0);
 
         Ok(())
