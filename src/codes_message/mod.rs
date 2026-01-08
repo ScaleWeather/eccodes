@@ -247,4 +247,19 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn ref_message_drop_null() -> Result<()> {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
+        current_message.message_handle = std::ptr::null_mut();
+
+        Ok(())
+    }
 }
