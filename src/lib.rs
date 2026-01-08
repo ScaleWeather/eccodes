@@ -211,14 +211,14 @@
 //! ## Feature Flags
 //!
 //! - `message_ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
-//!    This feature is enabled by default. It is currently tested only with simple lat-lon grids.
+//!   This feature is enabled by default. It is currently tested only with simple lat-lon grids.
 //!
 //! - `experimental_index` - **⚠️ This feature is experimental and might be unsafe in some contexts ⚠️**
-//!    This flag enables support for creating and using index files for GRIB files.
-//!    If you want to use it, please read the information provided in [`codes_index`] documentation.
+//!   This flag enables support for creating and using index files for GRIB files.
+//!   If you want to use it, please read the information provided in [`codes_index`] documentation.
 //!
 //! - `docs` - builds the crate without linking ecCodes, particularly useful when building the documentation
-//!    on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
+//!   on [docs.rs](https://docs.rs/). For more details check documentation of [eccodes-sys](https://crates.io/crates/eccodes-sys).
 //!
 //! To build your own crate with this crate as dependency on docs.rs without linking ecCodes add following lines to your `Cargo.toml`
 //!

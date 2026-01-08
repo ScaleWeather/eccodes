@@ -36,7 +36,7 @@ pub unsafe fn codes_handle_new_from_file(
             context,
             file_pointer.cast::<_SYS_IO_FILE>(),
             product_kind as u32,
-            &mut error_code,
+            &raw mut error_code,
         );
 
         if error_code != 0 {

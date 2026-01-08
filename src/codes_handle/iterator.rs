@@ -10,7 +10,7 @@ pub struct RefMessageIter<'a, D: Debug> {
 }
 
 impl<D: Debug> CodesFile<D> {
-    pub fn ref_message_iter<'a>(&'a mut self) -> RefMessageIter<'a, D> {
+    pub fn ref_message_iter(&mut self) -> RefMessageIter<'_, D> {
         RefMessageIter { codes_file: self }
     }
 }

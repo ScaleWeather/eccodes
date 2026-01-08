@@ -46,7 +46,7 @@ impl<P: Debug> CodesMessage<P> {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal nearest handle cannot be created.
-    pub fn codes_nearest<'a>(&'a self) -> Result<CodesNearest<'a, P>, CodesError> {
+    pub fn codes_nearest(&self) -> Result<CodesNearest<'_, P>, CodesError> {
         let nearest_handle = unsafe { codes_grib_nearest_new(self.message_handle)? };
 
         Ok(CodesNearest {
@@ -115,7 +115,7 @@ impl<P: Debug> Drop for CodesNearest<'_, P> {
                     "codes_grib_nearest_delete() returned an error: {:?}",
                     &error
                 );
-                debug_assert!(false, "Error in CodesNearest::drop")
+                debug_assert!(false, "Error in CodesNearest::drop");
             });
         }
 
