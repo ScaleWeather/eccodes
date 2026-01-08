@@ -95,6 +95,7 @@ impl<P: Debug> CodesMessage<P> {
     /// inside a slice. Check the documentation for the details of each flag meaning.
     ///
     /// Namespace is set simply as string, eg. `"ls"`, `"time"`, `"parameter"`, `"geography"`, `"statistics"`.
+    /// Empty string "" will return all keys.
     /// Invalid namespace will result in empty iterator.
     ///
     /// # Example
