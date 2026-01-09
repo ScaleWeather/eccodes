@@ -75,6 +75,7 @@ mod tests {
         codes_message::DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};
+    use float_cmp::assert_approx_eq;
     use std::{
         path::Path,
         sync::{Arc, Barrier},
@@ -249,16 +250,16 @@ mod tests {
         // Find nearest modifies internal KeyedMessage fields so we need mutable reference
         let level = &level[0];
 
-        println!("{:?}", level.read_key_dynamic("shortName"));
+        let short_name = level.read_key_dynamic("shortName")?;
+        assert_eq!(short_name, DynamicKeyType::Str("msl".into()));
 
         // Get the four nearest gridpoints of Reykjavik
         let nearest_gridpoints = level.codes_nearest()?.find_nearest(64.13, -21.89)?;
+        let value = nearest_gridpoints[3].value;
+        let distance = nearest_gridpoints[3].distance;
 
-        // Print value and distance of the nearest gridpoint
-        println!(
-            "value: {}, distance: {}",
-            nearest_gridpoints[3].value, nearest_gridpoints[3].distance
-        );
+        assert_approx_eq!(f64, value, 100557.9375);
+        assert_approx_eq!(f64, distance, 14.358879960775498);
 
         Ok(())
     }
@@ -290,7 +291,9 @@ mod tests {
             v.push(t);
         }
 
-        for th in v { th.join().unwrap(); }
+        for th in v {
+            th.join().unwrap();
+        }
 
         Ok(())
     }
