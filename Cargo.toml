@@ -53,7 +53,3 @@ features = ["docs", "ndarray"]
 [[bench]]
 name = "main"
 harness = false
-
-# that's temporary until I fix the docs
-[lib]
-doctest = false
