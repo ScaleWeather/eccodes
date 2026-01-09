@@ -7,10 +7,7 @@ use eccodes_sys::codes_handle;
 use libc::c_void;
 use num_traits::FromPrimitive;
 
-use crate::{
-    errors::{CodesError, CodesInternal},
-    pointer_guard,
-};
+use crate::{errors::CodesError, intermediate_bindings::error_code_to_result, pointer_guard};
 
 use super::NativeKeyType;
 
@@ -24,14 +21,11 @@ pub unsafe fn codes_get_native_type(
         let key = CString::new(key).unwrap();
         let mut key_type: i32 = 0;
 
-        let error_code = eccodes_sys::codes_get_native_type(handle, key.as_ptr(), &raw mut key_type);
+        let error_code =
+            eccodes_sys::codes_get_native_type(handle, key.as_ptr(), &raw mut key_type);
+        error_code_to_result(error_code)?;
 
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
-
-        Ok(FromPrimitive::from_i32(key_type).unwrap())
+        FromPrimitive::from_i32(key_type).ok_or(CodesError::UnrecognizedKeyTypeCode(key_type))
     }
 }
 
@@ -43,11 +37,7 @@ pub unsafe fn codes_get_size(handle: *const codes_handle, key: &str) -> Result<u
         let mut key_size: usize = 0;
 
         let error_code = eccodes_sys::codes_get_size(handle, key.as_ptr(), &raw mut key_size);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(key_size)
     }
@@ -61,11 +51,7 @@ pub unsafe fn codes_get_long(handle: *const codes_handle, key: &str) -> Result<i
         let mut key_value: i64 = 0;
 
         let error_code = eccodes_sys::codes_get_long(handle, key.as_ptr(), &raw mut key_value);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(key_value)
     }
@@ -79,11 +65,7 @@ pub unsafe fn codes_get_double(handle: *const codes_handle, key: &str) -> Result
         let mut key_value: f64 = 0.0;
 
         let error_code = eccodes_sys::codes_get_double(handle, key.as_ptr(), &raw mut key_value);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(key_value)
     }
@@ -107,11 +89,7 @@ pub unsafe fn codes_get_double_array(
             key_values.as_mut_ptr().cast::<f64>(),
             &raw mut key_size,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(key_values)
     }
@@ -135,11 +113,7 @@ pub unsafe fn codes_get_long_array(
             key_values.as_mut_ptr().cast::<i64>(),
             &raw mut key_size,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(key_values)
     }
@@ -156,11 +130,7 @@ pub unsafe fn codes_get_length(
         let mut key_length: usize = 0;
 
         let error_code = eccodes_sys::codes_get_length(handle, key.as_ptr(), &raw mut key_length);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(key_length)
     }
@@ -184,11 +154,7 @@ pub unsafe fn codes_get_string(
             key_message.as_mut_ptr().cast::<i8>(),
             &raw mut key_length,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         key_message.truncate(key_length);
         let key_message_result = CStr::from_bytes_with_nul(key_message.as_ref());
@@ -224,11 +190,7 @@ pub unsafe fn codes_get_bytes(
             buffer.as_mut_ptr().cast::<u8>(),
             &raw mut key_size,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(buffer)
     }
@@ -241,11 +203,7 @@ pub unsafe fn codes_get_message_size(handle: *const codes_handle) -> Result<usiz
         let mut size: usize = 0;
 
         let error_code = eccodes_sys::codes_get_message_size(handle, &raw mut size);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(size)
     }
@@ -265,12 +223,9 @@ pub unsafe fn codes_get_message(
 
         let mut message_size: usize = 0;
 
-        let error_code = eccodes_sys::codes_get_message(handle, &raw mut buffer_ptr, &raw mut message_size);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        let error_code =
+            eccodes_sys::codes_get_message(handle, &raw mut buffer_ptr, &raw mut message_size);
+        error_code_to_result(error_code)?;
 
         debug_assert!(
             buffer_size == message_size,
