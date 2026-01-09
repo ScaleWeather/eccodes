@@ -282,9 +282,11 @@ mod tests {
             let b = barrier.clone();
 
             let t = std::thread::spawn(move || {
-                for _ in 0..1000 {
+                for _ in 0..10 {
                     b.wait();
-                    let _ = msg.read_key_dynamic("shortName").unwrap();
+                    for _ in 0..100 {
+                        let _ = msg.read_key_dynamic("shortName").unwrap();
+                    }
                 }
             });
 
