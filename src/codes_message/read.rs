@@ -269,6 +269,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::codes_handle::{CodesFile, ProductKind};
+    use crate::{CodesError, KeyRead};
     use crate::{FallibleIterator, codes_message::DynamicKeyType};
     use std::path::Path;
 
@@ -285,7 +286,6 @@ mod tests {
             .context("Message not some")?;
 
         let str_key = current_message.read_key_dynamic("name")?;
-
         match str_key {
             DynamicKeyType::Str(_) => {}
             _ => panic!("Incorrect variant of string key"),
@@ -298,14 +298,12 @@ mod tests {
         }
 
         let long_key = current_message.read_key_dynamic("numberOfPointsAlongAParallel")?;
-
         match long_key {
             DynamicKeyType::Int(_) => {}
             _ => panic!("Incorrect variant of long key"),
         }
 
         let double_arr_key = current_message.read_key_dynamic("values")?;
-
         match double_arr_key {
             DynamicKeyType::FloatArray(_) => {}
             _ => panic!("Incorrect variant of double array key"),
@@ -377,6 +375,22 @@ mod tests {
     }
 
     #[test]
+    fn incorrect_key_type() -> Result<()> {
+        let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+        let current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
+
+        let missing_key: Result<f64, CodesError> = current_message.read_key("shortName");
+
+        assert!(missing_key.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    // checks if we can read keys that are used in benchmarks
     fn benchmark_keys() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
