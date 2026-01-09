@@ -210,7 +210,7 @@
 //!
 //! ## Feature Flags
 //!
-//! - `message_ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
+//! - `ndarray` - enables support for converting [`KeyedMessage`] to [`ndarray::Array`].
 //!   This feature is enabled by default. It is currently tested only with simple lat-lon grids.
 //!
 //! - `experimental_index` - **⚠️ This feature is experimental and might be unsafe in some contexts ⚠️**
@@ -233,8 +233,8 @@ pub mod codes_nearest;
 pub mod errors;
 mod intermediate_bindings;
 pub mod keys_iterator;
-#[cfg(feature = "message_ndarray")]
-#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[cfg(feature = "ndarray")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 mod message_ndarray;
 mod pointer_guard;
 

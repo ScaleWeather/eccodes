@@ -5,7 +5,7 @@ mod clone;
 mod read;
 mod write;
 
-#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 pub use crate::message_ndarray::RustyCodesMessage;
 pub use read::{DynamicKeyType, KeyPropertiesRead, KeyRead};
 pub use write::KeyWrite;

@@ -74,7 +74,7 @@ pub enum CodesError {
 
     /// Returned when function in `message_ndarray` module cannot convert
     /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
-    #[cfg(feature = "message_ndarray")]
+    #[cfg(feature = "ndarray")]
     #[error("error occured while converting KeyedMessage to ndarray {0}")]
     NdarrayConvert(#[from] MessageNdarrayError),
 
@@ -90,8 +90,8 @@ pub enum CodesError {
 }
 
 /// Errors returned by the `message_ndarray` module.
-#[cfg(feature = "message_ndarray")]
-#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[cfg(feature = "ndarray")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[derive(PartialEq, Clone, Error, Debug)]
 pub enum MessageNdarrayError {
     /// Returned when functions converting to ndarray cannot correctly
