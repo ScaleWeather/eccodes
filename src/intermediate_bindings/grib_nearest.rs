@@ -5,12 +5,10 @@ use std::ptr::addr_of_mut;
 
 use eccodes_sys::{CODES_NEAREST_SAME_DATA, CODES_NEAREST_SAME_GRID, codes_handle, codes_nearest};
 
-use num_traits::FromPrimitive;
 use tracing::instrument;
 
 use crate::{
-    NearestGridpoint,
-    errors::{CodesError, CodesInternal},
+    NearestGridpoint, errors::CodesError, intermediate_bindings::error_code_to_result,
     pointer_guard,
 };
 
@@ -24,11 +22,7 @@ pub unsafe fn codes_grib_nearest_new(
         let mut error_code: i32 = 0;
 
         let nearest = eccodes_sys::codes_grib_nearest_new(handle, &raw mut error_code);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(nearest)
     }
@@ -42,11 +36,7 @@ pub unsafe fn codes_grib_nearest_delete(nearest: *mut codes_nearest) -> Result<(
         }
 
         let error_code = eccodes_sys::codes_grib_nearest_delete(nearest);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
@@ -87,11 +77,7 @@ pub unsafe fn codes_grib_nearest_find(
             addr_of_mut!(output_indexes[0]),
             &raw mut length,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         let mut output = [NearestGridpoint::default(); 4];
 

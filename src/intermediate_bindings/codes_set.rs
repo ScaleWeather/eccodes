@@ -5,12 +5,7 @@ use std::ffi::CString;
 
 use eccodes_sys::codes_handle;
 
-use num_traits::FromPrimitive;
-
-use crate::{
-    errors::{CodesError, CodesInternal},
-    pointer_guard,
-};
+use crate::{errors::CodesError, intermediate_bindings::error_code_to_result, pointer_guard};
 
 pub unsafe fn codes_set_long(
     handle: *mut codes_handle,
@@ -23,11 +18,7 @@ pub unsafe fn codes_set_long(
         let key = CString::new(key).unwrap();
 
         let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
@@ -44,11 +35,7 @@ pub unsafe fn codes_set_double(
         let key = CString::new(key).unwrap();
 
         let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
@@ -72,11 +59,7 @@ pub unsafe fn codes_set_long_array(
             values.as_ptr().cast::<i64>(),
             length,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
@@ -100,11 +83,7 @@ pub unsafe fn codes_set_double_array(
             values.as_ptr().cast::<f64>(),
             length,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
@@ -124,11 +103,7 @@ pub unsafe fn codes_set_string(
 
         let error_code =
             eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &raw mut length);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
@@ -152,11 +127,7 @@ pub unsafe fn codes_set_bytes(
             values.as_ptr().cast::<u8>(),
             &raw mut length,
         );
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }

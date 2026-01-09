@@ -5,13 +5,9 @@ use std::ffi::{CStr, CString};
 
 use eccodes_sys::{codes_handle, codes_keys_iterator};
 
-use num_traits::FromPrimitive;
 use tracing::instrument;
 
-use crate::{
-    errors::{CodesError, CodesInternal},
-    pointer_guard,
-};
+use crate::{errors::CodesError, intermediate_bindings::error_code_to_result, pointer_guard};
 
 #[instrument(level = "trace")]
 pub unsafe fn codes_keys_iterator_new(
@@ -45,11 +41,7 @@ pub unsafe fn codes_keys_iterator_delete(
         }
 
         let error_code = eccodes_sys::codes_keys_iterator_delete(keys_iterator);
-
-        if error_code != 0 {
-            let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-            return Err(err.into());
-        }
+        error_code_to_result(error_code)?;
 
         Ok(())
     }
