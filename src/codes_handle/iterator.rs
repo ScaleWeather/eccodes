@@ -4,6 +4,10 @@ use crate::{ArcMessage, CodesFile, RefMessage, errors::CodesError};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
+/// `KeyedMessageGenerator` implements [`FallibleIterator`](codes_handle::KeyedMessageGenerator#impl-FallibleIterator-for-KeyedMessageGenerator%3C'ch,+S%3E)
+/// which allows you to iterate over messages in the file. The iterator returns `KeyedMessage` with lifetime tied to the lifetime of `CodesHandle`,
+/// that is `KeyedMessage` cannot outlive the `CodesHandle` it was generated from. If you need to prolong its lifetime, you can use
+/// [`try_clone()`](KeyedMessage::try_clone), but that comes with performance and memory overhead.
 #[derive(Debug)]
 pub struct RefMessageIter<'a, D: Debug> {
     codes_file: &'a mut CodesFile<D>,
@@ -265,7 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn atomic_thread_safety() -> Result<()> {
+    fn thread_safety_messsage_wise() -> Result<()> {
         let file_path = Path::new("./data/iceland-levels.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -278,7 +282,7 @@ mod tests {
         let mut v = vec![];
 
         for _ in 0..10 {
-            let msg = Arc::new(mgen.next()?.context("No more messages")?);
+            let msg = mgen.next()?.context("No more messages")?;
             let b = barrier.clone();
 
             let t = std::thread::spawn(move || {
@@ -286,6 +290,42 @@ mod tests {
                     b.wait();
                     for _ in 0..100 {
                         let _ = msg.read_key_dynamic("shortName").unwrap();
+                    }
+                }
+            });
+
+            v.push(t);
+        }
+
+        for th in v {
+            th.join().unwrap();
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn thread_safety_within_message() -> Result<()> {
+        let file_path = Path::new("./data/iceland-levels.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut mgen = handle.arc_message_iter();
+        let msg = Arc::new(mgen.next()?.context("No more messages")?);
+
+        let barrier = Arc::new(Barrier::new(10));
+
+        let mut v = vec![];
+
+        for _ in 0..10 {
+            let msg_inner = msg.clone();
+            let b = barrier.clone();
+
+            let t = std::thread::spawn(move || {
+                for _ in 0..10 {
+                    b.wait();
+                    for _ in 0..100 {
+                        let _ = msg_inner.read_key_dynamic("shortName").unwrap();
                     }
                 }
             });
