@@ -274,9 +274,7 @@ mod tests {
         let codes_file = CodesFile::new_from_file(file_path, product_kind)?;
 
         assert!(!codes_file.pointer.is_null());
-        assert_eq!(codes_file.product_kind as u32, {
-            ProductKind_PRODUCT_GRIB
-        });
+        assert_eq!(codes_file.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         codes_file._data.metadata()?;
 
@@ -293,9 +291,7 @@ mod tests {
 
         let codes_file = CodesFile::new_from_memory(buf, product_kind)?;
         assert!(!codes_file.pointer.is_null());
-        assert_eq!(codes_file.product_kind as u32, {
-            ProductKind_PRODUCT_GRIB
-        });
+        assert_eq!(codes_file.product_kind as u32, { ProductKind_PRODUCT_GRIB });
 
         assert!(!codes_file._data.is_empty());
 

@@ -2,11 +2,11 @@
 //! used for reading and writing data of given variable from GRIB file
 
 mod clone;
-mod read;
-mod write;
 #[cfg(feature = "ndarray")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 mod ndarray;
+mod read;
+mod write;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 pub use ndarray::RustyCodesMessage;

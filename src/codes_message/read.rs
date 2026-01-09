@@ -229,38 +229,29 @@ impl<P: Debug> CodesMessage<P> {
         match key_type {
             NativeKeyType::Long => {
                 if key_size == 1 {
-                    self.read_key_unchecked(key_name)
-                        .map(|v| DynamicKeyType::Int(v))
+                    self.read_key_unchecked(key_name).map(DynamicKeyType::Int)
                 } else if key_size >= 2 {
                     self.read_key_unchecked(key_name)
-                        .map(|v| DynamicKeyType::IntArray(v))
+                        .map(DynamicKeyType::IntArray)
                 } else {
                     return Err(CodesError::IncorrectKeySize);
                 }
             }
             NativeKeyType::Double => {
                 if key_size == 1 {
-                    self.read_key_unchecked(key_name)
-                        .map(|v| DynamicKeyType::Float(v))
+                    self.read_key_unchecked(key_name).map(DynamicKeyType::Float)
                 } else if key_size >= 2 {
                     self.read_key_unchecked(key_name)
-                        .map(|v| DynamicKeyType::FloatArray(v))
+                        .map(DynamicKeyType::FloatArray)
                 } else {
                     return Err(CodesError::IncorrectKeySize);
                 }
             }
-            NativeKeyType::Bytes => self
-                .read_key_unchecked(key_name)
-                .map(|v| DynamicKeyType::Bytes(v)),
+            NativeKeyType::Bytes => self.read_key_unchecked(key_name).map(DynamicKeyType::Bytes),
             NativeKeyType::Missing => return Err(CodesError::MissingKey),
-            _ => self
-                .read_key_unchecked(key_name)
-                .map(|v| DynamicKeyType::Str(v)),
+            _ => self.read_key_unchecked(key_name).map(DynamicKeyType::Str),
         }
-        .or_else(|_| {
-            self.read_key_unchecked(key_name)
-                .map(|v| DynamicKeyType::Bytes(v))
-        })
+        .or_else(|_| self.read_key_unchecked(key_name).map(DynamicKeyType::Bytes))
     }
 }
 
