@@ -233,9 +233,7 @@ pub mod codes_nearest;
 pub mod errors;
 mod intermediate_bindings;
 pub mod keys_iterator;
-#[cfg(feature = "ndarray")]
-#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
-mod message_ndarray;
+
 mod pointer_guard;
 
 pub use codes_handle::{CodesFile, ProductKind};
