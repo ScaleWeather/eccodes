@@ -9,7 +9,7 @@ use crate::{CodesError, KeyRead, codes_message::CodesMessage, errors::MessageNda
 /// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
 #[derive(Clone, PartialEq, Debug, Default)]
-#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 pub struct RustyCodesMessage {
     /// Longitudes in degrees
     pub longitudes: Array2<f64>,
@@ -41,7 +41,7 @@ impl<P: Debug> CodesMessage<P> {
     ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
-    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
@@ -86,7 +86,7 @@ impl<P: Debug> CodesMessage<P> {
     ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
-    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;

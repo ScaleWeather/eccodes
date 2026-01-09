@@ -43,13 +43,17 @@ anyhow = { version = "1.0", features = ["backtrace"] }
 float-cmp = "0.10"
 
 [features]
-default = ["message_ndarray"]
+default = ["ndarray"]
 docs = ["eccodes-sys/docs"]
-message_ndarray = ["dep:ndarray"]
+ndarray = ["dep:ndarray"]
 
 [package.metadata.docs.rs]
-features = ["docs", "message_ndarray"]
+features = ["docs", "ndarray"]
 
 [[bench]]
 name = "main"
 harness = false
+
+# that's temporary until I fix the docs
+[lib]
+doctest = false

@@ -46,14 +46,14 @@ jobs:
         cargo clean
     - name: Build release
       run: |
-        cargo build --release --features "experimental_index, message_ndarray"
+        cargo build --release --features "experimental_index, ndarray"
     - name: Check with clippy
       run: |
-        cargo clippy --features "experimental_index, message_ndarray" -- -D warnings
+        cargo clippy --features "experimental_index, ndarray" -- -D warnings
     - name: Test with cargo
       run: |
         cargo clean
-        RUST_BACKTRACE=full cargo test --features "experimental_index, message_ndarray" -- --include-ignored
+        RUST_BACKTRACE=full cargo test --features "experimental_index, ndarray" -- --include-ignored
 
   build-macos:
 
@@ -71,11 +71,11 @@ jobs:
         cargo clean
     - name: Build release
       run: |
-        cargo build --release --features "experimental_index, message_ndarray"
+        cargo build --release --features "experimental_index, ndarray"
     - name: Check with clippy
       run: |
-        cargo clippy --features "experimental_index, message_ndarray" -- -D warnings
+        cargo clippy --features "experimental_index, ndarray" -- -D warnings
     - name: Test with cargo
       run: |
         cargo clean
-        RUST_BACKTRACE=full cargo test --features "experimental_index, message_ndarray" -- --include-ignored
+        RUST_BACKTRACE=full cargo test --features "experimental_index, ndarray" -- --include-ignored

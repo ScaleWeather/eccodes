@@ -143,7 +143,7 @@ If you find a bug or have a suggestion, feel free to discuss it on Github.
 
 ## Features
 
-- `message_ndarray` - enables support for converting `KeyedMessage` to `ndarray::Array`.
+- `ndarray` - enables support for converting `KeyedMessage` to `ndarray::Array`.
 This feature is enabled by default. It is currently tested only with simple lat-lon grids.
 
 - `experimental_index` - enables support for creating and using index files for GRIB files.
