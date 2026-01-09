@@ -72,7 +72,6 @@ unsafe impl Send for BufMessage {}
 unsafe impl Sync for BufMessage {}
 
 /// All messages use this struct for operations.
-#[doc(hidden)]
 #[derive(Debug)]
 pub struct CodesMessage<P: Debug> {
     pub(crate) _parent: P,
