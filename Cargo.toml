@@ -16,7 +16,7 @@ categories = [
 license = "Apache-2.0"
 edition = "2024"
 exclude = [".github/*", ".vscode/*", ".idea/*", "data/*"]
-rust-version = "1.85.0"
+rust-version = "1.85.1"
 
 [dependencies]
 eccodes-sys = { version = "0.7.0", default-features = false }
