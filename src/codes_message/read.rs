@@ -259,7 +259,7 @@ impl<P: Debug> CodesMessage<P> {
 mod tests {
     use anyhow::{Context, Result};
 
-    use crate::codes_handle::{CodesFile, ProductKind};
+    use crate::codes_file::{CodesFile, ProductKind};
     use crate::{CodesError, KeyRead};
     use crate::{FallibleIterator, codes_message::DynamicKeyType};
     use std::path::Path;

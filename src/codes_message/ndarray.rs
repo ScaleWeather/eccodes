@@ -146,7 +146,7 @@ mod tests {
 
     use super::*;
     use crate::ProductKind;
-    use crate::codes_handle::CodesFile;
+    use crate::codes_file::CodesFile;
     use crate::codes_message::DynamicKeyType;
     use std::path::Path;
 

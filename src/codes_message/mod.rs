@@ -162,7 +162,7 @@ impl<P: Debug> Drop for CodesMessage<P> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesFile, ProductKind};
+    use crate::codes_file::{CodesFile, ProductKind};
     use anyhow::{Context, Result};
     use fallible_iterator::FallibleIterator;
     use std::path::Path;

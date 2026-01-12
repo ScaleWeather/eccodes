@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::cast_possible_wrap)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 #![warn(clippy::cargo)]
 #![warn(clippy::perf)]
 #![warn(clippy::doc_lazy_continuation)]
@@ -256,7 +256,7 @@
 //! features = ["eccodes/docs"]
 //! ```
 
-pub mod codes_handle;
+pub mod codes_file;
 pub mod codes_message;
 pub mod codes_nearest;
 pub mod errors;
@@ -265,7 +265,7 @@ pub mod keys_iterator;
 
 mod pointer_guard;
 
-pub use codes_handle::{ArcMessageIter, CodesFile, ProductKind, RefMessageIter};
+pub use codes_file::{ArcMessageIter, CodesFile, ProductKind, RefMessageIter};
 pub use codes_message::{ArcMessage, BufMessage, KeyRead, KeyWrite, RefMessage};
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;

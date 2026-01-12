@@ -133,7 +133,7 @@ mod tests {
 
     use crate::{
         KeyRead,
-        codes_handle::{CodesFile, ProductKind},
+        codes_file::{CodesFile, ProductKind},
         codes_message::{DynamicKeyType, KeyWrite},
     };
     use std::{fs::remove_file, path::Path};

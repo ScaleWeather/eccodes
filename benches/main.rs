@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use eccodes::FallibleIterator;
-use eccodes::codes_handle::{CodesFile, ProductKind};
+use eccodes::codes_file::{CodesFile, ProductKind};
 use std::hint::black_box;
 use std::path::Path;
 

@@ -8,7 +8,7 @@ use libc::FILE;
 use tracing::instrument;
 
 use crate::{
-    codes_handle::ProductKind, errors::CodesError, intermediate_bindings::error_code_to_result,
+    codes_file::ProductKind, errors::CodesError, intermediate_bindings::error_code_to_result,
     pointer_guard,
 };
 

@@ -4,29 +4,59 @@ use crate::{ArcMessage, CodesFile, RefMessage, errors::CodesError};
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 
-/// `KeyedMessageGenerator` implements [`FallibleIterator`](codes_handle::KeyedMessageGenerator#impl-FallibleIterator-for-KeyedMessageGenerator%3C'ch,+S%3E)
-/// which allows you to iterate over messages in the file. The iterator returns `KeyedMessage` with lifetime tied to the lifetime of `CodesHandle`,
-/// that is `KeyedMessage` cannot outlive the `CodesHandle` it was generated from. If you need to prolong its lifetime, you can use
-/// [`try_clone()`](KeyedMessage::try_clone), but that comes with performance and memory overhead.
+/// Iterator over messages in `CodesFile` which returns [`RefMessage`] with lifetime tied to the `CodesFile`.
+///
+/// This structure implements [`FallibleIterator`] which allows you to iterate over messages in the file.
+/// The iterator returns [`RefMessage`] with lifetime tied to the lifetime of `CodesFile`, that is `RefMessage`
+/// cannot outlive the `CodesFile` it was generated from.
+///
+/// Creating this iter requires `CodesFile` to be mutable.
+///
+/// If you need to share the message(s) across threads use [`ArcMessageIter`].
+///
+/// If you need a longer lifetime or want to modify the message, use [`try_clone()`](RefMessage::try_clone).
+///
+/// ## Example
+///
+/// ```
+/// use eccodes::{CodesFile, ProductKind, FallibleIterator};
+/// #
+/// # fn main() -> anyhow::Result<()> {
+///     // Open the file
+///     let mut file = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+///
+///     // Create RefMessageIter
+///     let mut msg_iter = file.ref_message_iter();
+///
+///     // Now we can access the first message with next()
+///     // Note that FallibleIterator must be in scope
+///     let _msg = msg_iter.next()?;
+///
+///     // Note we cannot drop the file here, because we first need to drop the message
+///     // drop(file);
+/// #     Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct RefMessageIter<'a, D: Debug> {
     codes_file: &'a mut CodesFile<D>,
 }
 
 impl<D: Debug> CodesFile<D> {
+    /// Generates [`RefMessageIter`] that allows to access messages as references to their parent file.
     pub fn ref_message_iter(&mut self) -> RefMessageIter<'_, D> {
         RefMessageIter { codes_file: self }
     }
 }
 
-/// # Errors
-///
-/// The `next()` will return [`CodesInternal`](crate::errors::CodesInternal)
-/// when internal ecCodes function returns non-zero code.
 impl<'ch, D: Debug> FallibleIterator for RefMessageIter<'ch, D> {
     type Item = RefMessage<'ch>;
     type Error = CodesError;
 
+    /// # Errors
+    ///
+    /// The method will return [`CodesInternal`](crate::errors::CodesInternal)
+    /// when internal ecCodes function returns non-zero code.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         let eccodes_handle = self.codes_file.generate_codes_handle()?;
 
@@ -38,11 +68,28 @@ impl<'ch, D: Debug> FallibleIterator for RefMessageIter<'ch, D> {
     }
 }
 
+/// Iterator over messages in `CodesFile` which returns [`ArcMessage`] which can be shared across threads.
+///
+/// `ArcMessage` implements `Send + Sync` so it can be both moved to thread (for example, to read messages in parallel)
+/// or shared across threads (when wrapped in [`Arc`]).
+/// 
+/// This structure implements [`FallibleIterator`] - see the documentation for information how that differs from a standard `Iter``.
+///
+/// Creating this iter does not require `CodesFile` to be mutable, because it takes ownership over the `CodesFile`.
+///
+/// If you don't need to share the message, use [`RefMessageIter`] to avoid the performance overhead of [`Arc`].
+/// 
+/// If you want to modify the message, use [`try_clone()`](RefMessage::try_clone).
+/// 
+/// ## Example
+/// 
+/// See the second example in the main crate description for example usage of `ArcMessageIter`.
 #[derive(Debug)]
 pub struct ArcMessageIter<D: Debug> {
     codes_file: Arc<Mutex<CodesFile<D>>>,
 }
 impl<D: Debug> CodesFile<D> {
+    /// Generates [`ArcMessageIter`] that allows to access messages that can be shared across threads.
     pub fn arc_message_iter(self) -> ArcMessageIter<D> {
         ArcMessageIter {
             codes_file: Arc::new(Mutex::new(self)),
@@ -55,12 +102,21 @@ impl<D: Debug> FallibleIterator for ArcMessageIter<D> {
 
     type Error = CodesError;
 
+    /// # Errors
+    ///
+    /// The method will return [`CodesInternal`](crate::errors::CodesInternal)
+    /// when internal ecCodes function returns non-zero code.
+    /// 
+    /// # Panics
+    /// 
+    /// This method internally uses a Mutex to access `CodesFile`, which can panic when poisoned,
+    /// but thers is no path in which you can get to the state of poisoned mutex, while still able to access this method.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
         let eccodes_handle = self
             .codes_file
             .lock()
             // This mutex can be poisoned only when thread that holds ArcMessageIter panics, which would make using the mutex impossible")
-            .unwrap()
+            .expect("The mutex inside ArcMessageIter got poisoned")
             .generate_codes_handle()?;
 
         if eccodes_handle.is_null() {
@@ -75,7 +131,7 @@ impl<D: Debug> FallibleIterator for ArcMessageIter<D> {
 mod tests {
     use crate::{
         FallibleIterator,
-        codes_handle::{CodesFile, ProductKind},
+        codes_file::{CodesFile, ProductKind},
         codes_message::DynamicKeyType,
     };
     use anyhow::{Context, Ok, Result};

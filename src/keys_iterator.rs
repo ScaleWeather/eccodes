@@ -223,7 +223,7 @@ mod tests {
     use anyhow::{Context, Result};
 
     use crate::FallibleIterator;
-    use crate::codes_handle::{CodesFile, ProductKind};
+    use crate::codes_file::{CodesFile, ProductKind};
     use std::path::Path;
 
     use super::KeysIteratorFlags;

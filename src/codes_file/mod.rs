@@ -21,70 +21,16 @@ mod iterator;
 ///  
 /// It can be constructed from:
 ///
-/// - File path using [`new_from_file()`](CodesHandle::new_from_file)
-/// - From memory buffer using [`new_from_memory()`](CodesHandle::new_from_memory)
-/// - From GRIB index using [`new_from_index()`](CodesHandle::new_from_index) (with `experimental_index` feature enabled)
+/// - File path using [`new_from_file()`](CodesFile::new_from_file)
+/// - From memory buffer using [`new_from_memory()`](CodesFile::new_from_memory)
 ///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered in the destructor are logged with [`tracing`].
-///
-/// # `FallibleIterator`
-///
-/// This structure implements [`FallibleIterator`](crate::FallibleStreamingIterator) trait which allows to access GRIB messages.
-///
+/// 
 /// To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
 /// It digests the `* FILE` multiple times, each time returning the `*mut codes_handle`
-/// to a message inside the file.
-///
-/// This behaviour is represented in this crate by `FallibleIterator`, because generating `KeyedMessage` can fail.
-///
-/// ```
-/// use eccodes::{ProductKind, CodesHandle, KeyRead};
-/// # use std::path::Path;
-/// // FallibleStreamingIterator must be in scope to use it
-/// use eccodes::FallibleStreamingIterator;
-/// #
-/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
-/// let file_path = Path::new("./data/iceland-surface.grib");
-/// let product_kind = ProductKind::GRIB;
-///
-/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-///
-/// // Print names of messages in the file
-/// while let Some(message) = handle.next()? {
-///     // The message must be unwraped as internal next() can fail
-///     let key: String = message.read_key("name")?;
-///     println!("{key}");    
-///
-/// }
-/// # Ok(())
-/// # }
-/// ```
-///
-/// You can also manually collect the messages into a vector to use them later.
-///
-/// ```
-/// use eccodes::{ProductKind, CodesHandle, KeyedMessage};
-/// # use eccodes::errors::CodesError;
-/// # use std::path::Path;
-/// use eccodes::FallibleStreamingIterator;
-/// #
-/// # fn main() -> anyhow::Result<(), eccodes::errors::CodesError> {
-/// let file_path = Path::new("./data/iceland-surface.grib");
-/// let product_kind = ProductKind::GRIB;
-///
-/// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-///
-/// let mut handle_collected = vec![];
-///
-/// while let Some(msg) = handle.next()? {
-///     handle_collected.push(msg.try_clone()?);
-/// }
-/// # Ok(())
-/// # }
-/// ```
-///
-/// All available methods for `CodesHandle` iterator can be found in [`FallibleStreamingIterator`](crate::FallibleStreamingIterator) trait.
+/// to a message inside the file. Therefore in this crate access messages from `CodesFile`
+///  use [`ref_message_iter()`](CodesFile::ref_message_iter) or [`arc_message_iter()`](CodesFile::arc_message_iter).
 #[derive(Debug)]
 pub struct CodesFile<D: Debug> {
     // fields are dropped from top
@@ -122,41 +68,38 @@ pub enum ProductKind {
 }
 
 impl CodesFile<File> {
-    ///Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesHandle`.
-    ///
-    ///## Example
-    ///
-    ///```
-    ///# use eccodes::codes_handle::{ProductKind, CodesHandle};
-    ///# use std::path::Path;
-    ///# fn main() -> anyhow::Result<()> {
-    ///let file_path = Path::new("./data/iceland.grib");
-    ///let product_kind = ProductKind::GRIB;
-    ///
-    ///let handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    /// # Ok(())
-    /// # }
-    ///```
-    ///
-    ///The function creates [`fs::File`](std::fs::File) from provided path and  utilises
-    ///[`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html)
-    ///to associate [`io::RawFd`](`std::os::unix::io::RawFd`)
-    ///with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer.
-    ///
-    ///The constructor takes as argument a [`path`](Path) instead of [`File`]
-    ///to ensure that `fdopen()` uses the same mode as [`File`].
-    ///
-    /// The file stream and [`File`] are safely closed when `CodesHandle` is dropped.
-    ///
-    ///## Errors
-    ///Returns [`CodesError::FileHandlingInterrupted`] with [`io::Error`](std::io::Error)
-    ///when the file cannot be opened.
-    ///
-    ///Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
-    ///when the stream cannot be created from the file descriptor.
-    ///
-    ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`] cannot be created.
+    /// Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesFile`.
+    /// 
+    /// ## Example
+    /// 
+    /// ```
+    /// # use eccodes::{ProductKind, CodesFile};
+    /// # use std::path::Path;
+    /// # fn main() -> anyhow::Result<()> {
+    /// let handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+    ///  # Ok(())
+    ///  # }
+    /// ```
+    /// 
+    /// The function creates [`fs::File`](std::fs::File) from provided path and  utilises
+    /// [`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html)
+    /// to associate [`io::RawFd`](`std::os::unix::io::RawFd`)
+    /// with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer.
+    /// 
+    /// The constructor takes as argument a [`path`](Path) instead of [`File`]
+    /// to ensure that `fdopen()` uses the same mode as [`File`].
+    /// 
+    ///  The file stream and [`File`] are safely closed when `CodesFile` is dropped.
+    /// 
+    /// ## Errors
+    /// Returns [`CodesError::FileHandlingInterrupted`] with [`io::Error`](std::io::Error)
+    /// when the file cannot be opened.
+    /// 
+    /// Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
+    /// when the stream cannot be created from the file descriptor.
+    /// 
+    /// Returns [`CodesError::Internal`] with error code
+    /// when internal [`codes_handle`] cannot be created.
     #[instrument(level = "trace")]
     pub fn new_from_file<P: AsRef<Path> + Debug>(
         file_path: P,
@@ -173,40 +116,40 @@ impl CodesFile<File> {
     }
 }
 impl CodesFile<Vec<u8>> {
-    ///Opens data in provided buffer as selected [`ProductKind`] and contructs `CodesHandle`.
-    ///
-    ///## Example
-    ///
-    ///```
-    ///# async fn run() -> anyhow::Result<()> {
-    ///# use eccodes::{ProductKind, CodesHandle};
-    ///#
-    ///let product_kind = ProductKind::GRIB;
-    ///let file_data =
-    ///    reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
-    ///        .await?
-    ///        .bytes()
-    ///        .await?
-    ///        .to_vec();
-    ///
-    ///let handle = CodesHandle::new_from_memory(file_data, product_kind)?;
-    /// # Ok(())
-    ///# }
-    ///```
-    ///
-    ///The function associates data in memory with a stream
-    ///represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
-    ///using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html).
-    ///
-    ///The constructor takes full ownership of the data inside buffer,
-    ///which is safely dropped during the [`CodesHandle`] drop.
-    ///
-    ///## Errors
-    ///Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
-    ///when the file stream cannot be created.
-    ///
-    ///Returns [`CodesError::Internal`] with error code
-    ///when internal [`codes_handle`] cannot be created.
+    /// Opens data in provided buffer as selected [`ProductKind`] and contructs `CodesFile`.
+    /// 
+    /// ## Example
+    /// 
+    /// ```
+    /// # async fn run() -> anyhow::Result<()> {
+    /// # use eccodes::{ProductKind, CodesFile};
+    /// #
+    /// let product_kind = ProductKind::GRIB;
+    /// let file_data =
+    ///     reqwest::get("https://github.com/ScaleWeather/eccodes/blob/main/data/iceland.grib?raw=true")
+    ///         .await?
+    ///         .bytes()
+    ///         .await?
+    ///         .to_vec();
+    /// 
+    /// let handle = CodesFile::new_from_memory(file_data, product_kind)?;
+    ///  # Ok(())
+    /// # }
+    /// ```
+    /// 
+    /// The function associates data in memory with a stream
+    /// represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
+    /// using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html).
+    /// 
+    /// The constructor takes full ownership of the data inside buffer,
+    /// which is safely dropped during the [`CodesFile`] drop.
+    /// 
+    /// ## Errors
+    /// Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
+    /// when the file stream cannot be created.
+    /// 
+    /// Returns [`CodesError::Internal`] with error code
+    /// when internal [`codes_handle`] cannot be created.
     #[instrument(level = "trace")]
     pub fn new_from_memory(
         file_data: Vec<u8>,
@@ -260,7 +203,7 @@ fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::codes_handle::{CodesFile, ProductKind};
+    use crate::codes_file::{CodesFile, ProductKind};
     use anyhow::{Context, Result};
     use eccodes_sys::ProductKind_PRODUCT_GRIB;
     use fallible_iterator::FallibleIterator;
