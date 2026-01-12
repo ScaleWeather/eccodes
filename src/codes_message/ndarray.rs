@@ -50,8 +50,12 @@ impl<P: Debug> CodesMessage<P> {
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
         let vals: Vec<f64> = self.read_key("values")?;
-        if vals.len() != (ni * nj) {
-            return Err(MessageNdarrayError::UnexpectedValuesLength(vals.len(), ni * nj).into());
+
+        let expected_vals_len = ni * nj;
+        if vals.len() != expected_vals_len {
+            return Err(
+                MessageNdarrayError::UnexpectedValuesLength(vals.len(), expected_vals_len).into(),
+            );
         }
 
         let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;
@@ -96,10 +100,13 @@ impl<P: Debug> CodesMessage<P> {
 
         let latlonvals: Vec<f64> = self.read_key("latLonValues")?;
 
-        if latlonvals.len() != (ni * nj * 3) {
-            return Err(
-                MessageNdarrayError::UnexpectedValuesLength(latlonvals.len(), ni * nj * 3).into(),
-            );
+        let expected_vals_len = ni * nj * 3;
+        if latlonvals.len() != expected_vals_len {
+            return Err(MessageNdarrayError::UnexpectedValuesLength(
+                latlonvals.len(),
+                expected_vals_len,
+            )
+            .into());
         }
 
         let j_scanning: i64 = self.read_key("jPointsAreConsecutive")?;

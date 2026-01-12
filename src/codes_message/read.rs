@@ -287,12 +287,16 @@ mod tests {
             .context("Message not some")?;
         let key_names = current_message
             .default_keys_iterator()?
+            // this checks if iterator isn't infinite
+            .map(|kn| {
+                assert!(!kn.is_empty());
+                Ok(kn)
+            })
             .collect::<Vec<_>>()?;
 
-        for key_name in &key_names {
-            assert!(!key_name.is_empty());
-            assert!(current_message.read_key_dynamic(key_name).is_ok());
-        }
+        key_names
+            .iter()
+            .for_each(|kn| assert!(current_message.read_key_dynamic(kn).is_ok()));
 
         Ok(())
     }
@@ -309,12 +313,16 @@ mod tests {
             .context("Message not some")?;
         let key_names = current_message
             .default_keys_iterator()?
+            // this checks if iterator isn't infinite
+            .map(|kn| {
+                assert!(!kn.is_empty());
+                Ok(kn)
+            })
             .collect::<Vec<_>>()?;
 
-        for key_name in &key_names {
-            assert!(!key_name.is_empty());
-            assert!(current_message.read_key_dynamic(key_name).is_ok());
-        }
+        key_names
+            .iter()
+            .for_each(|kn| assert!(current_message.read_key_dynamic(kn).is_ok()));
 
         Ok(())
     }

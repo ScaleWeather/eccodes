@@ -237,6 +237,9 @@ mod tests {
 
         let mut kiter = current_message.new_keys_iterator(&flags, namespace)?;
 
+        // KeysIterator in this configuration should produce at least one valid result
+        assert!(kiter.next()?.is_some());
+
         while let Some(key_name) = kiter.next()? {
             assert!(!key_name.is_empty());
         }
