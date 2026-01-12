@@ -107,7 +107,7 @@ impl<PA: Debug> CodesMessage<PA> {
         append: bool,
     ) -> Result<(), CodesError> {
         let msg = unsafe { codes_get_message(self.message_handle)? };
-        let buf = unsafe { slice::from_raw_parts(msg.0.cast::<_>(), msg.1) };
+        let buf = unsafe { slice::from_raw_parts(msg.0.cast(), msg.1) };
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)

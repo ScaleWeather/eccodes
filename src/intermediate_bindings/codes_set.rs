@@ -56,7 +56,7 @@ pub unsafe fn codes_set_long_array(
         let error_code = eccodes_sys::codes_set_long_array(
             handle,
             key.as_ptr(),
-            values.as_ptr().cast::<i64>(),
+            values.as_ptr().cast(),
             length,
         );
         error_code_to_result(error_code)?;
@@ -80,7 +80,7 @@ pub unsafe fn codes_set_double_array(
         let error_code = eccodes_sys::codes_set_double_array(
             handle,
             key.as_ptr(),
-            values.as_ptr().cast::<f64>(),
+            values.as_ptr().cast(),
             length,
         );
         error_code_to_result(error_code)?;
@@ -124,7 +124,7 @@ pub unsafe fn codes_set_bytes(
         let error_code = eccodes_sys::codes_set_bytes(
             handle,
             key.as_ptr(),
-            values.as_ptr().cast::<u8>(),
+            values.as_ptr().cast(),
             &raw mut length,
         );
         error_code_to_result(error_code)?;

@@ -86,7 +86,7 @@ pub unsafe fn codes_get_double_array(
         let error_code = eccodes_sys::codes_get_double_array(
             handle,
             key.as_ptr(),
-            key_values.as_mut_ptr().cast::<f64>(),
+            key_values.as_mut_ptr().cast(),
             &raw mut key_size,
         );
         error_code_to_result(error_code)?;
@@ -110,7 +110,7 @@ pub unsafe fn codes_get_long_array(
         let error_code = eccodes_sys::codes_get_long_array(
             handle,
             key.as_ptr(),
-            key_values.as_mut_ptr().cast::<i64>(),
+            key_values.as_mut_ptr().cast(),
             &raw mut key_size,
         );
         error_code_to_result(error_code)?;
@@ -151,7 +151,7 @@ pub unsafe fn codes_get_string(
         let error_code = eccodes_sys::codes_get_string(
             handle,
             key.as_ptr(),
-            key_message.as_mut_ptr().cast::<i8>(),
+            key_message.as_mut_ptr().cast(),
             &raw mut key_length,
         );
         error_code_to_result(error_code)?;
@@ -187,7 +187,7 @@ pub unsafe fn codes_get_bytes(
         let error_code = eccodes_sys::codes_get_bytes(
             handle,
             key.as_ptr(),
-            buffer.as_mut_ptr().cast::<u8>(),
+            buffer.as_mut_ptr().cast(),
             &raw mut key_size,
         );
         error_code_to_result(error_code)?;
@@ -219,7 +219,7 @@ pub unsafe fn codes_get_message(
         let buffer_size = codes_get_message_size(handle)?;
 
         let buffer: Vec<u8> = vec![0; buffer_size];
-        let mut buffer_ptr = buffer.as_ptr().cast::<libc::c_void>();
+        let mut buffer_ptr = buffer.as_ptr().cast();
 
         let mut message_size: usize = 0;
 

@@ -4,7 +4,7 @@
 use crate::{CodesError, intermediate_bindings::codes_handle_new_from_file, pointer_guard};
 use eccodes_sys::{ProductKind_PRODUCT_GRIB, codes_handle};
 use errno::errno;
-use libc::{FILE, c_char, c_void, size_t};
+use libc::{FILE, size_t};
 use std::{
     fmt::Debug,
     fs::{File, OpenOptions},
@@ -167,7 +167,7 @@ impl CodesFile<Vec<u8>> {
 
 #[instrument(level = "trace")]
 fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
-    let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast::<_>()) };
+    let file_ptr = unsafe { libc::fdopen(file.as_raw_fd(), "r".as_ptr().cast()) };
 
     if file_ptr.is_null() {
         let error_val = errno();
@@ -180,15 +180,15 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
 
 #[instrument(level = "trace")]
 fn open_with_fmemopen(file_data: &mut [u8]) -> Result<*mut FILE, CodesError> {
-    let file_data_ptr = file_data.as_mut_ptr().cast::<c_void>();
+    let file_data_ptr = file_data.as_mut_ptr();
     pointer_guard::non_null!(file_data_ptr);
 
     let file_ptr;
     unsafe {
         file_ptr = libc::fmemopen(
-            file_data_ptr,
+            file_data_ptr.cast(),
             file_data.len() as size_t,
-            "r".as_ptr().cast::<_>(),
+            "r".as_ptr().cast(),
         );
     }
 
