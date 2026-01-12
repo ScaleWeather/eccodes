@@ -30,9 +30,7 @@ pub use codes_get::{
     codes_get_long_array, codes_get_message, codes_get_native_type, codes_get_size,
     codes_get_string,
 };
-pub use codes_handle::{
-    codes_handle_clone, codes_handle_delete, codes_handle_new_from_file,
-};
+pub use codes_handle::{codes_handle_clone, codes_handle_delete, codes_handle_new_from_file};
 pub use codes_keys::{
     codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
     codes_keys_iterator_next,

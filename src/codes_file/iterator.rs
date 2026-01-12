@@ -72,17 +72,17 @@ impl<'ch, D: Debug> FallibleIterator for RefMessageIter<'ch, D> {
 ///
 /// `ArcMessage` implements `Send + Sync` so it can be both moved to thread (for example, to read messages in parallel)
 /// or shared across threads (when wrapped in [`Arc`]).
-/// 
+///
 /// This structure implements [`FallibleIterator`] - see the documentation for information how that differs from a standard `Iter`.
 ///
 /// Creating this iter does not require `CodesFile` to be mutable, because it takes ownership over the `CodesFile`.
 ///
 /// If you don't need to share the message, use [`RefMessageIter`] to avoid the performance overhead of [`Arc`].
-/// 
+///
 /// If you want to modify the message, use [`try_clone()`](RefMessage::try_clone).
-/// 
+///
 /// ## Example
-/// 
+///
 /// See the second example in the main crate description for example usage of `ArcMessageIter`.
 #[derive(Debug)]
 pub struct ArcMessageIter<D: Debug> {
@@ -106,9 +106,9 @@ impl<D: Debug> FallibleIterator for ArcMessageIter<D> {
     ///
     /// The method will return [`CodesInternal`](crate::errors::CodesInternal)
     /// when internal ecCodes function returns non-zero code.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This method internally uses a Mutex to access `CodesFile`, which can panic when poisoned,
     /// but thers is no path in which you can get to the state of poisoned mutex, while still able to access this method.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {

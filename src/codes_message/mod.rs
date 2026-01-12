@@ -43,9 +43,9 @@ use crate::{CodesFile, intermediate_bindings::codes_handle_delete};
 /// You can read a `Key` with static types using [`read_key()`](KeyRead::read_key()) or with [`DynamicKeyType`] using[`read_key_dynamic()`](CodesMessage::read_key_dynamic())
 /// To iterate over all key names use [`KeysIterator`](crate::KeysIterator). You can also modify the message using
 /// [`write_key_unchecked()`](KeyWrite::write_key_unchecked()) (only available for `BufMessage`).
-/// 
+///
 /// [`CodesNearest`](crate::CodesNearest) can be used to find nearest gridpoints for given coordinates in the `CodesMessage`.
-/// 
+///
 /// To write the message to file use [`write_to_file()`](CodesMessage::write_to_file).
 ///
 /// If you are interested only in getting data values from the message you can use

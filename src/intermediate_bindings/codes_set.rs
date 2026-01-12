@@ -53,12 +53,8 @@ pub unsafe fn codes_set_long_array(
 
         let length = values.len();
 
-        let error_code = eccodes_sys::codes_set_long_array(
-            handle,
-            key.as_ptr(),
-            values.as_ptr().cast(),
-            length,
-        );
+        let error_code =
+            eccodes_sys::codes_set_long_array(handle, key.as_ptr(), values.as_ptr().cast(), length);
         error_code_to_result(error_code)?;
 
         Ok(())

@@ -178,26 +178,26 @@
 //! use anyhow::Context;
 //! use eccodes::{CodesFile, FallibleIterator, KeyRead, KeyWrite, ProductKind};
 //! use std::{collections::HashMap, fs::remove_file, path::Path};
-//! 
+//!
 //! # fn main() -> anyhow::Result<()> {
 //! // Start by opening the file and creating CodesFile
 //! let file_path = Path::new("./data/iceland-levels.grib");
 //! let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
-//! 
+//!
 //! // To build the index we need to collect all messages
 //! let messages = handle.ref_message_iter().collect::<Vec<_>>()?;
 //! let mut msg_index = HashMap::new();
 //! msg_index.reserve(messages.len());
-//! 
+//!
 //! // Now we can put the messages into a hashmap and index them by shortName and level
 //! for msg in messages.into_iter() {
 //!     // all messages in this grib are on the same level type
 //!     let short_name: String = msg.read_key("shortName")?;
 //!     let level: i64 = msg.read_key("level")?;
-//! 
+//!
 //!     msg_index.insert((short_name, level), msg);
 //! }
-//! 
+//!
 //! // Now we can get the values from messages we need
 //! let t_800: Vec<f64> = msg_index
 //!     .get(&("t".to_string(), 800))
@@ -207,24 +207,24 @@
 //!     .get(&("t".to_string(), 800))
 //!     .context("message missing")?
 //!     .read_key("values")?;
-//! 
+//!
 //! // We will also clone t at 700hPa to edit it
 //! let mut t_850_msg = msg_index
 //!     .get(&("t".to_string(), 700))
 //!     .context("message missing")?
 //!     .try_clone()?;
-//! 
+//!
 //! // Compute temperature at 850hPa
 //! let t_850_values: Vec<f64> = t_800
 //!     .iter()
 //!     .zip(t_900.iter())
 //!     .map(|t| (t.0 + t.1) / 2.0)
 //!     .collect();
-//! 
+//!
 //! // Edit appropriate keys in the cloned (editable) message
 //! t_850_msg.write_key_unchecked("level", 850)?;
 //! t_850_msg.write_key_unchecked("values", t_850_values.as_slice())?;
-//! 
+//!
 //! // Save the message to a new file without appending
 //! t_850_msg.write_to_file(Path::new("iceland-850.grib"), false)?;
 //!    #  remove_file(Path::new("iceland-850.grib")).unwrap();
@@ -233,7 +233,7 @@
 //! ```
 //!
 //! ## Changes in version 0.14
-//! 
+//!
 //! 1. `experimental_index` feature has been removed - users are encouraged to create their own indexes as shown above or use iterator filtering
 //! 2. `message_ndarray` feature has been renamed to `ndarray`
 //! 3. `CodesHandle` has been renamed to `CodesFile`
@@ -266,7 +266,7 @@ pub mod keys_iterator;
 mod pointer_guard;
 
 pub use codes_file::{ArcMessageIter, CodesFile, ProductKind, RefMessageIter};
-pub use codes_message::{ArcMessage, BufMessage, KeyRead, KeyWrite, RefMessage, DynamicKeyType};
+pub use codes_message::{ArcMessage, BufMessage, DynamicKeyType, KeyRead, KeyWrite, RefMessage};
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};
