@@ -1,4 +1,4 @@
-//! Definition and constructors of `CodesHandle`
+//! Definition and constructors of `CodesFile`
 //! used for accessing GRIB files
 
 use crate::{CodesError, intermediate_bindings::codes_handle_new_from_file, pointer_guard};
@@ -40,17 +40,17 @@ pub struct CodesFile<D: Debug> {
 }
 
 // 2024-07-26
-// Previously CodesHandle had implemented Drop which called libc::fclose()
+// Previously CodesFile had implemented Drop which called libc::fclose()
 // but that closed the file descriptor and interfered with rust's fs::file destructor.
 //
 // To my best understanding the purpose of destructor is to clear memory and remove
 // any pointers that would be dangling.
 //
-// The only pointer that is handed out of CodesHandle is &KeyedMessage, which is tied
-// to CodesHandle through lifetimes, so if we destruct CodesHandle that pointer is first
+// The only pointer that is handed out of CodesFile is &CodesMessage, which is tied
+// to CodesFile through lifetimes, so if we destruct CodesFile that pointer is first
 // destructed as well. Source pointer is only used internally so we don't need to worry about it.
 //
-// Clearing the memory is handled on ecCodes side by KeyedMessage/CodesIndex destructors
+// Clearing the memory is handled on ecCodes side by CodesMessage/CodesIndex destructors
 // and on rust side by destructors of data_container we own.
 
 impl<D: Debug> CodesFile<D> {

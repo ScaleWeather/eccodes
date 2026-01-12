@@ -1,4 +1,4 @@
-//! Definition of `KeysIterator` used for iterating through keys in `KeyedMessage`
+//! Definition of `KeysIterator` used for iterating through keys in `CodesMessage`
 
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-/// Structure to iterate through key names in [`KeyedMessage`].
+/// Structure to iterate through key names in [`CodesMessage`].
 ///
 /// Mainly useful to discover what keys are present inside the message.
 ///
@@ -28,7 +28,7 @@ use crate::{
 /// ## Example
 ///
 /// ```
-///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
+///  use eccodes::{ProductKind, CodesFile, CodesMessage, KeysIteratorFlags};
 ///  # use std::path::Path;
 ///  # use anyhow::Context;
 ///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
@@ -38,7 +38,7 @@ use crate::{
 ///  let file_path = Path::new("./data/iceland.grib");
 ///  let product_kind = ProductKind::GRIB;
 ///  
-///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+///  let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
 ///  let current_message = handle.next()?.context("no message")?;
 ///  
 ///  let mut keys_iter = current_message.default_keys_iterator()?;
@@ -101,7 +101,7 @@ impl<P: Debug> CodesMessage<P> {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
+    ///  use eccodes::{ProductKind, CodesFile, CodesMessage, KeysIteratorFlags};
     ///  # use std::path::Path;
     ///  # use anyhow::Context;
     ///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
@@ -111,7 +111,7 @@ impl<P: Debug> CodesMessage<P> {
     ///  let file_path = Path::new("./data/iceland.grib");
     ///  let product_kind = ProductKind::GRIB;
     ///  
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    ///  let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
     ///  let current_message = handle.next()?.context("no message")?;
     ///  
     ///  let flags = [
@@ -155,7 +155,7 @@ impl<P: Debug> CodesMessage<P> {
         })
     }
 
-    /// Same as [`new_keys_iterator()`](KeyedMessage::new_keys_iterator) but with default
+    /// Same as [`new_keys_iterator()`](CodesMessage::new_keys_iterator) but with default
     /// parameters: [`AllKeys`](KeysIteratorFlags::AllKeys) flag and `""` namespace,
     /// yeilding iterator over all keys in the message.
     ///

@@ -75,7 +75,7 @@ pub enum CodesError {
     /// Returned when function in `message_ndarray` module cannot convert
     /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
     #[cfg(feature = "ndarray")]
-    #[error("error occured while converting KeyedMessage to ndarray {0}")]
+    #[error("error occured while converting CodesMessage to ndarray {0}")]
     NdarrayConvert(#[from] MessageNdarrayError),
 
     /// eccodes functions return errors as error codes and it is technically possible
@@ -84,7 +84,7 @@ pub enum CodesError {
     UnrecognizedErrorCode(i32),
 
     /// Similarly to error codes, eccodes return key type as i32, so
-    /// it's technically possible that this code does not appear in [`NativeKeyType`](crate::intermediate_bindings::NativeKeyType)
+    /// it's technically possible that this code does not appear in internal native key types.
     #[error("Unrecognized native key type code: {0}")]
     UnrecognizedKeyTypeCode(i32),
 }

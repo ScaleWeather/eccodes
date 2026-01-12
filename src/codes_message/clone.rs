@@ -4,10 +4,10 @@ use crate::{
 use std::fmt::Debug;
 
 impl<P: Debug> CodesMessage<P> {
-    /// Custom function to clone the `KeyedMessage` and `AtomicMessage`.
+    /// Custom function to clone the `CodesMessage`.
     ///
     /// **Be careful of the memory overhead!** ecCodes (when reading from file) defers reading the data into memory
-    /// if possible. Simply creating `KeyedMessage` or even reading some keys will use only a little of memory.
+    /// if possible. Simply creating `CodesMessage` or even reading some keys will use only a little of memory.
     /// This function **will** read the whole message into the memory, which can be of a significant size for big grids.
     ///
     /// # Errors

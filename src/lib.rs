@@ -75,7 +75,7 @@
 //! Almost all methods can be called on any `CodesMessage`, except for [`KeyWrite`] operations, which can be called only on [`BufMessage`]
 //! to avoid confusion if written keys are save to file or not.
 //!
-//! Data contained by `KeyedMessage` is represented as *keys* (like in dictionary).
+//! Data contained by `CodesMessage` is represented as *keys* (like in dictionary).
 //! Keys can be read with static types using [`read_key()`](KeyRead::read_key) or with [dynamic types](codes_message::DynamicKeyType)
 //! using [`read_key_dynamic()`](codes_message::CodesMessage::read_key_dynamic).
 //! To discover what keys are present in a message use [`KeysIterator`](KeysIterator).
@@ -97,7 +97,7 @@
 //! use eccodes::{CodesFile, FallibleIterator, KeyRead, ProductKind};
 //!
 //! # fn main() -> anyhow::Result<()> {
-//! // Open the GRIB file and create the CodesHandle
+//! // Open the GRIB file and create the CodesFile
 //! let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
 //! // Use iterator to find a message with shortName "msl" and typeOfLevel "surface"
 //! // We can use while let or for_each() to iterate over the messages
@@ -165,7 +165,7 @@
 //!
 //! #### Example 3 - Writing GRIB files and indexing
 //!
-//! The crate provides basic support for setting `KeyedMessage` keys
+//! The crate provides basic support for setting `CodesMessage` keys
 //! and writing GRIB files. To create a new custom message we need to copy
 //! existing one from other GRIB file, modify the keys and write to new file.
 //!
@@ -180,7 +180,7 @@
 //! use std::{collections::HashMap, fs::remove_file, path::Path};
 //! 
 //! # fn main() -> anyhow::Result<()> {
-//! // Start by opening the file and creating CodesHandle
+//! // Start by opening the file and creating CodesFile
 //! let file_path = Path::new("./data/iceland-levels.grib");
 //! let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
 //! 
@@ -237,7 +237,7 @@
 //! 1. `experimental_index` feature has been removed - users are encouraged to create their own indexes as shown above or use iterator filtering
 //! 2. `message_ndarray` feature has been renamed to `ndarray`
 //! 3. `CodesHandle` has been renamed to `CodesFile`
-//! 4. `KeyedMessage` has been replaced with generic `CodesMessage` - `RefMessage` has the most similar behaviour to `KeyedMessage`]
+//! 4. `KeyedMessage` has been replaced with generic `CodesMessage` - `RefMessage` has the most similar behaviour to `CodesMessage`]
 //! 5. `write_key` is now `write_key_unchecked`
 //! 6. Dependency on `FallibleStreamingIterator` has been removed
 //!
@@ -266,7 +266,7 @@ pub mod keys_iterator;
 mod pointer_guard;
 
 pub use codes_file::{ArcMessageIter, CodesFile, ProductKind, RefMessageIter};
-pub use codes_message::{ArcMessage, BufMessage, KeyRead, KeyWrite, RefMessage};
+pub use codes_message::{ArcMessage, BufMessage, KeyRead, KeyWrite, RefMessage, DynamicKeyType};
 pub use codes_nearest::{CodesNearest, NearestGridpoint};
 pub use errors::CodesError;
 pub use fallible_iterator::{FallibleIterator, IntoFallibleIterator};

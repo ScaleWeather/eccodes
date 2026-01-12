@@ -1,5 +1,5 @@
 //! Definition and associated functions of `CodesNearest`
-//! used for finding nearest gridpoints in `KeyedMessage`
+//! used for finding nearest gridpoints in `CodesMessage`
 
 use std::{fmt::Debug, ptr::null_mut};
 
@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-/// The structure used to find nearest gridpoints in `KeyedMessage`.
+/// The structure used to find nearest gridpoints in `CodesMessage`.
 #[derive(Debug)]
 pub struct CodesNearest<'a, P: Debug> {
     nearest_handle: *mut codes_nearest,
@@ -33,13 +33,13 @@ pub struct NearestGridpoint {
     pub lon: f64,
     /// Distance between requested point and this gridpoint in kilometers
     pub distance: f64,
-    ///Value of parameter at this gridpoint contained by `KeyedMessage` in corresponding units
+    ///Value of parameter at this gridpoint contained by `CodesMessage` in corresponding units
     pub value: f64,
 }
 
 impl<P: Debug> CodesMessage<P> {
-    /// Creates a new instance of [`CodesNearest`] for the `KeyedMessage`.
-    /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`
+    /// Creates a new instance of [`CodesNearest`] for the `CodesMessage`.
+    /// [`CodesNearest`] can be used to find nearest gridpoints for given coordinates in the `CodesMessage`
     /// by calling [`find_nearest()`](crate::CodesNearest::find_nearest).
     ///
     /// # Errors
@@ -65,7 +65,7 @@ impl<P: Debug> CodesNearest<'_, P> {
     ///### Example
     ///
     ///```
-    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
+    ///  use eccodes::{ProductKind, CodesFile, CodesMessage, KeysIteratorFlags};
     /// # use std::path::Path;
     /// use eccodes::FallibleStreamingIterator;
     /// # use anyhow::Context;
@@ -73,7 +73,7 @@ impl<P: Debug> CodesNearest<'_, P> {
     /// let file_path = Path::new("./data/iceland.grib");
     /// let product_kind = ProductKind::GRIB;
     ///
-    /// let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
     /// let msg = handle.next()?.context("no message")?;
     ///
     /// let c_nearest = msg.codes_nearest()?;

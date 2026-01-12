@@ -9,33 +9,34 @@ use crate::{
     },
 };
 
-/// Provides GRIB key writing capabilites. Implemented by [`KeyedMessage`] for all possible key types.
+/// Provides GRIB key writing capabilites. Implemented by [`CodesMessage`] for all possible key types.
 pub trait KeyWrite<T> {
+    /// Writes key with given name and value to [`CodesMessage`] overwriting existing value, unless
+    /// the key is read-only.
+    ///
+    /// This function directly calls ecCodes ensuring only type and memory safety.
     /// Unchecked doesn't mean it's unsafe - just that there are no checks on Rust side in comparison to
     /// `read_key` which has such checks.
-    /// Writes key with given name and value to [`KeyedMessage`] overwriting existing value, unless
-    /// the key is read-only. This function directly calls ecCodes ensuring only type and memory safety.
     ///
     /// # Example
     ///
     /// ```
-    ///  # use eccodes::{ProductKind, CodesHandle, KeyWrite};
-    ///  # use std::path::Path;
-    ///  # use anyhow::Context;
-    ///  # use eccodes::FallibleStreamingIterator;
-    ///  #
-    ///  # fn main() -> anyhow::Result<()> {
-    ///  # let file_path = Path::new("./data/iceland.grib");
-    ///  # let product_kind = ProductKind::GRIB;
-    ///  #
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
+    /// # use anyhow::Context;
+    /// # use eccodes::{CodesFile, FallibleIterator, KeyWrite, ProductKind};
+    /// #
+    /// # fn main() -> anyhow::Result<()> {
+    ///     let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
     ///
-    /// // CodesHandle iterator returns immutable messages.
-    /// // To edit a message it must be cloned.
-    ///  let mut message = handle.next()?.context("no message")?.try_clone()?;
-    ///  message.write_key("level", 1)?;
-    ///  # Ok(())
-    ///  # }
+    ///     // CodesFile iterator returns immutable messages.
+    ///     // To edit a message it must be cloned.
+    ///     let mut message = handle
+    ///         .ref_message_iter()
+    ///         .next()?
+    ///         .context("no message")?
+    ///         .try_clone()?;
+    ///     message.write_key_unchecked("level", 1)?;
+    /// #     Ok(())
+    /// # }
     /// ```
     ///
     /// # Errors
@@ -69,7 +70,7 @@ impl_key_write!(codes_set_bytes, &[u8]);
 impl_key_write!(codes_set_string, &str);
 
 impl<PA: Debug> CodesMessage<PA> {
-    /// Function to write given `KeyedMessage` to a file at provided path.
+    /// Function to write given `CodesMessage` to a file at provided path.
     /// If file does not exists it will be created.
     /// If `append` is set to `true` file will be opened in append mode
     /// and no data will be overwritten (useful when writing mutiple messages to one file).
@@ -77,27 +78,20 @@ impl<PA: Debug> CodesMessage<PA> {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{CodesHandle, KeyRead, ProductKind};
-    ///  # use eccodes::errors::CodesError;
-    ///  use eccodes::FallibleStreamingIterator;
-    ///  # use std::path::Path;
-    ///  # use std::fs::remove_file;
-    ///  #
-    ///  # fn main() -> anyhow::Result<(), CodesError> {
-    ///  let in_path = Path::new("./data/iceland-levels.grib");
-    ///  let out_path  = Path::new("./data/iceland-800hPa.grib");
+    /// # use eccodes::{CodesError, CodesFile, FallibleIterator, KeyRead, ProductKind};
+    /// # use std::fs::remove_file;
+    /// # fn main() -> anyhow::Result<(), CodesError> {
+    ///     let mut handle = CodesFile::new_from_file("./data/iceland-levels.grib", ProductKind::GRIB)?;
     ///
-    ///  let mut handle = CodesHandle::new_from_file(in_path, ProductKind::GRIB)?;
-    ///
-    ///  while let Some(msg) = handle.next()? {
-    ///      let level: i64 = msg.read_key("level")?;
-    ///      if level == 800 {
-    ///          msg.write_to_file(out_path, true)?;
-    ///      }
-    ///  }
-    ///  # remove_file(out_path)?;
-    ///  # Ok(())
-    ///  # }
+    ///     while let Some(msg) = handle.ref_message_iter().next()? {
+    ///         let level: i64 = msg.read_key("level")?;
+    ///         if level == 800 {
+    ///             msg.write_to_file("./data/iceland-800hPa.grib", true)?;
+    ///         }
+    ///     }
+    /// #     remove_file("./data/iceland-800hPa.grib")?;
+    /// #     Ok(())
+    /// }
     /// ```
     ///
     /// # Errors

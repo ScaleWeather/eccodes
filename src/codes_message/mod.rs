@@ -1,4 +1,4 @@
-//! Definition of `KeyedMessage` and its associated functions
+//! Definition of `CodesMessage` and its associated functions
 //! used for reading and writing data of given variable from GRIB file
 
 mod clone;
@@ -25,62 +25,48 @@ use tracing::{Level, event, instrument};
 
 use crate::{CodesFile, intermediate_bindings::codes_handle_delete};
 
-/// Structure that provides access to the data contained in the GRIB file, which directly corresponds to the message in the GRIB file
+/// Base structure for [`RefMessage`], [`ArcMessage`] and [`BufMessage`] that provides access to the data
+/// contained in the GRIB file, which directly corresponds to the message in the GRIB file.
 ///
-/// **Usage examples are provided in documentation of each method.**
+/// `RefMessage` comes with no performance overhead but has its liftime tied to its parent `CodesFile`.
+///
+/// `ArcMessage` can be moved and shared across threads.
+///
+/// `BufMessage` is independent of its parent and can be edited with [`KeyWrite`] methods.  
+///
+/// **Usage examples are provided in documentation of implemented methods.**
 ///
 /// You can think about the message as a container of data corresponding to a single variable
 /// at given date, time and level. In ecCodes the message is represented as a collection of unique
 /// key-value pairs.
 ///
-/// You can read a `Key` with static types using [`read_key()`](KeyRead::read_key()) or with [`DynamicKeyType`] using[`read_key_dynamic()`](KeyedMessage::read_key_dynamic())
+/// You can read a `Key` with static types using [`read_key()`](KeyRead::read_key()) or with [`DynamicKeyType`] using[`read_key_dynamic()`](CodesMessage::read_key_dynamic())
 /// To iterate over all key names use [`KeysIterator`](crate::KeysIterator). You can also modify the message using
-/// [`write_key()`](KeyWrite::write_key()). This crate can successfully read all keys from ERA5 and GFS files.
+/// [`write_key_unchecked()`](KeyWrite::write_key_unchecked()) (only available for `BufMessage`).
+/// 
+/// [`CodesNearest`](crate::CodesNearest) can be used to find nearest gridpoints for given coordinates in the `CodesMessage`.
+/// 
+/// To write the message to file use [`write_to_file()`](CodesMessage::write_to_file).
 ///
 /// If you are interested only in getting data values from the message you can use
-/// [`to_ndarray()`](KeyedMessage::to_ndarray) from the [`message_ndarray`](crate::message_ndarray) module.
+/// [`to_ndarray()`](CodesMessage::to_ndarray) available in `ndarray` feature.
 ///
 /// Some of the useful keys are: `validityDate`, `validityTime`, `level`, `typeOfLevel`, `shortName`, `units` and `values`.
 ///
 /// Note that names, types and availability of some keys can vary between platforms and ecCodes versions. You should test
 /// your code whenever changing the environment.
 ///
-/// [`CodesNearest`](crate::CodesNearest) can be used to find nearest gridpoints for given coordinates in the `KeyedMessage`.
-///
-/// Most of `KeyedMessage` methods (except for writing) can be used directly with `&KeyedMessage`
-/// returned by `CodesHandle` iterator, which provides the best performance.
-/// When mutable access or longer liftime is needed the message can be cloned with [`try_clone`](KeyedMessage::try_clone)
-/// Note that cloning comes with a performance and memory overhead.
-/// You should take care that your system has enough memory before cloning.
-///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
-/// leading to bugs. Errors encountered in desctructor the are logged with [`log`].
-pub type RefMessage<'ch> = CodesMessage<RefParent<'ch>>;
-
-/// Because standard `KeyedMessage` is not Copy or Clone it can provide access methods without
-/// requiring `&mut self`. As `AtomicMessage` implements `Send + Sync` this exclusive method access is not
-/// guaranteed with just `&self`. `AtomicMessage` also implements a minimal subset of functionalities
-/// to limit the risk of some internal ecCodes functions not being thread-safe.
-pub type ArcMessage<D> = CodesMessage<ArcParent<D>>;
-
-unsafe impl<D: Debug> Send for ArcMessage<D> {}
-unsafe impl<D: Debug> Sync for ArcMessage<D> {}
-
-pub type BufMessage = CodesMessage<BufParent>;
-
-unsafe impl Send for BufMessage {}
-unsafe impl Sync for BufMessage {}
-
-/// All messages use this struct for operations.
+/// leading to bugs. Errors encountered in desctructor the are reported via [`tracing`].
 #[derive(Debug)]
 pub struct CodesMessage<P: Debug> {
     pub(crate) _parent: P,
     pub(crate) message_handle: *mut codes_handle,
 }
 
-/// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
-/// KeyedMessage and derived types with generics, because `PhantomData` is needed
-/// only for lifetime restriction and we tightly control how `KeyedMessage` is created.
+// This is a little unintuitive, but we use `()` here to not unnecessarily pollute
+// CodesMessage and derived types with generics, because `PhantomData` is needed
+// only for lifetime restriction and we tightly control how `CodesMessage` is created.
 #[derive(Debug, Hash, PartialEq, PartialOrd)]
 #[doc(hidden)]
 pub struct RefParent<'ch>(PhantomData<&'ch ()>);
@@ -94,6 +80,21 @@ pub struct BufParent();
 pub struct ArcParent<D: Debug> {
     _arc_handle: Arc<Mutex<CodesFile<D>>>,
 }
+
+/// [`CodesMessage`] that has its liftime tied to its parent `CodesFile`.
+pub type RefMessage<'ch> = CodesMessage<RefParent<'ch>>;
+
+/// [`CodesMessage`] that can be moved and shared across threads.
+pub type ArcMessage<D> = CodesMessage<ArcParent<D>>;
+
+unsafe impl<D: Debug> Send for ArcMessage<D> {}
+unsafe impl<D: Debug> Sync for ArcMessage<D> {}
+
+/// [`CodesMessage`] that is independent of its parent and can be edited with [`KeyWrite`] methods.
+pub type BufMessage = CodesMessage<BufParent>;
+
+unsafe impl Send for BufMessage {}
+unsafe impl Sync for BufMessage {}
 
 impl RefMessage<'_> {
     pub(crate) fn new(handle: *mut codes_handle) -> Self {
@@ -116,7 +117,6 @@ impl<D: Debug> ArcMessage<D> {
 }
 
 impl BufMessage {
-    /// This could be a From, but that would be less idiomatic and would expose interface that we don't want exposed.I
     pub(crate) fn new(handle: *mut codes_handle) -> Self {
         BufMessage {
             _parent: BufParent(),
@@ -142,7 +142,7 @@ impl<P: Debug> Drop for CodesMessage<P> {
     ///
     /// # Panics
     ///
-    /// In debug
+    /// In debug mode when error is encountered.
     #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
@@ -152,7 +152,7 @@ impl<P: Debug> Drop for CodesMessage<P> {
                     "codes_handle_delete() returned an error: {:?}",
                     &error
                 );
-                debug_assert!(false, "Error in KeyedMessage::drop");
+                debug_assert!(false, "Error in CodesMessage::drop");
             });
         }
 

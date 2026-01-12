@@ -9,25 +9,21 @@ use crate::{
     },
 };
 
-/// Provides GRIB key reading capabilites. Implemented by [`KeyedMessage`] for all possible key types.
+/// Provides GRIB key reading capabilites. Implemented by [`CodesMessage`] for all possible key types.
 pub trait KeyRead<T> {
-    /// Tries to read a key of given name from [`KeyedMessage`]. This function checks if key native type
+    /// Tries to read a key of given name from [`CodesMessage`]. This function checks if key native type
     /// matches the requested type (ie. you cannot read integer as string, or array as a number).
     ///
     /// # Example
     ///
     /// ```
-    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
-    ///  # use std::path::Path;
+    ///  # use eccodes::{CodesFile, KeyRead, FallibleIterator, ProductKind};
     ///  # use anyhow::Context;
-    ///  # use eccodes::FallibleStreamingIterator;
     ///  #
     ///  # fn main() -> anyhow::Result<()> {
-    ///  # let file_path = Path::new("./data/iceland.grib");
-    ///  # let product_kind = ProductKind::GRIB;
     ///  #
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///  let message = handle.next()?.context("no message")?;
+    ///  let mut file = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+    ///  let message = file.ref_message_iter().next()?.context("no message")?;
     ///  let short_name: String = message.read_key("shortName")?;
     ///  
     ///  assert_eq!(short_name, "msl");
@@ -53,33 +49,13 @@ pub trait KeyRead<T> {
     ///
     /// This function is also useful for (not usually used) keys that return incorrect native type.
     ///
-    /// # Example
-    ///
-    /// ```
-    ///  # use eccodes::{ProductKind, CodesHandle, KeyRead};
-    ///  # use std::path::Path;
-    ///  # use anyhow::Context;
-    ///  # use eccodes::FallibleStreamingIterator;
-    ///  #
-    ///  # fn main() -> anyhow::Result<()> {
-    ///  # let file_path = Path::new("./data/iceland.grib");
-    ///  # let product_kind = ProductKind::GRIB;
-    ///  #
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///  let message = handle.next()?.context("no message")?;
-    ///  let short_name: String = message.read_key_unchecked("shortName")?;
-    ///  
-    ///  assert_eq!(short_name, "msl");
-    ///  # Ok(())
-    ///  # }
-    /// ```
-    ///
     /// # Errors
     ///
     /// This function will return [`CodesInternal`](crate::errors::CodesInternal) if ecCodes fails to read the key.
     fn read_key_unchecked(&self, name: &str) -> Result<T, CodesError>;
 }
 
+#[doc(hidden)]
 pub trait KeyPropertiesRead {
     fn get_key_size(&self, key_name: &str) -> Result<usize, CodesError>;
     fn get_key_native_type(&self, key_name: &str) -> Result<NativeKeyType, CodesError>;
@@ -169,7 +145,7 @@ pub enum DynamicKeyType {
 }
 
 impl<P: Debug> CodesMessage<P> {
-    /// Method to get a value of given key with [`DynamicKeyType`] from the `KeyedMessage`, if it exists.
+    /// Method to get a value of given key with [`DynamicKeyType`] from the `CodesMessage`, if it exists.
     ///
     /// In most cases you should use [`read_key()`](KeyRead::read_key) due to more predictive behaviour
     /// and simpler interface.
@@ -188,17 +164,13 @@ impl<P: Debug> CodesMessage<P> {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesHandle, DynamicKeyType};
-    ///  # use std::path::Path;
+    ///  use eccodes::{ProductKind, CodesFile, DynamicKeyType, FallibleIterator};
     ///  # use anyhow::Context;
-    ///  use eccodes::FallibleStreamingIterator;
     ///  #
     ///  # fn main() -> anyhow::Result<()> {
-    ///  let file_path = Path::new("./data/iceland.grib");
-    ///  let product_kind = ProductKind::GRIB;
-    ///  
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///  let message = handle.next()?.context("no message")?;
+    ///  #
+    ///  let mut file = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+    ///  let message = file.ref_message_iter().next()?.context("no message")?;
     ///  let message_short_name = message.read_key_dynamic("shortName")?;
     ///  let expected_short_name = DynamicKeyType::Str("msl".to_string());
     ///  

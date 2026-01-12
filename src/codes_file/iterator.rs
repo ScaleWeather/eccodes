@@ -307,7 +307,7 @@ mod tests {
         }
 
         // Now unwrap and access the first and only element of resulting vector
-        // Find nearest modifies internal KeyedMessage fields so we need mutable reference
+        // Find nearest modifies internal CodesMessage fields so we need mutable reference
         let level = &level[0];
 
         let short_name = level.read_key_dynamic("shortName")?;

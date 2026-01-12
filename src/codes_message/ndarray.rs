@@ -1,4 +1,4 @@
-//! Definitions for converting a `KeyedMessage` to ndarray
+//! Definitions for converting a `CodesMessage` to ndarray
 
 use std::fmt::Debug;
 
@@ -6,7 +6,7 @@ use ndarray::{Array2, Array3, s};
 
 use crate::{CodesError, KeyRead, codes_message::CodesMessage, errors::MessageNdarrayError};
 
-/// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
+/// Struct returned by [`CodesMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
 #[derive(Clone, PartialEq, Debug, Default)]
 #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
@@ -75,7 +75,7 @@ impl<P: Debug> CodesMessage<P> {
         }
     }
 
-    /// Same as [`KeyedMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
+    /// Same as [`CodesMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
     /// Fields are returned as separate arrays in [`RustyCodesMessage`].
     ///
     /// Compared to `to_ndarray` this method has performance overhead as returned arrays may be cloned.
