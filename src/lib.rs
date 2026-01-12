@@ -233,7 +233,13 @@
 //! ```
 //!
 //! ## Changes in version 0.14
-//!
+//! 
+//! 1. `experimental_index` feature has been removed - users are encouraged to create their own indexes as shown above or use iterator filtering
+//! 2. `message_ndarray` feature has been renamed to `ndarray`
+//! 3. `CodesHandle` has been renamed to `CodesFile`
+//! 4. `KeyedMessage` has been replaced with generic `CodesMessage` - `RefMessage` has the most similar behaviour to `KeyedMessage`]
+//! 5. `write_key` is now `write_key_unchecked`
+//! 6. Dependency on `FallibleStreamingIterator` has been removed
 //!
 //! ## Feature Flags
 //!
