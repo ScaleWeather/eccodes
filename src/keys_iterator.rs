@@ -28,26 +28,19 @@ use crate::{
 /// ## Example
 ///
 /// ```
-///  use eccodes::{ProductKind, CodesFile, CodesMessage, KeysIteratorFlags};
-///  # use std::path::Path;
-///  # use anyhow::Context;
-///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
-///  #
-///  # fn main() -> anyhow::Result<()> {
-///  #
-///  let file_path = Path::new("./data/iceland.grib");
-///  let product_kind = ProductKind::GRIB;
-///  
-///  let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-///  let current_message = handle.next()?.context("no message")?;
-///  
-///  let mut keys_iter = current_message.default_keys_iterator()?;
-///  
-///  while let Some(key_name) = keys_iter.next()? {
-///      println!("{key_name}");
-///  }
-///  # Ok(())
-///  # }
+/// # use anyhow::Context;
+/// # use eccodes::{CodesFile, FallibleIterator, ProductKind};
+/// # fn main() -> anyhow::Result<()> {
+/// let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+/// let mut current_message = handle.ref_message_iter().next()?.context("no message")?;
+/// 
+/// let mut keys_iter = current_message.default_keys_iterator()?;
+/// 
+/// while let Some(key_name) = keys_iter.next()? {
+///     println!("{key_name}");
+/// }
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// ## Errors
@@ -101,18 +94,13 @@ impl<P: Debug> CodesMessage<P> {
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesFile, CodesMessage, KeysIteratorFlags};
-    ///  # use std::path::Path;
+    ///  use eccodes::{ProductKind, CodesFile, KeysIteratorFlags, FallibleIterator};
     ///  # use anyhow::Context;
-    ///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
     ///  #
     ///  # fn main() -> anyhow::Result<()> {
     ///  #
-    ///  let file_path = Path::new("./data/iceland.grib");
-    ///  let product_kind = ProductKind::GRIB;
-    ///  
-    ///  let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-    ///  let current_message = handle.next()?.context("no message")?;
+    ///  let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+    ///  let mut current_message = handle.ref_message_iter().next()?.context("no message")?;
     ///  
     ///  let flags = [
     ///      KeysIteratorFlags::AllKeys,

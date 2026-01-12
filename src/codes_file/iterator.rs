@@ -73,7 +73,7 @@ impl<'ch, D: Debug> FallibleIterator for RefMessageIter<'ch, D> {
 /// `ArcMessage` implements `Send + Sync` so it can be both moved to thread (for example, to read messages in parallel)
 /// or shared across threads (when wrapped in [`Arc`]).
 /// 
-/// This structure implements [`FallibleIterator`] - see the documentation for information how that differs from a standard `Iter``.
+/// This structure implements [`FallibleIterator`] - see the documentation for information how that differs from a standard `Iter`.
 ///
 /// Creating this iter does not require `CodesFile` to be mutable, because it takes ownership over the `CodesFile`.
 ///

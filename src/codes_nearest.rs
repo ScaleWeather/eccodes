@@ -65,20 +65,15 @@ impl<P: Debug> CodesNearest<'_, P> {
     ///### Example
     ///
     ///```
-    ///  use eccodes::{ProductKind, CodesFile, CodesMessage, KeysIteratorFlags};
-    /// # use std::path::Path;
-    /// use eccodes::FallibleStreamingIterator;
     /// # use anyhow::Context;
+    /// # use eccodes::{CodesFile, FallibleIterator, ProductKind};
     /// # fn main() -> anyhow::Result<()> {
-    /// let file_path = Path::new("./data/iceland.grib");
-    /// let product_kind = ProductKind::GRIB;
+    /// let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+    /// let msg = handle.ref_message_iter().next()?.context("no message")?;
     ///
-    /// let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
-    /// let msg = handle.next()?.context("no message")?;
-    ///
-    /// let c_nearest = msg.codes_nearest()?;
+    /// let mut c_nearest = msg.codes_nearest()?;
     /// let out = c_nearest.find_nearest(64.13, -21.89)?;
-    /// # Ok(())
+    /// #     Ok(())
     /// # }
     ///```
     ///
@@ -109,7 +104,7 @@ impl<P: Debug> CodesNearest<'_, P> {
 impl<P: Debug> Drop for CodesNearest<'_, P> {
     /// # Panics
     ///
-    /// In debug
+    /// In debug when error is encountered
     #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
