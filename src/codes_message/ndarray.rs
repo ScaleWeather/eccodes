@@ -1,14 +1,15 @@
-#![cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
-//! Definitions for converting a `KeyedMessage` to ndarray
+//! Definitions for converting a `CodesMessage` to ndarray
 
-use ndarray::{s, Array2, Array3};
+use std::fmt::Debug;
 
-use crate::{errors::MessageNdarrayError, CodesError, KeyRead, KeyedMessage};
+use ndarray::{Array2, Array3, s};
 
-/// Struct returned by [`KeyedMessage::to_lons_lats_values()`] method.
+use crate::{CodesError, KeyRead, codes_message::CodesMessage, errors::MessageNdarrayError};
+
+/// Struct returned by [`CodesMessage::to_lons_lats_values()`] method.
 /// The arrays are collocated, meaning that `longitudes[i, j]` and `latitudes[i, j]` are the coordinates of `values[i, j]`.
 #[derive(Clone, PartialEq, Debug, Default)]
-#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 pub struct RustyCodesMessage {
     /// Longitudes in degrees
     pub longitudes: Array2<f64>,
@@ -18,7 +19,7 @@ pub struct RustyCodesMessage {
     pub values: Array2<f64>,
 }
 
-impl KeyedMessage {
+impl<P: Debug> CodesMessage<P> {
     /// Converts the message to a 2D ndarray.
     ///
     /// Returns ndarray where first dimension represents y coordinates and second dimension represents x coordinates,
@@ -40,7 +41,7 @@ impl KeyedMessage {
     ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
-    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
     pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
@@ -74,7 +75,7 @@ impl KeyedMessage {
         }
     }
 
-    /// Same as [`KeyedMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
+    /// Same as [`CodesMessage::to_ndarray()`] but returns the longitudes and latitudes alongside values.
     /// Fields are returned as separate arrays in [`RustyCodesMessage`].
     ///
     /// Compared to `to_ndarray` this method has performance overhead as returned arrays may be cloned.
@@ -85,7 +86,7 @@ impl KeyedMessage {
     ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
-    #[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
     pub fn to_lons_lats_values(&self) -> Result<RustyCodesMessage, CodesError> {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
@@ -140,21 +141,21 @@ impl KeyedMessage {
 
 #[cfg(test)]
 mod tests {
+    use fallible_iterator::FallibleIterator;
     use float_cmp::assert_approx_eq;
 
     use super::*;
-    use crate::codes_handle::CodesHandle;
-    use crate::DynamicKeyType;
-    use crate::FallibleStreamingIterator;
     use crate::ProductKind;
+    use crate::codes_file::CodesFile;
+    use crate::codes_message::DynamicKeyType;
     use std::path::Path;
 
     #[test]
     fn test_to_ndarray() -> Result<(), CodesError> {
         let file_path = Path::new("./data/iceland-surface.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+        let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.ref_message_iter().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let ndarray = msg.to_ndarray()?;
 
@@ -178,9 +179,9 @@ mod tests {
     #[test]
     fn test_lons_lats() -> Result<(), CodesError> {
         let file_path = Path::new("./data/iceland-surface.grib");
-        let mut handle = CodesHandle::new_from_file(file_path, ProductKind::GRIB)?;
+        let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
 
-        while let Some(msg) = handle.next()? {
+        while let Some(msg) = handle.ref_message_iter().next()? {
             if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
                 let rmsg = msg.to_lons_lats_values()?;
 

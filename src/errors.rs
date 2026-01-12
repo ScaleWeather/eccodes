@@ -74,14 +74,24 @@ pub enum CodesError {
 
     /// Returned when function in `message_ndarray` module cannot convert
     /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
-    #[cfg(feature = "message_ndarray")]
-    #[error("error occured while converting KeyedMessage to ndarray {0}")]
+    #[cfg(feature = "ndarray")]
+    #[error("error occured while converting CodesMessage to ndarray {0}")]
     NdarrayConvert(#[from] MessageNdarrayError),
+
+    /// eccodes functions return errors as error codes and it is technically possible
+    /// that the library might return an error code that does not appear in [`CodesInternal`] enum.
+    #[error("eccodes returned unrecognized error code: {0}")]
+    UnrecognizedErrorCode(i32),
+
+    /// Similarly to error codes, eccodes return key type as i32, so
+    /// it's technically possible that this code does not appear in internal native key types.
+    #[error("Unrecognized native key type code: {0}")]
+    UnrecognizedKeyTypeCode(i32),
 }
 
 /// Errors returned by the `message_ndarray` module.
-#[cfg(feature = "message_ndarray")]
-#[cfg_attr(docsrs, doc(cfg(feature = "message_ndarray")))]
+#[cfg(feature = "ndarray")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 #[derive(PartialEq, Clone, Error, Debug)]
 pub enum MessageNdarrayError {
     /// Returned when functions converting to ndarray cannot correctly

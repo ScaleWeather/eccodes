@@ -1,6 +1,6 @@
 name: cargo
 
-on: 
+on:
   push:
     branches:
       - main
@@ -22,72 +22,68 @@ jobs:
         uses: fkirc/skip-duplicate-actions@v5
         with:
           # All of these options are optional, so you can remove them if you are happy with the defaults
-          concurrent_skipping: 'same_content_newer'
-          skip_after_successful_duplicate: 'true'
+          concurrent_skipping: "same_content_newer"
+          skip_after_successful_duplicate: "true"
           paths_ignore: '["**/README.md"]'
           do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
 
   build:
-
     name: Build on Ubuntu
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Prepare environment
-      run: |
-        sudo apt-get update
-        sudo apt-get install clang
-        sudo apt-get install libclang1
-        sudo apt-get install libeccodes-dev
-        rustup update stable
-        cargo install cargo-criterion
-        cargo clean
-    - name: Build with cargo
-      run: |
-        cargo build --release --features "experimental_index, message_ndarray"
-        cargo clean
-    - name: Test with cargo
-      run: |
-        cargo test --no-default-features
-        cargo test --features "message_ndarray"
-        cargo test --features "experimental_index"
-        cargo test --features "experimental_index, message_ndarray"
-        cargo clean
-    - name: Benchmark with criterion
-      run: |
-        cargo criterion
-        cargo clean
+      - uses: actions/checkout@v4
+      - name: Prepare environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install clang
+          sudo apt-get install libclang1
+          sudo apt-get install libeccodes-dev
+          rustup update stable
+          cargo install cargo-criterion
+          cargo clean
+      - name: Check release build
+        run: |
+          cargo build --release --features "ndarray"
+      - name: Check with clippy
+        run: |
+          cargo clippy --features "ndarray" -- -D warnings
+      - name: Check tests
+        run: |
+          cargo test --no-default-features
+          cargo test --features "ndarray"
+      - name: Benchmark with criterion
+        run: |
+          cargo criterion
+          cargo clean
 
   build-macos:
-
     name: Build on MacOS
     needs: pre_job
     if: needs.pre_job.outputs.should_skip != 'true'
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Prepare environment
-      run: |
-        brew install eccodes
-        rustup update stable
-        cargo install cargo-criterion
-        cargo clean
-    - name: Build with cargo
-      run: |
-        cargo build --release --features "experimental_index, message_ndarray"
-        cargo clean
-    - name: Test with cargo
-      run: |
-        cargo test --no-default-features
-        cargo test --features "message_ndarray"
-        cargo test --features "experimental_index"
-        cargo test --features "experimental_index, message_ndarray"
-        cargo clean
-    - name: Benchmark with criterion
-      run: |
-        cargo criterion
-        cargo clean
+      - uses: actions/checkout@v4
+      - name: Prepare environment
+        run: |
+          brew install eccodes
+          rustup update stable
+          cargo install cargo-criterion
+          cargo clean
+      - name: Check release build
+        run: |
+          cargo build --release --features --features "ndarray"
+      - name: Check with clippy
+        run: |
+          cargo clippy --features "ndarray" -- -D warnings
+      - name: Check tests
+        run: |
+          cargo test --no-default-features
+          cargo test --features "ndarray"
+      - name: Benchmark with criterion
+        run: |
+          cargo criterion
+          cargo clean

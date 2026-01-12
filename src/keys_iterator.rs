@@ -1,20 +1,20 @@
-//! Definition of `KeysIterator` used for iterating through keys in `KeyedMessage`
+//! Definition of `KeysIterator` used for iterating through keys in `CodesMessage`
 
 use eccodes_sys::codes_keys_iterator;
 use fallible_iterator::FallibleIterator;
-use log::error;
-use std::{marker::PhantomData, ptr::null_mut};
+use std::{fmt::Debug, marker::PhantomData, ptr::null_mut};
+use tracing::{Level, event, instrument};
 
 use crate::{
+    codes_message::CodesMessage,
     errors::CodesError,
     intermediate_bindings::{
         codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
         codes_keys_iterator_next,
     },
-    KeyedMessage,
 };
 
-/// Structure to iterate through key names in [`KeyedMessage`].
+/// Structure to iterate through key names in [`CodesMessage`].
 ///
 /// Mainly useful to discover what keys are present inside the message.
 ///
@@ -28,26 +28,19 @@ use crate::{
 /// ## Example
 ///
 /// ```
-///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-///  # use std::path::Path;
-///  # use anyhow::Context;
-///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
-///  #
-///  # fn main() -> anyhow::Result<()> {
-///  #
-///  let file_path = Path::new("./data/iceland.grib");
-///  let product_kind = ProductKind::GRIB;
-///  
-///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-///  let current_message = handle.next()?.context("no message")?;
-///  
-///  let mut keys_iter = current_message.default_keys_iterator()?;
-///  
-///  while let Some(key_name) = keys_iter.next()? {
-///      println!("{key_name}");
-///  }
-///  # Ok(())
-///  # }
+/// # use anyhow::Context;
+/// # use eccodes::{CodesFile, FallibleIterator, ProductKind};
+/// # fn main() -> anyhow::Result<()> {
+/// let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+/// let mut current_message = handle.ref_message_iter().next()?.context("no message")?;
+///
+/// let mut keys_iter = current_message.default_keys_iterator()?;
+///
+/// while let Some(key_name) = keys_iter.next()? {
+///     println!("{key_name}");
+/// }
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// ## Errors
@@ -57,7 +50,8 @@ use crate::{
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub struct KeysIterator<'a> {
-    parent_message: PhantomData<&'a KeyedMessage>,
+    /// Same trick as in `RefMessage`
+    parent_message: PhantomData<&'a ()>,
     iterator_handle: *mut codes_keys_iterator,
     next_item_exists: bool,
 }
@@ -87,30 +81,26 @@ pub enum KeysIteratorFlags {
     SkipEditionSpecific = eccodes_sys::CODES_KEYS_ITERATOR_SKIP_EDITION_SPECIFIC as isize,
 }
 
-impl KeyedMessage {
+impl<P: Debug> CodesMessage<P> {
     /// Creates new [`KeysIterator`] for the message with specified flags and namespace.
     ///
     /// The flags are set by providing any combination of [`KeysIteratorFlags`]
     /// inside a slice. Check the documentation for the details of each flag meaning.
     ///
     /// Namespace is set simply as string, eg. `"ls"`, `"time"`, `"parameter"`, `"geography"`, `"statistics"`.
+    /// Empty string "" will return all keys.
     /// Invalid namespace will result in empty iterator.
     ///
     /// # Example
     ///
     /// ```
-    ///  use eccodes::{ProductKind, CodesHandle, KeyedMessage, KeysIteratorFlags};
-    ///  # use std::path::Path;
+    ///  use eccodes::{ProductKind, CodesFile, KeysIteratorFlags, FallibleIterator};
     ///  # use anyhow::Context;
-    ///  use eccodes::{FallibleIterator, FallibleStreamingIterator};
     ///  #
     ///  # fn main() -> anyhow::Result<()> {
     ///  #
-    ///  let file_path = Path::new("./data/iceland.grib");
-    ///  let product_kind = ProductKind::GRIB;
-    ///  
-    ///  let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-    ///  let current_message = handle.next()?.context("no message")?;
+    ///  let mut handle = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
+    ///  let mut current_message = handle.ref_message_iter().next()?.context("no message")?;
     ///  
     ///  let flags = [
     ///      KeysIteratorFlags::AllKeys,
@@ -134,8 +124,9 @@ impl KeyedMessage {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
+    #[instrument(level = "trace")]
     pub fn new_keys_iterator<'a>(
-        &'a self,
+        &'a mut self,
         flags: &[KeysIteratorFlags],
         namespace: &str,
     ) -> Result<KeysIterator<'a>, CodesError> {
@@ -152,7 +143,7 @@ impl KeyedMessage {
         })
     }
 
-    /// Same as [`new_keys_iterator()`](KeyedMessage::new_keys_iterator) but with default
+    /// Same as [`new_keys_iterator()`](CodesMessage::new_keys_iterator) but with default
     /// parameters: [`AllKeys`](KeysIteratorFlags::AllKeys) flag and `""` namespace,
     /// yeilding iterator over all keys in the message.
     ///
@@ -160,7 +151,7 @@ impl KeyedMessage {
     ///
     /// This function returns [`CodesInternal`](crate::errors::CodesInternal) when
     /// internal ecCodes function returns non-zero code.
-    pub fn default_keys_iterator(&self) -> Result<KeysIterator<'_>, CodesError> {
+    pub fn default_keys_iterator(&mut self) -> Result<KeysIterator<'_>, CodesError> {
         let iterator_handle = unsafe { codes_keys_iterator_new(self.message_handle, 0, "")? };
         let next_item_exists = unsafe { codes_keys_iterator_next(iterator_handle)? };
 
@@ -197,13 +188,17 @@ impl FallibleIterator for KeysIterator<'_> {
 
 #[doc(hidden)]
 impl Drop for KeysIterator<'_> {
+    #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe {
             codes_keys_iterator_delete(self.iterator_handle).unwrap_or_else(|error| {
-                error!(
+                event!(
+                    Level::ERROR,
                     "codes_keys_iterator_delete() returned an error: {:?}",
                     &error
                 );
+                #[cfg(test)]
+                panic!("Error in KeysIterator::drop");
             });
         }
 
@@ -215,8 +210,8 @@ impl Drop for KeysIterator<'_> {
 mod tests {
     use anyhow::{Context, Result};
 
-    use crate::codes_handle::{CodesHandle, ProductKind};
-    use crate::{FallibleIterator, FallibleStreamingIterator};
+    use crate::FallibleIterator;
+    use crate::codes_file::{CodesFile, ProductKind};
     use std::path::Path;
 
     use super::KeysIteratorFlags;
@@ -226,8 +221,11 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
 
         let flags = [
             KeysIteratorFlags::AllKeys,        //0
@@ -251,8 +249,11 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
 
         let flags = vec![
             KeysIteratorFlags::AllKeys, //0
@@ -274,26 +275,30 @@ mod tests {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
-        let mut handle = CodesHandle::new_from_file(file_path, product_kind)?;
-        let current_message = handle.next()?.context("Message not some")?;
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
 
         let _kiter = current_message.default_keys_iterator()?;
 
-        drop(_kiter);
+        Ok(())
+    }
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_keys_iterator_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
+    #[test]
+    fn destructor_null() -> Result<()> {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
 
-        drop(handle);
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let mut current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
 
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_handle_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
+        let mut kiter = current_message.default_keys_iterator()?;
+        kiter.iterator_handle = std::ptr::null_mut();
 
         Ok(())
     }

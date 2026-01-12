@@ -25,13 +25,42 @@
 //!
 //! The issues have been partially mitigated by implementing global mutex for `codes_index` operations.
 //! Please not that mutex is used only for `codes_index` functions to not affect performance of other not-problematic functions in this crate.
-//! This solution, eliminated tsegfaults in tests, but occasional non-zero return codes still appear. However, this is
+//! This solution, eliminated segfaults in tests, but occasional non-zero return codes still appear. However, this is
 //! not a guarantee and possbility of safety issues is non-zero!
 //!
 //! To avoid the memory issues altogether, do not use this feature at all. If you want to use it, take care to use `CodesIndex` in entirely
 //! non-concurrent environment.
 //!
 //! If you have any suggestions or ideas how to improve the safety of this feature, please open an issue or a pull request.
+//!
+//! ## Why functions are not marked unsafe?
+//!
+//! Consider this example:
+//!
+//! ```ignore
+//! thread::spawn(|| -> Result<()> {
+//!     let file_path = Path::new("./data/iceland-surface.grib.idx");
+//!     let mut index_op = CodesIndex::read_from_file(file_path)?;
+//!
+//!     loop {
+//!         index_op = index_op
+//!             .select("shortName", "2t")?
+//!             .select("typeOfLevel", "surface")?
+//!             .select("level", 0)?
+//!             .select("stepType", "instant")?;
+//!     }
+//! });
+//!
+//! let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
+//! let grib_path = Path::new("./data/iceland-surface.grib");
+//! let index = CodesIndex::new_from_keys(&keys)?.add_grib_file(grib_path);
+//! ```
+//!
+//! Each of the used functions is memory-safe when used sequentially, but when used as above memory bugs may appear.
+//! Safety issues arising from using `CodesIndex` also extend beyond this module. For example, in code above, if we
+//! created `CodesHandle` from `iceland-surface.grib` file, operations in that handle could also result in memory bugs.
+//! Thus, it is not possible to mark only some functions as `unsafe`, because use of `CodesIndex` *poisons* the whole crate.
+//!
 
 use crate::{
     codes_handle::HandleGenerator,
@@ -43,7 +72,8 @@ use crate::{
     },
 };
 use eccodes_sys::{codes_handle, codes_index};
-use std::{path::Path, ptr::null_mut};
+use std::{fmt::Debug, path::Path, ptr::null_mut};
+use tracing::instrument;
 
 #[derive(Debug)]
 #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
@@ -138,6 +168,7 @@ impl CodesIndex {
     ///
     /// This function will return [`CodesError::Internal`] if the index cannot be created.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
+    #[instrument(level = "trace")]
     pub fn new_from_keys(keys: &[&str]) -> Result<CodesIndex, CodesError> {
         let keys = keys.join(",");
 
@@ -173,7 +204,10 @@ impl CodesIndex {
     /// This function will return [`CodesError::Internal`] if the index file is not valid or
     /// the GRIB file is not present in the same relative path as during the index file creation.
     #[cfg_attr(docsrs, doc(cfg(feature = "experimental_index")))]
-    pub fn read_from_file<P: AsRef<Path>>(index_file_path: P) -> Result<CodesIndex, CodesError> {
+    #[instrument(level = "trace")]
+    pub fn read_from_file<P: AsRef<Path> + Debug>(
+        index_file_path: P,
+    ) -> Result<CodesIndex, CodesError> {
         let index_file_path: &Path = index_file_path.as_ref();
         let file_path = index_file_path.to_str().ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidData, "Path is not valid utf8")
@@ -271,6 +305,7 @@ impl HandleGenerator for CodesIndex {
 
 #[doc(hidden)]
 impl Drop for CodesIndex {
+    #[instrument(level = "trace")]
     fn drop(&mut self) {
         unsafe { codes_index_delete(self.pointer) }
         self.pointer = null_mut();
@@ -279,13 +314,13 @@ impl Drop for CodesIndex {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::{bail, Context, Result};
-    use fallible_streaming_iterator::FallibleStreamingIterator;
+    use anyhow::{Context, Result, bail};
+    use fallible_iterator::FallibleIterator;
 
     use crate::{
+        CodesError, CodesHandle,
         codes_index::{CodesIndex, Select},
         errors::CodesInternal,
-        CodesError, CodesHandle,
     };
     use std::path::Path;
     #[test]
@@ -307,15 +342,7 @@ mod tests {
     #[test]
     fn index_destructor() -> Result<()> {
         let keys = vec!["shortName", "typeOfLevel", "level", "stepType"];
-        let index = CodesIndex::new_from_keys(&keys)?;
-
-        drop(index);
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "codes_index_delete");
-            assert_eq!(captured_logs[0].level, log::Level::Trace);
-        });
+        let _index = CodesIndex::new_from_keys(&keys)?;
 
         Ok(())
     }
@@ -359,36 +386,19 @@ mod tests {
 
     #[test]
     fn handle_from_index_destructor() -> Result<()> {
-        testing_logger::setup();
-        {
-            let keys = vec!["typeOfLevel", "level"];
-            let index = CodesIndex::new_from_keys(&keys)?;
-            let grib_path = Path::new("./data/iceland-levels.grib");
-            let index = index
-                .add_grib_file(grib_path)?
-                .select("typeOfLevel", "isobaricInhPa")?
-                .select("level", 600)?;
+        let keys = vec!["typeOfLevel", "level"];
+        let index = CodesIndex::new_from_keys(&keys)?;
+        let grib_path = Path::new("./data/iceland-levels.grib");
+        let index = index
+            .add_grib_file(grib_path)?
+            .select("typeOfLevel", "isobaricInhPa")?
+            .select("level", 600)?;
 
-            let mut handle = CodesHandle::new_from_index(index)?;
-            let _ref_msg = handle.next()?.context("no message")?;
-        }
-
-        testing_logger::validate(|captured_logs| {
-            assert_eq!(captured_logs.len(), 2);
-
-            let expected_logs = vec![
-                ("codes_handle_delete", log::Level::Trace),
-                ("codes_index_delete", log::Level::Trace),
-            ];
-
-            captured_logs
-                .iter()
-                .zip(expected_logs)
-                .for_each(|(clg, elg)| {
-                    assert_eq!(clg.body, elg.0);
-                    assert_eq!(clg.level, elg.1)
-                });
-        });
+        let mut handle = CodesHandle::new_from_index(index)?;
+        let _ref_msg = handle
+            .ref_message_generator()
+            .next()?
+            .context("no message")?;
 
         Ok(())
     }

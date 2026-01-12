@@ -5,30 +5,23 @@ use std::ffi::CString;
 
 use eccodes_sys::codes_handle;
 
-use num_traits::FromPrimitive;
-
-use crate::{
-    errors::{CodesError, CodesInternal},
-    pointer_guard,
-};
+use crate::{errors::CodesError, intermediate_bindings::error_code_to_result, pointer_guard};
 
 pub unsafe fn codes_set_long(
     handle: *mut codes_handle,
     key: &str,
     value: i64,
 ) -> Result<(), CodesError> {
-    pointer_guard::non_null!(handle);
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
+        let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
+        error_code_to_result(error_code)?;
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        Ok(())
     }
-
-    Ok(())
 }
 
 pub unsafe fn codes_set_double(
@@ -36,18 +29,16 @@ pub unsafe fn codes_set_double(
     key: &str,
     value: f64,
 ) -> Result<(), CodesError> {
-    pointer_guard::non_null!(handle);
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
+        let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
+        error_code_to_result(error_code)?;
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        Ok(())
     }
-
-    Ok(())
 }
 
 pub unsafe fn codes_set_long_array(
@@ -55,25 +46,19 @@ pub unsafe fn codes_set_long_array(
     key: &str,
     values: &[i64],
 ) -> Result<(), CodesError> {
-    pointer_guard::non_null!(handle);
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let length = values.len();
+        let length = values.len();
 
-    let error_code = eccodes_sys::codes_set_long_array(
-        handle,
-        key.as_ptr(),
-        values.as_ptr().cast::<_>(),
-        length,
-    );
+        let error_code =
+            eccodes_sys::codes_set_long_array(handle, key.as_ptr(), values.as_ptr().cast(), length);
+        error_code_to_result(error_code)?;
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        Ok(())
     }
-
-    Ok(())
 }
 
 pub unsafe fn codes_set_double_array(
@@ -81,25 +66,23 @@ pub unsafe fn codes_set_double_array(
     key: &str,
     values: &[f64],
 ) -> Result<(), CodesError> {
-    pointer_guard::non_null!(handle);
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let length = values.len();
+        let length = values.len();
 
-    let error_code = eccodes_sys::codes_set_double_array(
-        handle,
-        key.as_ptr(),
-        values.as_ptr().cast::<_>(),
-        length,
-    );
+        let error_code = eccodes_sys::codes_set_double_array(
+            handle,
+            key.as_ptr(),
+            values.as_ptr().cast(),
+            length,
+        );
+        error_code_to_result(error_code)?;
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        Ok(())
     }
-
-    Ok(())
 }
 
 pub unsafe fn codes_set_string(
@@ -107,21 +90,19 @@ pub unsafe fn codes_set_string(
     key: &str,
     value: &str,
 ) -> Result<(), CodesError> {
-    pointer_guard::non_null!(handle);
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
-    let mut length = value.len();
-    let value = CString::new(value).unwrap();
+        let key = CString::new(key).unwrap();
+        let mut length = value.len();
+        let value = CString::new(value).unwrap();
 
-    let error_code =
-        eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &raw mut length);
+        let error_code =
+            eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &raw mut length);
+        error_code_to_result(error_code)?;
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        Ok(())
     }
-
-    Ok(())
 }
 
 pub unsafe fn codes_set_bytes(
@@ -129,23 +110,21 @@ pub unsafe fn codes_set_bytes(
     key: &str,
     values: &[u8],
 ) -> Result<(), CodesError> {
-    pointer_guard::non_null!(handle);
+    unsafe {
+        pointer_guard::non_null!(handle);
 
-    let key = CString::new(key).unwrap();
+        let key = CString::new(key).unwrap();
 
-    let mut length = values.len();
+        let mut length = values.len();
 
-    let error_code = eccodes_sys::codes_set_bytes(
-        handle,
-        key.as_ptr(),
-        values.as_ptr().cast::<_>(),
-        &raw mut length,
-    );
+        let error_code = eccodes_sys::codes_set_bytes(
+            handle,
+            key.as_ptr(),
+            values.as_ptr().cast(),
+            &raw mut length,
+        );
+        error_code_to_result(error_code)?;
 
-    if error_code != 0 {
-        let err: CodesInternal = FromPrimitive::from_i32(error_code).unwrap();
-        return Err(err.into());
+        Ok(())
     }
-
-    Ok(())
 }

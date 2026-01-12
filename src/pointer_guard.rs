@@ -1,6 +1,7 @@
 macro_rules! non_null {
     ($ptr:expr) => {
         if $ptr.is_null() {
+            debug_assert!(false, "Null pointer encountered");
             return Err(CodesError::NullPtr);
         }
     };
@@ -10,10 +11,10 @@ pub(crate) use non_null;
 #[cfg(test)]
 mod tests {
     use crate::errors::CodesError;
-    use crate::pointer_guard::non_null;
     use std::ptr;
 
     #[test]
+    #[should_panic = "Null pointer encountered"]
     fn test_non_null() {
         let ptr: *mut i32 = ptr::null_mut();
         let result = simulated_function(ptr);
@@ -24,14 +25,14 @@ mod tests {
 
         match result {
             CodesError::NullPtr => (),
-            _ => panic!("Incorrect error type: {:?}", result),
+            _ => panic!("Incorrect error type: {result:?}"),
         }
     }
 
     #[test]
     fn test_non_null_ok() {
         let mut x = 42_i32;
-        let ptr = &mut x as *mut i32;
+        let ptr = &raw mut x;
 
         let result = simulated_function(ptr);
 
