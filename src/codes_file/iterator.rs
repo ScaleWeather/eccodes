@@ -44,7 +44,7 @@ pub struct RefMessageIter<'a, D: Debug> {
 
 impl<D: Debug> CodesFile<D> {
     /// Generates [`RefMessageIter`] that allows to access messages as references to their parent file.
-    pub fn ref_message_iter(&mut self) -> RefMessageIter<'_, D> {
+    pub const fn ref_message_iter(&mut self) -> RefMessageIter<'_, D> {
         RefMessageIter { codes_file: self }
     }
 }

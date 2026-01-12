@@ -67,11 +67,11 @@ pub struct CodesMessage<P: Debug> {
 // This is a little unintuitive, but we use `()` here to not unnecessarily pollute
 // CodesMessage and derived types with generics, because `PhantomData` is needed
 // only for lifetime restriction and we tightly control how `CodesMessage` is created.
-#[derive(Debug, Hash, PartialEq, PartialOrd)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd)]
 #[doc(hidden)]
 pub struct RefParent<'ch>(PhantomData<&'ch ()>);
 
-#[derive(Debug, Hash, PartialEq, PartialOrd)]
+#[derive(Debug, Hash, PartialEq, Eq, PartialOrd)]
 #[doc(hidden)]
 pub struct BufParent();
 
@@ -97,7 +97,7 @@ unsafe impl Send for BufMessage {}
 unsafe impl Sync for BufMessage {}
 
 impl RefMessage<'_> {
-    pub(crate) fn new(handle: *mut codes_handle) -> Self {
+    pub(crate) const fn new(handle: *mut codes_handle) -> Self {
         RefMessage {
             _parent: RefParent(PhantomData),
             message_handle: handle,
@@ -117,7 +117,7 @@ impl<D: Debug> ArcMessage<D> {
 }
 
 impl BufMessage {
-    pub(crate) fn new(handle: *mut codes_handle) -> Self {
+    pub(crate) const fn new(handle: *mut codes_handle) -> Self {
         BufMessage {
             _parent: BufParent(),
             message_handle: handle,

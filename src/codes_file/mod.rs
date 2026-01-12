@@ -26,7 +26,7 @@ mod iterator;
 ///
 /// Destructor for this structure does not panic, but some internal functions may rarely fail
 /// leading to bugs. Errors encountered in the destructor are logged with [`tracing`].
-/// 
+///
 /// To access GRIB messages the ecCodes library uses a method similar to a C-style iterator.
 /// It digests the `* FILE` multiple times, each time returning the `*mut codes_handle`
 /// to a message inside the file. Therefore in this crate access messages from `CodesFile`
@@ -69,9 +69,9 @@ pub enum ProductKind {
 
 impl CodesFile<File> {
     /// Opens file at given [`Path`] as selected [`ProductKind`] and contructs `CodesFile`.
-    /// 
+    ///
     /// ## Example
-    /// 
+    ///
     /// ```
     /// # use eccodes::{ProductKind, CodesFile};
     /// # use std::path::Path;
@@ -80,24 +80,24 @@ impl CodesFile<File> {
     ///  # Ok(())
     ///  # }
     /// ```
-    /// 
+    ///
     /// The function creates [`fs::File`](std::fs::File) from provided path and  utilises
     /// [`fdopen()`](https://man7.org/linux/man-pages/man3/fdopen.3.html)
     /// to associate [`io::RawFd`](`std::os::unix::io::RawFd`)
     /// with a stream represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer.
-    /// 
+    ///
     /// The constructor takes as argument a [`path`](Path) instead of [`File`]
     /// to ensure that `fdopen()` uses the same mode as [`File`].
-    /// 
+    ///
     ///  The file stream and [`File`] are safely closed when `CodesFile` is dropped.
-    /// 
+    ///
     /// ## Errors
     /// Returns [`CodesError::FileHandlingInterrupted`] with [`io::Error`](std::io::Error)
     /// when the file cannot be opened.
-    /// 
+    ///
     /// Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
     /// when the stream cannot be created from the file descriptor.
-    /// 
+    ///
     /// Returns [`CodesError::Internal`] with error code
     /// when internal [`codes_handle`] cannot be created.
     #[instrument(level = "trace")]
@@ -117,9 +117,9 @@ impl CodesFile<File> {
 }
 impl CodesFile<Vec<u8>> {
     /// Opens data in provided buffer as selected [`ProductKind`] and contructs `CodesFile`.
-    /// 
+    ///
     /// ## Example
-    /// 
+    ///
     /// ```
     /// # async fn run() -> anyhow::Result<()> {
     /// # use eccodes::{ProductKind, CodesFile};
@@ -131,31 +131,31 @@ impl CodesFile<Vec<u8>> {
     ///         .bytes()
     ///         .await?
     ///         .to_vec();
-    /// 
+    ///
     /// let handle = CodesFile::new_from_memory(file_data, product_kind)?;
     ///  # Ok(())
     /// # }
     /// ```
-    /// 
+    ///
     /// The function associates data in memory with a stream
     /// represented by [`libc::FILE`](https://docs.rs/libc/0.2.101/libc/enum.FILE.html) pointer
     /// using [`fmemopen()`](https://man7.org/linux/man-pages/man3/fmemopen.3.html).
-    /// 
+    ///
     /// The constructor takes full ownership of the data inside buffer,
     /// which is safely dropped during the [`CodesFile`] drop.
-    /// 
+    ///
     /// ## Errors
     /// Returns [`CodesError::LibcNonZero`] with [`errno`](errno::Errno) information
     /// when the file stream cannot be created.
-    /// 
+    ///
     /// Returns [`CodesError::Internal`] with error code
     /// when internal [`codes_handle`] cannot be created.
     #[instrument(level = "trace")]
     pub fn new_from_memory(
-        file_data: Vec<u8>,
+        mut file_data: Vec<u8>,
         product_kind: ProductKind,
     ) -> Result<Self, CodesError> {
-        let file_pointer = open_with_fmemopen(&file_data)?;
+        let file_pointer = open_with_fmemopen(&mut file_data)?;
 
         Ok(Self {
             _data: file_data,
@@ -179,8 +179,8 @@ fn open_with_fdopen(file: &File) -> Result<*mut FILE, CodesError> {
 }
 
 #[instrument(level = "trace")]
-fn open_with_fmemopen(file_data: &[u8]) -> Result<*mut FILE, CodesError> {
-    let file_data_ptr = file_data.as_ptr() as *mut c_void;
+fn open_with_fmemopen(file_data: &mut [u8]) -> Result<*mut FILE, CodesError> {
+    let file_data_ptr = file_data.as_mut_ptr().cast::<c_void>();
     pointer_guard::non_null!(file_data_ptr);
 
     let file_ptr;

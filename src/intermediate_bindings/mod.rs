@@ -25,23 +25,23 @@ pub enum NativeKeyType {
     Missing = eccodes_sys::CODES_TYPE_MISSING as isize,
 }
 
-pub(crate) use codes_get::{
+pub use codes_get::{
     codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
     codes_get_long_array, codes_get_message, codes_get_native_type, codes_get_size,
     codes_get_string,
 };
-pub(crate) use codes_handle::{
+pub use codes_handle::{
     codes_handle_clone, codes_handle_delete, codes_handle_new_from_file,
 };
-pub(crate) use codes_keys::{
+pub use codes_keys::{
     codes_keys_iterator_delete, codes_keys_iterator_get_name, codes_keys_iterator_new,
     codes_keys_iterator_next,
 };
-pub(crate) use codes_set::{
+pub use codes_set::{
     codes_set_bytes, codes_set_double, codes_set_double_array, codes_set_long,
     codes_set_long_array, codes_set_string,
 };
-pub(crate) use grib_nearest::{
+pub use grib_nearest::{
     codes_grib_nearest_delete, codes_grib_nearest_find, codes_grib_nearest_new,
 };
 use num_traits::FromPrimitive;
