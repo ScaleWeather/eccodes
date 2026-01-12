@@ -46,6 +46,7 @@ jobs:
           cargo clean
       - name: Check release build
         run: |
+          cargo build --release --no-default-features
           cargo build --release --features "ndarray"
       - name: Check with clippy
         run: |
@@ -57,7 +58,6 @@ jobs:
       - name: Benchmark with criterion
         run: |
           cargo criterion
-          cargo clean
 
   build-macos:
     name: Build on MacOS
@@ -75,7 +75,8 @@ jobs:
           cargo clean
       - name: Check release build
         run: |
-          cargo build --release --features --features "ndarray"
+          cargo build --release --no-default-features
+          cargo build --release --features "ndarray"
       - name: Check with clippy
         run: |
           cargo clippy --features "ndarray" -- -D warnings
@@ -86,4 +87,3 @@ jobs:
       - name: Benchmark with criterion
         run: |
           cargo criterion
-          cargo clean

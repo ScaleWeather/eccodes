@@ -8,6 +8,7 @@ mod ndarray;
 mod read;
 mod write;
 
+#[cfg(feature = "ndarray")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
 pub use ndarray::RustyCodesMessage;
 pub use read::{DynamicKeyType, KeyPropertiesRead, KeyRead};
