@@ -5,7 +5,7 @@
 //!These bindings convert Rust types to correct C types
 //!correctly represent data as pointers and utilize some other functions
 //!to make ecCodes usage safer and easier,
-//!but they are unsafe as they operate on raw `codes_handle`.  
+//!but they are unsafe as they operate on raw `codes_handle`.
 
 mod codes_get;
 mod codes_handle;
@@ -26,8 +26,8 @@ pub enum NativeKeyType {
 }
 
 pub use codes_get::{
-    codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
-    codes_get_long_array, codes_get_message, codes_get_native_type, codes_get_size,
+    codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_float_array,
+    codes_get_long, codes_get_long_array, codes_get_message, codes_get_native_type, codes_get_size,
     codes_get_string,
 };
 pub use codes_handle::{codes_handle_clone, codes_handle_delete, codes_handle_new_from_file};

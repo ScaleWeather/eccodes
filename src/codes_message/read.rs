@@ -4,8 +4,9 @@ use crate::{
     codes_message::CodesMessage,
     errors::CodesError,
     intermediate_bindings::{
-        NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_long,
-        codes_get_long_array, codes_get_native_type, codes_get_size, codes_get_string,
+        NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array,
+        codes_get_float_array, codes_get_long, codes_get_long_array, codes_get_native_type,
+        codes_get_size, codes_get_string,
     },
 };
 
@@ -25,7 +26,7 @@ pub trait KeyRead<T> {
     ///  let mut file = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
     ///  let message = file.ref_message_iter().next()?.context("no message")?;
     ///  let short_name: String = message.read_key("shortName")?;
-    ///  
+    ///
     ///  assert_eq!(short_name, "msl");
     ///  # Ok(())
     ///  # }
@@ -113,6 +114,13 @@ macro_rules! key_size_check {
 
 impl_key_read!(scalar, codes_get_long, NativeKeyType::Long, i64);
 impl_key_read!(scalar, codes_get_double, NativeKeyType::Double, f64);
+// Double-typed ecCodes arrays can be decoded directly into f32.
+impl_key_read!(
+    array,
+    codes_get_float_array,
+    NativeKeyType::Double,
+    Vec<f32>
+);
 impl_key_read!(array, codes_get_string, NativeKeyType::Str, String);
 impl_key_read!(array, codes_get_bytes, NativeKeyType::Bytes, Vec<u8>);
 impl_key_read!(array, codes_get_long_array, NativeKeyType::Long, Vec<i64>);
@@ -173,7 +181,7 @@ impl<P: Debug> CodesMessage<P> {
     ///  let message = file.ref_message_iter().next()?.context("no message")?;
     ///  let message_short_name = message.read_key_dynamic("shortName")?;
     ///  let expected_short_name = DynamicKeyType::Str("msl".to_string());
-    ///  
+    ///
     ///  assert_eq!(message_short_name, expected_short_name);
     ///  # Ok(())
     ///  # }
