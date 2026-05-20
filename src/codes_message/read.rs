@@ -26,7 +26,7 @@ pub trait KeyRead<T> {
     ///  let mut file = CodesFile::new_from_file("./data/iceland.grib", ProductKind::GRIB)?;
     ///  let message = file.ref_message_iter().next()?.context("no message")?;
     ///  let short_name: String = message.read_key("shortName")?;
-    ///
+    ///  
     ///  assert_eq!(short_name, "msl");
     ///  # Ok(())
     ///  # }
@@ -181,7 +181,7 @@ impl<P: Debug> CodesMessage<P> {
     ///  let message = file.ref_message_iter().next()?.context("no message")?;
     ///  let message_short_name = message.read_key_dynamic("shortName")?;
     ///  let expected_short_name = DynamicKeyType::Str("msl".to_string());
-    ///
+    ///  
     ///  assert_eq!(message_short_name, expected_short_name);
     ///  # Ok(())
     ///  # }

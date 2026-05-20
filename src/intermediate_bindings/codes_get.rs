@@ -253,7 +253,7 @@ pub unsafe fn codes_get_message(
 
         debug_assert!(
             buffer_size == message_size,
-            "Buffer and message sizes ar not equal in codes_get_message!
+            "Buffer and message sizes ar not equal in codes_get_message! 
         Please report this panic on Github."
         );
 
