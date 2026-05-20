@@ -5,7 +5,7 @@
 //!These bindings convert Rust types to correct C types
 //!correctly represent data as pointers and utilize some other functions
 //!to make ecCodes usage safer and easier,
-//!but they are unsafe as they operate on raw `codes_handle`.
+//!but they are unsafe as they operate on raw `codes_handle`.  
 
 mod codes_get;
 mod codes_handle;
