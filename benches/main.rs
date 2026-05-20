@@ -1,6 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use eccodes::FallibleIterator;
 use eccodes::codes_file::{CodesFile, ProductKind};
+use eccodes::{FallibleIterator, KeyRead};
 use std::hint::black_box;
 use std::path::Path;
 
@@ -26,6 +26,14 @@ pub fn key_reading(c: &mut Criterion) {
 
     c.bench_function("double array reading", |b| {
         b.iter(|| msg.read_key_dynamic(black_box("values")).unwrap())
+    });
+
+    c.bench_function("static double array reading", |b| {
+        b.iter(|| -> Vec<f64> { msg.read_key(black_box("values")).unwrap() })
+    });
+
+    c.bench_function("static float array reading", |b| {
+        b.iter(|| -> Vec<f32> { msg.read_key(black_box("values")).unwrap() })
     });
 
     c.bench_function("string reading", |b| {
