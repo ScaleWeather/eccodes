@@ -114,16 +114,15 @@ macro_rules! key_size_check {
 
 impl_key_read!(scalar, codes_get_long, NativeKeyType::Long, i64);
 impl_key_read!(scalar, codes_get_double, NativeKeyType::Double, f64);
-// Double-typed ecCodes arrays can be decoded directly into f32.
+impl_key_read!(array, codes_get_string, NativeKeyType::Str, String);
+impl_key_read!(array, codes_get_bytes, NativeKeyType::Bytes, Vec<u8>);
+impl_key_read!(array, codes_get_long_array, NativeKeyType::Long, Vec<i64>);
 impl_key_read!(
     array,
     codes_get_float_array,
     NativeKeyType::Double,
     Vec<f32>
 );
-impl_key_read!(array, codes_get_string, NativeKeyType::Str, String);
-impl_key_read!(array, codes_get_bytes, NativeKeyType::Bytes, Vec<u8>);
-impl_key_read!(array, codes_get_long_array, NativeKeyType::Long, Vec<i64>);
 impl_key_read!(
     array,
     codes_get_double_array,
