@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use anyhow::Context;
 use eccodes::{CodesFile, FallibleIterator, ProductKind};
 fn main() -> anyhow::Result<()> {

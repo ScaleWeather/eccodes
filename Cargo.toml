@@ -53,3 +53,34 @@ features = ["docs", "ndarray"]
 [[bench]]
 name = "main"
 harness = false
+
+[lints.rust]
+warnings = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+
+unwrap_used = "deny"
+expect_used = "deny"
+todo = "deny"
+indexing_slicing = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+panic = "deny"
+exit = "deny"
+as_conversions = "deny"
+
+arithmetic_side_effects = "deny"
+unchecked_time_subtraction = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+dbg_macro = "deny"
+unnecessary_self_imports = "deny"
+absolute_paths = "deny"
+doc_lazy_continuation = "deny"
+
+multiple_crate_versions = "allow"

@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 use criterion::{Criterion, criterion_group, criterion_main};
 use eccodes::codes_file::{CodesFile, ProductKind};
 use eccodes::{FallibleIterator, KeyRead};
