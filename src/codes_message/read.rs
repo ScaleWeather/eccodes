@@ -245,6 +245,49 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    fn static_reading() -> Result<()> {
+        let file_path = Path::new("./data/iceland.grib");
+        let product_kind = ProductKind::GRIB;
+
+        let mut handle = CodesFile::new_from_file(file_path, product_kind)?;
+        let current_message = handle
+            .ref_message_iter()
+            .next()?
+            .context("Message not some")?;
+
+        assert_eq!(
+            KeyRead::<i64>::read_key(&current_message, "dataDate")?,
+            20210601
+        );
+        assert_eq!(
+            KeyRead::<f32>::read_key(&current_message, "jDirectionIncrementInDegrees")?,
+            0.25
+        );
+        assert_eq!(
+            KeyRead::<f64>::read_key(&current_message, "jDirectionIncrementInDegrees")?,
+            0.25
+        );
+        assert_eq!(
+            KeyRead::<String>::read_key(&current_message, "name")?,
+            "Mean sea level pressure"
+        );
+        assert_eq!(
+            KeyRead::<Vec<i64>>::read_key(&current_message, "numberOfPointsAlongAParallel")?,
+            vec![49]
+        );
+        assert_eq!(
+            KeyRead::<Vec<f32>>::read_key(&current_message, "jDirectionIncrementInDegrees")?,
+            vec![0.25]
+        );
+        assert_eq!(
+            KeyRead::<Vec<f64>>::read_key(&current_message, "jDirectionIncrementInDegrees")?,
+            vec![0.25]
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn key_reader() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
@@ -369,8 +412,8 @@ mod tests {
     }
 
     #[test]
-    // checks if we can read keys that are used in benchmarks
-    fn benchmark_keys() -> Result<()> {
+    // Test keys that have caused problems in the past
+    fn challenging_keys() -> Result<()> {
         let file_path = Path::new("./data/iceland.grib");
         let product_kind = ProductKind::GRIB;
 
@@ -381,12 +424,11 @@ mod tests {
             .next()?
             .context("Message not some")?;
 
-        let _ = msg.read_key_dynamic("dataDate")?;
-        let _ = msg.read_key_dynamic("jDirectionIncrementInDegrees")?;
-        let _ = msg.read_key_dynamic("values")?;
-        let _ = msg.read_key_dynamic("name")?;
+        // key of bytes type
         let _ = msg.read_key_dynamic("section1Padding")?;
+        // missing nul-byte termination
         let _ = msg.read_key_dynamic("experimentVersionNumber")?;
+        // differing name on different platforms
         let _ = msg
             .read_key_dynamic("zero")
             .unwrap_or_else(|_| msg.read_key_dynamic("zeros").unwrap());
