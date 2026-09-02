@@ -15,7 +15,7 @@ pub unsafe fn codes_set_long(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let error_code = eccodes_sys::codes_set_long(handle, key.as_ptr(), value);
         error_code_to_result(error_code)?;
@@ -32,7 +32,7 @@ pub unsafe fn codes_set_double(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let error_code = eccodes_sys::codes_set_double(handle, key.as_ptr(), value);
         error_code_to_result(error_code)?;
@@ -49,7 +49,7 @@ pub unsafe fn codes_set_long_array(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let length = values.len();
 
@@ -69,7 +69,7 @@ pub unsafe fn codes_set_double_array(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let length = values.len();
 
@@ -93,9 +93,9 @@ pub unsafe fn codes_set_string(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
         let mut length = value.len();
-        let value = CString::new(value).unwrap();
+        let value = CString::new(value)?;
 
         let error_code =
             eccodes_sys::codes_set_string(handle, key.as_ptr(), value.as_ptr(), &raw mut length);
@@ -113,7 +113,7 @@ pub unsafe fn codes_set_bytes(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let mut length = values.len();
 

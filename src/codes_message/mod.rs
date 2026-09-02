@@ -88,6 +88,10 @@ pub type RefMessage<'ch> = CodesMessage<RefParent<'ch>>;
 /// [`CodesMessage`] that can be moved and shared across threads.
 pub type ArcMessage<D> = CodesMessage<ArcParent<D>>;
 
+#[allow(
+    clippy::non_send_fields_in_send_ty,
+    reason = "Safety is ensured on the C side"
+)]
 unsafe impl<D: Debug> Send for ArcMessage<D> {}
 unsafe impl<D: Debug> Sync for ArcMessage<D> {}
 

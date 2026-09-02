@@ -18,7 +18,7 @@ pub unsafe fn codes_get_native_type(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
         let mut key_type: i32 = 0;
 
         let error_code =
@@ -33,7 +33,7 @@ pub unsafe fn codes_get_size(handle: *const codes_handle, key: &str) -> Result<u
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
         let mut key_size: usize = 0;
 
         let error_code = eccodes_sys::codes_get_size(handle, key.as_ptr(), &raw mut key_size);
@@ -47,10 +47,24 @@ pub unsafe fn codes_get_long(handle: *const codes_handle, key: &str) -> Result<i
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
         let mut key_value: i64 = 0;
 
         let error_code = eccodes_sys::codes_get_long(handle, key.as_ptr(), &raw mut key_value);
+        error_code_to_result(error_code)?;
+
+        Ok(key_value)
+    }
+}
+
+pub unsafe fn codes_get_float(handle: *const codes_handle, key: &str) -> Result<f32, CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
+
+        let key = CString::new(key)?;
+        let mut key_value: f32 = 0.0;
+
+        let error_code = eccodes_sys::codes_get_float(handle, key.as_ptr(), &raw mut key_value);
         error_code_to_result(error_code)?;
 
         Ok(key_value)
@@ -61,37 +75,13 @@ pub unsafe fn codes_get_double(handle: *const codes_handle, key: &str) -> Result
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
         let mut key_value: f64 = 0.0;
 
         let error_code = eccodes_sys::codes_get_double(handle, key.as_ptr(), &raw mut key_value);
         error_code_to_result(error_code)?;
 
         Ok(key_value)
-    }
-}
-
-pub unsafe fn codes_get_double_array(
-    handle: *const codes_handle,
-    key: &str,
-) -> Result<Vec<f64>, CodesError> {
-    unsafe {
-        pointer_guard::non_null!(handle);
-
-        let mut key_size = codes_get_size(handle, key)?;
-        let key = CString::new(key).unwrap();
-
-        let mut key_values: Vec<f64> = vec![0.0; key_size];
-
-        let error_code = eccodes_sys::codes_get_double_array(
-            handle,
-            key.as_ptr(),
-            key_values.as_mut_ptr().cast(),
-            &raw mut key_size,
-        );
-        error_code_to_result(error_code)?;
-
-        Ok(key_values)
     }
 }
 
@@ -103,11 +93,35 @@ pub unsafe fn codes_get_float_array(
         pointer_guard::non_null!(handle);
 
         let mut key_size = codes_get_size(handle, key)?;
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let mut key_values: Vec<f32> = vec![0.0; key_size];
 
         let error_code = eccodes_sys::codes_get_float_array(
+            handle,
+            key.as_ptr(),
+            key_values.as_mut_ptr().cast(),
+            &raw mut key_size,
+        );
+        error_code_to_result(error_code)?;
+
+        Ok(key_values)
+    }
+}
+
+pub unsafe fn codes_get_double_array(
+    handle: *const codes_handle,
+    key: &str,
+) -> Result<Vec<f64>, CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
+
+        let mut key_size = codes_get_size(handle, key)?;
+        let key = CString::new(key)?;
+
+        let mut key_values: Vec<f64> = vec![0.0; key_size];
+
+        let error_code = eccodes_sys::codes_get_double_array(
             handle,
             key.as_ptr(),
             key_values.as_mut_ptr().cast(),
@@ -127,7 +141,7 @@ pub unsafe fn codes_get_long_array(
         pointer_guard::non_null!(handle);
 
         let mut key_size = codes_get_size(handle, key)?;
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let mut key_values: Vec<i64> = vec![0; key_size];
 
@@ -150,7 +164,7 @@ pub unsafe fn codes_get_length(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
         let mut key_length: usize = 0;
 
         let error_code = eccodes_sys::codes_get_length(handle, key.as_ptr(), &raw mut key_length);
@@ -168,7 +182,7 @@ pub unsafe fn codes_get_string(
         pointer_guard::non_null!(handle);
 
         let mut key_length = codes_get_length(handle, key)?;
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let mut key_message: Vec<u8> = vec![0; key_length];
 
@@ -204,7 +218,7 @@ pub unsafe fn codes_get_bytes(
         pointer_guard::non_null!(handle);
 
         let mut key_size = codes_get_length(handle, key)?;
-        let key = CString::new(key).unwrap();
+        let key = CString::new(key)?;
 
         let mut buffer: Vec<u8> = vec![0; key_size];
 

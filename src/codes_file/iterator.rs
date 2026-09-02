@@ -112,10 +112,13 @@ impl<D: Debug> FallibleIterator for ArcMessageIter<D> {
     /// This method internally uses a Mutex to access `CodesFile`, which can panic when poisoned,
     /// but thers is no path in which you can get to the state of poisoned mutex, while still able to access this method.
     fn next(&mut self) -> Result<Option<Self::Item>, Self::Error> {
+        #[allow(
+            clippy::expect_used,
+            reason = "This mutex can be poisoned only when thread that holds ArcMessageIter panics, which would make using the mutex impossible"
+        )]
         let eccodes_handle = self
             .codes_file
             .lock()
-            // This mutex can be poisoned only when thread that holds ArcMessageIter panics, which would make using the mutex impossible")
             .expect("The mutex inside ArcMessageIter got poisoned")
             .generate_codes_handle()?;
 

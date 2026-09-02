@@ -18,7 +18,7 @@ pub unsafe fn codes_keys_iterator_new(
     unsafe {
         pointer_guard::non_null!(handle);
 
-        let namespace = CString::new(namespace).unwrap();
+        let namespace = CString::new(namespace)?;
 
         let kiter =
             eccodes_sys::codes_keys_iterator_new(handle, u64::from(flags), namespace.as_ptr());

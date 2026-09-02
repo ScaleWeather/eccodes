@@ -1,9 +1,3 @@
-#![warn(clippy::pedantic)]
-#![allow(clippy::cast_possible_wrap)]
-#![warn(missing_docs)]
-#![warn(clippy::cargo)]
-#![warn(clippy::perf)]
-#![warn(clippy::doc_lazy_continuation)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! # Unofficial high-level safe Rust bindings to ecCodes library

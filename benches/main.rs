@@ -1,6 +1,7 @@
+#![allow(missing_docs)]
 use criterion::{Criterion, criterion_group, criterion_main};
-use eccodes::{FallibleIterator, KeyRead};
 use eccodes::codes_file::{CodesFile, ProductKind};
+use eccodes::{FallibleIterator, KeyRead};
 use std::hint::black_box;
 use std::path::Path;
 
@@ -14,48 +15,40 @@ pub fn key_reading(c: &mut Criterion) {
     let msg = handle.ref_message_iter().next().unwrap().unwrap();
 
     c.bench_function("long reading", |b| {
-        b.iter(|| msg.read_key_dynamic(black_box("dataDate")).unwrap())
+        b.iter(|| -> i64 { msg.read_key(black_box("dataDate")).unwrap() })
+    });
+
+    c.bench_function("float reading", |b| {
+        b.iter(|| -> f32 {
+            msg.read_key(black_box("jDirectionIncrementInDegrees"))
+                .unwrap()
+        })
     });
 
     c.bench_function("double reading", |b| {
-        b.iter(|| {
-            msg.read_key_dynamic(black_box("jDirectionIncrementInDegrees"))
+        b.iter(|| -> f64 {
+            msg.read_key(black_box("jDirectionIncrementInDegrees"))
                 .unwrap()
         })
-    });
-
-    c.bench_function("double array reading", |b| {
-        b.iter(|| msg.read_key_dynamic(black_box("values")).unwrap())
-    });
-
-    c.bench_function("static double array reading", |b| {
-        b.iter(|| -> Vec<f64> { msg.read_key(black_box("values")).unwrap() })
-    });
-
-    c.bench_function("static float array reading", |b| {
-        b.iter(|| -> Vec<f32> { msg.read_key(black_box("values")).unwrap() })
     });
 
     c.bench_function("string reading", |b| {
-        b.iter(|| msg.read_key_dynamic(black_box("name")).unwrap())
+        b.iter(|| -> String { msg.read_key(black_box("name")).unwrap() })
     });
 
-    c.bench_function("bytes reading", |b| {
-        b.iter(|| msg.read_key_dynamic(black_box("section1Padding")).unwrap())
-    });
-
-    c.bench_function("missing nul-byte termination reading", |b| {
-        b.iter(|| {
-            msg.read_key_dynamic(black_box("experimentVersionNumber"))
+    c.bench_function("long array reading", |b| {
+        b.iter(|| -> Vec<i64> {
+            msg.read_key(black_box("numberOfPointsAlongAParallel"))
                 .unwrap()
         })
     });
 
-    c.bench_function("problematic key reading", |b| {
-        b.iter(|| {
-            msg.read_key_dynamic(black_box("zero"))
-                .unwrap_or_else(|_| msg.read_key_dynamic(black_box("zeros")).unwrap())
-        })
+    c.bench_function("float array reading", |b| {
+        b.iter(|| -> Vec<f32> { msg.read_key(black_box("values")).unwrap() })
+    });
+
+    c.bench_function("double array reading", |b| {
+        b.iter(|| -> Vec<f64> { msg.read_key(black_box("values")).unwrap() })
     });
 }
 

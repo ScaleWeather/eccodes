@@ -2,7 +2,7 @@
 name = "eccodes"
 description = "Unofficial high-level Rust bindings of the latest ecCodes release"
 repository = "https://github.com/ScaleWeather/eccodes"
-version = "0.14.0"
+version = "0.15.0"
 readme = "README.md"
 authors = ["Jakub Lewandowski <scaleweather@gmail.com>"]
 keywords = ["eccodes", "grib", "bufr", "meteorology", "weather"]
@@ -23,7 +23,7 @@ eccodes-sys = { version = "0.7.0", default-features = false }
 libc = { version = "0.2", default-features = false }
 thiserror = { version = "2.0", default-features = false }
 errno = { version = "0.3", default-features = false }
-num-derive = { version = "0.4", default-features = false }
+num-derive = { version = "0.5", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 fallible-iterator = { version = "0.3", default-features = false }
 ndarray = { version = "0.17", default-features = false, optional = true, features = [
@@ -38,7 +38,7 @@ tracing = { version = "0.1", default-features = false, features = [
 [dev-dependencies]
 reqwest = { version = "0.13", features = ["rustls"] }
 criterion = "0.8"
-rand = "0.9"
+rand = "0.10"
 anyhow = { version = "1.0", features = ["backtrace"] }
 float-cmp = "0.10"
 
@@ -53,3 +53,35 @@ features = ["docs", "ndarray"]
 [[bench]]
 name = "main"
 harness = false
+
+[lints.rust]
+warnings = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+
+unwrap_used = "deny"
+expect_used = "deny"
+todo = "deny"
+indexing_slicing = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+panic = "deny"
+exit = "deny"
+
+arithmetic_side_effects = "deny"
+unchecked_time_subtraction = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+dbg_macro = "deny"
+unnecessary_self_imports = "deny"
+absolute_paths = "deny"
+doc_lazy_continuation = "deny"
+
+as_conversions = "allow"
+multiple_crate_versions = "allow"
+cast_possible_wrap = "allow"
