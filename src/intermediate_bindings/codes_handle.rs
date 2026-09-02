@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(clippy::module_name_repetitions)]
 
-use std::ptr::{self};
+use std::ptr;
 
 use eccodes_sys::{codes_context, codes_handle};
 use libc::FILE;

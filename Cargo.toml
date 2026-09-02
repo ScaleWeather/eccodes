@@ -84,3 +84,4 @@ absolute_paths = "deny"
 doc_lazy_continuation = "deny"
 
 multiple_crate_versions = "allow"
+cast_possible_wrap = "allow"

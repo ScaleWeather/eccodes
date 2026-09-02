@@ -7,6 +7,7 @@
 
 use errno::Errno;
 use num_derive::FromPrimitive;
+use std::{ffi, io, num, str};
 use thiserror::Error;
 
 /// Errors returned by the all functions in the crate.
@@ -27,16 +28,20 @@ pub enum CodesError {
     ///Returned when there is an issue while handlng the file.
     ///Check the [`std::fs`] documentation why and when this error can occur.
     #[error("Error occured while opening the file: {0}")]
-    FileHandlingInterrupted(#[from] std::io::Error),
+    FileHandlingInterrupted(#[from] io::Error),
 
     ///Returned when the string cannot be parsed as valid UTF8 string.
     #[error("Cannot parse string as UTF8: {0}")]
-    CstrUTF8(#[from] std::str::Utf8Error),
+    CstrUTF8(#[from] str::Utf8Error),
 
-    ///Returned when the C-string returned by ecCodes library cannot be converted
+    ///Returned when the string cannot be converted into a `CString` before calling the FFI.
+    #[error("Cannot parse string as CString: {0}")]
+    CStringNul(#[from] ffi::NulError),
+
+    ///Returned when the `Cstring` returned by ecCodes library cannot be converted
     ///into a Rust-string.
     #[error("String returned by ecCodes is not nul terminated: {0}")]
-    NulChar(#[from] std::ffi::FromBytesWithNulError),
+    NulChar(#[from] ffi::FromBytesWithNulError),
 
     ///Returned when the requested key is not present in the message.
     ///Similar to [`CodesInternal::CodesNotFound`] and [`CodesInternal::CodesMissingKey`].
@@ -117,7 +122,7 @@ pub enum MessageNdarrayError {
     /// This error can occur when casting types of shape fails
     /// on 32-bit systems or for very large arrays.
     #[error(transparent)]
-    IntCasting(#[from] std::num::TryFromIntError),
+    IntCasting(#[from] num::TryFromIntError),
 }
 
 ///Errors returned by internal ecCodes library functions.
