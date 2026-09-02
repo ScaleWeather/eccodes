@@ -84,8 +84,17 @@ pub enum CodesError {
     /// Returned when function in `message_ndarray` module cannot convert
     /// the message to ndarray. Check [`MessageNdarrayError`] for more details.
     #[cfg(feature = "ndarray")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
     #[error("error occured while converting CodesMessage to ndarray {0}")]
     NdarrayConvert(#[from] MessageNdarrayError),
+
+    /// Returned when the message values array count of elements exceeds `usize::MAX`
+    #[cfg(feature = "ndarray")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
+    #[error(
+        "CodesMessage contains to much elements in the values array to be converted into ndarray"
+    )]
+    TooMuchValues,
 
     /// eccodes functions return errors as error codes and it is technically possible
     /// that the library might return an error code that does not appear in [`CodesInternal`] enum.

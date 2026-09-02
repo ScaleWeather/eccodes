@@ -51,7 +51,7 @@ impl<P: Debug> CodesMessage<P> {
 
         let vals: Vec<f64> = self.read_key("values")?;
 
-        let expected_vals_len = ni * nj;
+        let expected_vals_len = ni.checked_mul(nj).ok_or(CodesError::TooMuchValues)?;
         if vals.len() != expected_vals_len {
             return Err(
                 MessageNdarrayError::UnexpectedValuesLength(vals.len(), expected_vals_len).into(),
@@ -100,7 +100,11 @@ impl<P: Debug> CodesMessage<P> {
 
         let latlonvals: Vec<f64> = self.read_key("latLonValues")?;
 
-        let expected_vals_len = ni * nj * 3;
+        let expected_vals_len = ni
+            .checked_mul(nj)
+            .ok_or(CodesError::TooMuchValues)?
+            .checked_mul(3)
+            .ok_or(CodesError::TooMuchValues)?;
         if latlonvals.len() != expected_vals_len {
             return Err(MessageNdarrayError::UnexpectedValuesLength(
                 latlonvals.len(),
