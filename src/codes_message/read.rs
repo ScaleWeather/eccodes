@@ -4,7 +4,7 @@ use crate::{
     codes_message::CodesMessage,
     errors::CodesError,
     intermediate_bindings::{
-        NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array,
+        NativeKeyType, codes_get_bytes, codes_get_double, codes_get_double_array, codes_get_float,
         codes_get_float_array, codes_get_long, codes_get_long_array, codes_get_native_type,
         codes_get_size, codes_get_string,
     },
@@ -113,6 +113,7 @@ macro_rules! key_size_check {
 }
 
 impl_key_read!(scalar, codes_get_long, NativeKeyType::Long, i64);
+impl_key_read!(scalar, codes_get_float, NativeKeyType::Double, f32);
 impl_key_read!(scalar, codes_get_double, NativeKeyType::Double, f64);
 impl_key_read!(array, codes_get_string, NativeKeyType::Str, String);
 impl_key_read!(array, codes_get_bytes, NativeKeyType::Bytes, Vec<u8>);

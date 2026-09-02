@@ -57,6 +57,20 @@ pub unsafe fn codes_get_long(handle: *const codes_handle, key: &str) -> Result<i
     }
 }
 
+pub unsafe fn codes_get_float(handle: *const codes_handle, key: &str) -> Result<f32, CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
+
+        let key = CString::new(key).unwrap();
+        let mut key_value: f32 = 0.0;
+
+        let error_code = eccodes_sys::codes_get_float(handle, key.as_ptr(), &raw mut key_value);
+        error_code_to_result(error_code)?;
+
+        Ok(key_value)
+    }
+}
+
 pub unsafe fn codes_get_double(handle: *const codes_handle, key: &str) -> Result<f64, CodesError> {
     unsafe {
         pointer_guard::non_null!(handle);
