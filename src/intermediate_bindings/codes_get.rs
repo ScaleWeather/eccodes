@@ -95,6 +95,30 @@ pub unsafe fn codes_get_double_array(
     }
 }
 
+pub unsafe fn codes_get_float_array(
+    handle: *const codes_handle,
+    key: &str,
+) -> Result<Vec<f32>, CodesError> {
+    unsafe {
+        pointer_guard::non_null!(handle);
+
+        let mut key_size = codes_get_size(handle, key)?;
+        let key = CString::new(key).unwrap();
+
+        let mut key_values: Vec<f32> = vec![0.0; key_size];
+
+        let error_code = eccodes_sys::codes_get_float_array(
+            handle,
+            key.as_ptr(),
+            key_values.as_mut_ptr().cast(),
+            &raw mut key_size,
+        );
+        error_code_to_result(error_code)?;
+
+        Ok(key_values)
+    }
+}
+
 pub unsafe fn codes_get_long_array(
     handle: *const codes_handle,
     key: &str,
