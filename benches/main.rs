@@ -36,7 +36,10 @@ pub fn key_reading(c: &mut Criterion) {
     });
 
     c.bench_function("long array reading", |b| {
-        b.iter(|| -> Vec<i64> { msg.read_key(black_box("values")).unwrap() })
+        b.iter(|| -> Vec<i64> {
+            msg.read_key(black_box("numberOfPointsAlongAParallel"))
+                .unwrap()
+        })
     });
 
     c.bench_function("float array reading", |b| {
