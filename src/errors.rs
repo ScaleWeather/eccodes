@@ -7,7 +7,9 @@
 
 use errno::Errno;
 use num_derive::FromPrimitive;
-use std::{ffi, io, num, str};
+#[cfg(feature = "ndarray")]
+use std::num;
+use std::{ffi, io, str};
 use thiserror::Error;
 
 /// Errors returned by the all functions in the crate.
