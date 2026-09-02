@@ -3,10 +3,10 @@ name: cargo
 on:
   push:
     branches:
-      - main
+    - main
   pull_request:
     branches:
-      - main
+    - main
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,18 +14,18 @@ env:
 jobs:
   pre_job:
     continue-on-error: true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5
-        with:
-          # All of these options are optional, so you can remove them if you are happy with the defaults
-          concurrent_skipping: "same_content_newer"
-          skip_after_successful_duplicate: "true"
-          paths_ignore: '["**/README.md"]'
-          do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
+    - id: skip_check
+      uses: fkirc/skip-duplicate-actions@v5
+      with:
+        # All of these options are optional, so you can remove them if you are happy with the defaults
+        concurrent_skipping: "same_content_newer"
+        skip_after_successful_duplicate: "true"
+        paths_ignore: '["**/README.md"]'
+        do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
 
   build:
     name: Build on Ubuntu
@@ -34,30 +34,30 @@ jobs:
     runs-on: ubuntu-26.04
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Prepare environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install clang
-          sudo apt-get install libclang1
-          sudo apt-get install libeccodes-dev
-          rustup update stable
-          cargo install cargo-criterion
-          cargo clean
-      - name: Check release build
-        run: |
-          cargo build --release --no-default-features
-          cargo build --release --features "ndarray"
-      - name: Check with clippy
-        run: |
-          cargo clippy --features "ndarray" -- -D warnings
-      - name: Check tests
-        run: |
-          cargo test --no-default-features
-          cargo test --features "ndarray"
-      - name: Benchmark with criterion
-        run: |
-          cargo criterion
+    - uses: actions/checkout@v4
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install clang
+        sudo apt-get install libclang1
+        sudo apt-get install libeccodes-dev
+        rustup update stable
+        cargo install cargo-criterion
+        cargo clean
+    - name: Check release build
+      run: |
+        cargo build --release --no-default-features
+        cargo build --release --features "ndarray"
+    - name: Check with clippy
+      run: |
+        cargo clippy --features "ndarray" -- -D warnings
+    - name: Check tests
+      run: |
+        cargo test --no-default-features
+        cargo test --features "ndarray"
+    - name: Benchmark with criterion
+      run: |
+        cargo criterion
 
   build-macos:
     name: Build on MacOS
@@ -66,24 +66,24 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Prepare environment
-        run: |
-          brew install eccodes
-          rustup update stable
-          cargo install cargo-criterion
-          cargo clean
-      - name: Check release build
-        run: |
-          cargo build --release --no-default-features
-          cargo build --release --features "ndarray"
-      - name: Check with clippy
-        run: |
-          cargo clippy --features "ndarray" -- -D warnings
-      - name: Check tests
-        run: |
-          cargo test --no-default-features
-          cargo test --features "ndarray"
-      - name: Benchmark with criterion
-        run: |
-          cargo criterion
+    - uses: actions/checkout@v4
+    - name: Prepare environment
+      run: |
+        brew install eccodes
+        rustup update stable
+        cargo install cargo-criterion
+        cargo clean
+    - name: Check release build
+      run: |
+        cargo build --release --no-default-features
+        cargo build --release --features "ndarray"
+    - name: Check with clippy
+      run: |
+        cargo clippy --features "ndarray" -- -D warnings
+    - name: Check tests
+      run: |
+        cargo test --no-default-features
+        cargo test --features "ndarray"
+    - name: Benchmark with criterion
+      run: |
+        cargo criterion
