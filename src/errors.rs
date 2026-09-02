@@ -66,6 +66,10 @@ pub enum CodesError {
     #[error("Cannot clone the message")]
     CloneFailed,
 
+    /// Returned when `CodesNearest::find_nearest` fails internally, it is most likely a bug
+    #[error("Internal error occured while trying to find nearest points")]
+    NearestFindFailed,
+
     /// Returned when [`eccodes_sys::codes_keys_iterator_new`] returns null pointer
     #[error("Cannot create or manipulate keys iterator")]
     KeysIteratorFailed,

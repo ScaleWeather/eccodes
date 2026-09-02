@@ -79,15 +79,27 @@ pub unsafe fn codes_grib_nearest_find(
         );
         error_code_to_result(error_code)?;
 
-        let mut output = [NearestGridpoint::default(); 4];
-
-        for i in 0..4 {
-            output[i].lat = output_lats[i];
-            output[i].lon = output_lons[i];
-            output[i].distance = output_distances[i];
-            output[i].index = output_indexes[i];
-            output[i].value = output_values[i];
-        }
+        let output = output_lats
+            .iter()
+            .zip(
+                output_lons.iter().zip(
+                    output_values
+                        .iter()
+                        .zip(output_distances.iter().zip(output_indexes)),
+                ),
+            )
+            .map(
+                |(&lat, (&lon, (&value, (&distance, index))))| NearestGridpoint {
+                    index,
+                    lat,
+                    lon,
+                    distance,
+                    value,
+                },
+            )
+            .collect::<Vec<_>>()
+            .try_into()
+            .map_err(|_| CodesError::NearestFindFailed)?;
 
         Ok(output)
     }
