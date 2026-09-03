@@ -3,6 +3,7 @@
 use std::fmt::Debug;
 
 use ndarray::{Array2, Array3, s};
+use num_traits::Float;
 
 use crate::{CodesError, KeyRead, codes_message::CodesMessage, errors::MessageNdarrayError};
 
@@ -36,20 +37,33 @@ impl<P: Debug> CodesMessage<P> {
     /// Requires the keys `Ni`, `Nj` and `values` to be present in the message.
     ///
     /// Tested only with simple lat-lon grids.
+    /// 
+    /// # Generics
+    /// 
+    /// This function can return ndarray with elements of type either f64 or f32.
+    /// The function will automatically use the appropriate `codes_get` function 
+    /// from the ecCodes library and there will be no explicit conversion on the Rust side.
+    /// Thus technically reading directly into your desired type should be faster than
+    /// reading and coverting. But your results may vary as ecCodes reads to f32 and f64 do not
+    /// have identical performance.
     ///
     /// # Errors
     ///
     /// - When the required keys are not present or if their values are not of the expected type
     /// - When the number of values mismatch with the `Ni` and `Nj` keys
     #[cfg_attr(docsrs, doc(cfg(feature = "ndarray")))]
-    pub fn to_ndarray(&self) -> Result<Array2<f64>, CodesError> {
+    pub fn to_ndarray<T>(&self) -> Result<Array2<T>, CodesError>
+    where
+        T: Float,
+        Self: KeyRead<Vec<T>> + KeyRead<i64>,
+    {
         let ni: i64 = self.read_key("Ni")?;
         let ni = usize::try_from(ni).map_err(MessageNdarrayError::from)?;
 
         let nj: i64 = self.read_key("Nj")?;
         let nj = usize::try_from(nj).map_err(MessageNdarrayError::from)?;
 
-        let vals: Vec<f64> = self.read_key("values")?;
+        let vals: Vec<T> = self.read_key("values")?;
 
         let expected_vals_len = ni.checked_mul(nj).ok_or(CodesError::TooMuchValues)?;
         if vals.len() != expected_vals_len {
@@ -162,7 +176,32 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn test_to_ndarray() -> Result<(), CodesError> {
+    fn test_to_ndarray_f32() -> Result<(), CodesError> {
+        let file_path = Path::new("./data/iceland-surface.grib");
+        let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
+
+        while let Some(msg) = handle.ref_message_iter().next()? {
+            if msg.read_key_dynamic("shortName")? == DynamicKeyType::Str("2d".to_string()) {
+                let ndarray = msg.to_ndarray()?;
+                // values from xarray
+                assert_approx_eq!(f32, ndarray[[0, 0]], 276.37793, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[0, 48]], 276.65723, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[16, 0]], 277.91113, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[16, 48]], 280.34277, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[5, 5]], 276.03418, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[10, 10]], 277.59082, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[15, 15]], 277.68652, epsilon = 0.000_1);
+                assert_approx_eq!(f32, ndarray[[8, 37]], 273.2744, epsilon = 0.000_1);
+
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_to_ndarray_f64() -> Result<(), CodesError> {
         let file_path = Path::new("./data/iceland-surface.grib");
         let mut handle = CodesFile::new_from_file(file_path, ProductKind::GRIB)?;
 
