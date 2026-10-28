@@ -1,3 +1,7 @@
+**After five years of maintaining these bindings the task of providing eccodes bindings has been oficially taken over by ECMWF. All users are encouraged to migrate to the [new bindings](https://crates.io/crates/eccodes). If you want to migrate gradually you can use the [eccodes-compat crate](https://crates.io/crates/eccodes-compat) kindly provided by the ECMWF team**.
+
+**I would like to thank everyone involved in developing those bindings over the years and everyone who found them useful. I would also thank the ECMWF team for ensuring a smooth transition between these and theirs bindings. It was a pleasure working with you all.**
+
 # eccodes
 
 [![Github Repository](https://img.shields.io/badge/Github-Repository-blue?style=flat-square&logo=github&color=blue)](https://github.com/ScaleWeather/eccodes)
